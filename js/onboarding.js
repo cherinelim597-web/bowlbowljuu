@@ -1,93 +1,89 @@
-let selectedPlan = null;
-let selectedPlanData = null;
+// ============================================
+// 方案選擇 - 直接創建訂閱（無需付款）
+// ============================================
 
-// Plan selection handling
-document.querySelectorAll('.plan-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-        if (e.target.classList.contains('select-plan') || e.target.classList.contains('btn-small')) {
-            // Get plan data
-            selectedPlan = card.dataset.plan;
-            const days = parseInt(card.dataset.days);
-            const price = parseInt(card.dataset.price);
-            
-            selectedPlanData = { plan: selectedPlan, days, price };
-            
-            // Highlight selected plan
-            document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
-            card.classList.add('selected');
-            
-            // Show payment section
-            document.getElementById('paymentSection').style.display = 'block';
-            
-            // Update plan info
-            const planNames = {
-                single: 'Single Purchase (1 meal)',
-                weekly: 'Weekly Plan (7 meals)',
-                '1month': '1 Month Plan (30 meals)',
-                '2months': '2 Months Plan (60 meals)',
-                '3months': '3 Months Plan (90 meals)'
-            };
-            
-            document.getElementById('selectedPlanInfo').innerHTML = `
-                <strong>Selected Plan:</strong> ${planNames[selectedPlan]}<br>
-                <strong>Total Price:</strong> RM ${price}
-            `;
-        }
-    });
-});
-
-// Confirm subscription
-async function confirmPlan() {
-    if (!selectedPlanData) {
-        alert('Please select a plan first');
+// 等待頁面加載完成
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Onboarding page loaded');
+    
+    // 綁定所有方案卡片的點擊事件
+    const planCards = document.querySelectorAll('.plan-card');
+    console.log('Found plan cards:', planCards.length);
+    
+    if (planCards.length === 0) {
+        console.log('No plan cards found - check HTML');
         return;
     }
     
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) {
+    planCards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            console.log('Plan card clicked');
+            
+            // 獲取方案數據
+            const plan = this.dataset.plan;
+            const days = parseInt(this.dataset.days);
+            const price = parseInt(this.dataset.price);
+            
+            if (!plan) {
+                console.error('No plan data found');
+                return;
+            }
+            
+            console.log('Selected plan:', plan, days, price);
+            
+            // 直接確認方案（不需要付款）
+            confirmPlanDirect(plan, days, price);
+        });
+    });
+});
+
+// 直接確認方案（不需要付款，不需要上傳收據）
+async function confirmPlanDirect(plan, days, price) {
+    console.log('Confirming plan:', plan, days, price);
+    
+    // 獲取當前用戶
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    
+    if (userError || !user) {
+        console.error('Auth error:', userError);
+        alert('Please login first');
         location.href = 'login.html';
         return;
     }
     
-    const paymentMethod = document.getElementById('paymentMethod').value;
-    const receiptFile = document.getElementById('receiptUpload').files[0];
-    
-    let receiptUrl = null;
-    
-    // Upload receipt if provided
-    if (receiptFile) {
-        const fileExt = receiptFile.name.split('.').pop();
-        const fileName = `${user.id}_${Date.now()}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabaseClient.storage
-            .from('receipts')
-            .upload(fileName, receiptFile);
-        
-        if (!uploadError) {
-            const { data: urlData } = supabaseClient.storage
-                .from('receipts')
-                .getPublicUrl(fileName);
-            receiptUrl = urlData.publicUrl;
-        }
-    }
+    console.log('User:', user.email);
     
     const startDate = new Date();
     let endDate = new Date();
-    endDate.setDate(endDate.getDate() + selectedPlanData.days);
+    endDate.setDate(endDate.getDate() + days);
     
-    // Create subscription
+    // 檢查是否已有 active 訂閱
+    const { data: existingSubscription } = await supabaseClient
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+    
+    if (existingSubscription) {
+        alert('You already have an active subscription!');
+        location.href = 'dashboard.html';
+        return;
+    }
+    
+    // 創建訂閱（直接 active，無需付款）
     const { data: subscription, error: subError } = await supabaseClient
         .from('subscriptions')
         .insert({
             user_id: user.id,
-            plan_type: selectedPlanData.plan,
-            total_days: selectedPlanData.days,
+            plan_type: plan,
+            total_days: days,
             meals_received: 0,
-            start_date: startDate,
-            end_date: endDate,
+            start_date: startDate.toISOString().split('T')[0],
+            end_date: endDate.toISOString().split('T')[0],
             status: 'active',
-            total_price: selectedPlanData.price,
-            payment_method: paymentMethod,
+            total_price: price,
+            payment_method: 'pending',
             created_at: new Date()
         })
         .select()
@@ -99,37 +95,33 @@ async function confirmPlan() {
         return;
     }
     
-    // Create receipt record
-    if (receiptUrl) {
-        await supabaseClient
-            .from('receipts')
-            .insert({
-                user_id: user.id,
-                subscription_id: subscription.id,
-                amount: selectedPlanData.price,
-                receipt_url: receiptUrl,
-                payment_method: paymentMethod,
-                created_at: new Date()
-            });
-    }
+    console.log('Subscription created:', subscription.id);
     
-    // Create delivery schedule
+    // 創建配送日程
     const deliveries = [];
-    for (let i = 0; i < selectedPlanData.days; i++) {
+    for (let i = 0; i < days; i++) {
         const deliveryDate = new Date();
         deliveryDate.setDate(deliveryDate.getDate() + i);
         deliveries.push({
             user_id: user.id,
             subscription_id: subscription.id,
-            delivery_date: deliveryDate,
+            delivery_date: deliveryDate.toISOString().split('T')[0],
             status: i === 0 ? 'pending' : 'upcoming',
             meal_number: i + 1
         });
     }
     
-    await supabaseClient
+    const { error: deliveryError } = await supabaseClient
         .from('deliveries')
         .insert(deliveries);
+    
+    if (deliveryError) {
+        console.error('Delivery error:', deliveryError);
+        // 即使配送創建失敗，訂閱已經成功
+        alert('Subscription created! Welcome to Healthy Bowl!');
+        location.href = 'dashboard.html';
+        return;
+    }
     
     alert('Subscription successful! Welcome to Healthy Bowl!');
     location.href = 'dashboard.html';
