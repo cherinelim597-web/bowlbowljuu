@@ -4,45 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In - Healthy Bowl</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/common.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
-<div class="language-switch">
-    <button onclick="document.documentElement.lang='en'">English</button>
-    <button onclick="document.documentElement.lang='zh'">中文</button>
-</div>
+<div class="main-container">
+    <div class="leaf l1">❦</div>
+    <div class="leaf l2">❦</div>
+    <div class="leaf l3">❦</div>
+    <div class="leaf l4">❦</div>
 
-<div class="container">
-    <div class="card">
-        <div class="logo">🥗 Healthy Bowl</div>
-        <div class="subtitle">Welcome Back</div>
-        <div class="subtitle lang-zh">歡迎回來</div>
+    <div class="language-switch">
+        <button onclick="document.documentElement.lang='en'">EN</button>
+        <button onclick="document.documentElement.lang='zh'">中文</button>
+    </div>
 
-        <div class="input-group">
-            <label>Email</label>
-            <label class="lang-zh">電子郵件</label>
-            <input id="email" type="email" placeholder="example@email.com">
+    <div class="header" style="padding-bottom: 20px;">
+        <h1>WELCOME BACK</h1>
+        <div class="subtitle">Sign in to your account</div>
+        <div class="chinese">登入您的帳號</div>
+    </div>
+
+    <div class="content">
+        <div class="inner-card card-limited">
+            <div class="input-group">
+                <label>Email / 電子郵件</label>
+                <input id="email" type="email" placeholder="example@email.com">
+            </div>
+            <div class="input-group">
+                <label>Password / 密碼</label>
+                <input id="password" type="password" placeholder="Enter your password">
+            </div>
+            <button class="btn" onclick="login()">Sign In / 登入</button>
+            <div class="link">
+                <a href="register.html">Don't have an account? Create one / 還沒有帳號？立即註冊</a>
+            </div>
+            <div class="link">
+                <a href="admin.html" style="color: var(--gold);">Admin Login / 管理員登入</a>
+            </div>
         </div>
+    </div>
 
-        <div class="input-group">
-            <label>Password</label>
-            <label class="lang-zh">密碼</label>
-            <input id="password" type="password" placeholder="Enter your password">
-        </div>
-
-        <button class="btn" onclick="login()">Sign In</button>
-        <button class="btn lang-zh" onclick="login()">登入</button>
-
-        <div class="link">
-            <a href="register.html">Don't have an account? Create one</a>
-            <a href="register.html" class="lang-zh">還沒有帳號？立即註冊</a>
-        </div>
-        
-        <div class="link">
-            <a href="admin.html" style="color: var(--gold);">Admin Login</a>
-        </div>
+    <div class="footer">
+        EAT WELL. LIVE WELL.
     </div>
 </div>
 

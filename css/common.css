@@ -1,3 +1,14 @@
+/* ============================================
+   Healthy Bowl - 前端統一樣式表
+   奢華風格 | 深藍 + 金色 + 奶油色
+============================================ */
+
+/* 字體導入 */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+/* ============================================
+   變數定義
+============================================ */
 :root {
     --navy: #0f2b5b;
     --gold: #c8a15e;
@@ -6,10 +17,12 @@
     --success: #2d6a4f;
     --error: #c31313;
     --warning: #e67e22;
-    --text-dark: #1a2a3a;
-    --text-light: #faf7f2;
+    --border-light: #e0d5b8;
 }
 
+/* ============================================
+   基礎重置
+============================================ */
 * {
     margin: 0;
     padding: 0;
@@ -23,8 +36,10 @@ body {
     padding: 40px;
 }
 
-/* Container */
-.container {
+/* ============================================
+   主容器
+============================================ */
+.main-container {
     max-width: 1400px;
     margin: auto;
     background: var(--cream);
@@ -35,7 +50,7 @@ body {
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25);
 }
 
-.container:before {
+.main-container:before {
     content: "";
     position: absolute;
     inset: 14px;
@@ -45,7 +60,9 @@ body {
     z-index: 1;
 }
 
-/* Decorative Leaves */
+/* ============================================
+   裝飾葉子
+============================================ */
 .leaf {
     position: absolute;
     font-size: 120px;
@@ -54,13 +71,14 @@ body {
     pointer-events: none;
     z-index: 0;
 }
-
 .leaf.l1 { top: 10px; left: 20px; }
 .leaf.l2 { top: 20px; right: 20px; }
 .leaf.l3 { bottom: 80px; left: 20px; }
 .leaf.l4 { bottom: 80px; right: 20px; }
 
-/* Language Switch */
+/* ============================================
+   語言切換
+============================================ */
 .language-switch {
     position: absolute;
     top: 20px;
@@ -69,7 +87,6 @@ body {
     gap: 10px;
     z-index: 10;
 }
-
 .language-switch button {
     padding: 8px 16px;
     background: var(--navy);
@@ -82,40 +99,37 @@ body {
     transition: all 0.3s ease;
     font-family: 'Montserrat', sans-serif;
 }
-
 .language-switch button:hover {
     background: var(--gold);
     transform: translateY(-2px);
 }
 
-/* Header */
+/* ============================================
+   標題區域
+============================================ */
 .header {
     padding: 50px 50px 20px;
     text-align: center;
     position: relative;
     z-index: 2;
 }
-
-h1 {
+.header h1 {
     font-family: 'Cinzel', serif;
     font-size: 56px;
     color: var(--navy);
     letter-spacing: 3px;
 }
-
-.subtitle {
+.header .subtitle {
     font-size: 18px;
     margin-top: 15px;
     color: #334;
     font-weight: 400;
 }
-
-.chinese {
+.header .chinese {
     margin-top: 8px;
     font-size: 16px;
     color: #556;
 }
-
 .section-title {
     font-family: 'Cinzel', serif;
     font-size: 42px;
@@ -124,14 +138,18 @@ h1 {
     text-align: center;
 }
 
-/* Main Layout */
-.main-content {
+/* ============================================
+   內容區域
+============================================ */
+.content {
     padding: 0 40px 40px;
     position: relative;
     z-index: 2;
 }
 
-/* Cards */
+/* ============================================
+   卡片
+============================================ */
 .card {
     background: white;
     border: 2px solid var(--navy);
@@ -140,14 +158,28 @@ h1 {
     margin-bottom: 30px;
 }
 
-/* Plan Grid */
+.inner-card {
+    background: white;
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+/* 限寬卡片 */
+.card-limited {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* ============================================
+   方案卡片網格
+============================================ */
 .plan-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 24px;
     margin-bottom: 40px;
 }
-
 .plan-card {
     background: white;
     border: 2px solid var(--navy);
@@ -158,22 +190,17 @@ h1 {
     transition: all 0.3s ease;
     position: relative;
 }
-
 .plan-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
-
 .plan-card.selected {
     border: 2px solid var(--gold);
     background: linear-gradient(135deg, #fff, #fef9f0);
 }
-
 .plan-card.popular {
     border: 2px solid var(--gold);
-    position: relative;
 }
-
 .popular-badge {
     position: absolute;
     top: -12px;
@@ -185,9 +212,7 @@ h1 {
     border-radius: 30px;
     font-size: 12px;
     font-weight: 600;
-    font-family: 'Montserrat', sans-serif;
 }
-
 .plan-icon {
     width: 74px;
     height: 74px;
@@ -200,20 +225,17 @@ h1 {
     color: white;
     margin-bottom: 20px;
 }
-
 .plan-card h3 {
     font-family: 'Cinzel', serif;
     font-size: 24px;
     color: var(--navy);
     margin-bottom: 8px;
 }
-
 .plan-card p {
     font-size: 14px;
     color: #666;
     margin-bottom: 15px;
 }
-
 .price {
     font-size: 36px;
     font-family: 'Cinzel', serif;
@@ -221,12 +243,10 @@ h1 {
     color: var(--gold);
     margin: 15px 0;
 }
-
 .price small {
     font-size: 14px;
     font-family: 'Montserrat', sans-serif;
 }
-
 .save-badge {
     position: absolute;
     left: -15px;
@@ -244,14 +264,14 @@ h1 {
     text-align: center;
     line-height: 1.3;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-    z-index: 2;
 }
 
-/* Form Inputs */
+/* ============================================
+   表單元素
+============================================ */
 .input-group {
     margin-bottom: 20px;
 }
-
 .input-group label {
     display: block;
     margin-bottom: 8px;
@@ -259,7 +279,6 @@ h1 {
     color: var(--navy);
     font-family: 'Montserrat', sans-serif;
 }
-
 .input-group input,
 .input-group select {
     width: 100%;
@@ -270,7 +289,6 @@ h1 {
     font-family: 'Montserrat', sans-serif;
     transition: all 0.3s;
 }
-
 .input-group input:focus,
 .input-group select:focus {
     outline: none;
@@ -278,7 +296,9 @@ h1 {
     box-shadow: 0 0 0 3px rgba(200, 161, 94, 0.2);
 }
 
-/* Buttons */
+/* ============================================
+   按鈕
+============================================ */
 .btn {
     width: 100%;
     border: none;
@@ -293,31 +313,25 @@ h1 {
     transition: all 0.3s;
     margin-top: 10px;
 }
-
 .btn:hover {
     background: var(--gold);
     transform: translateY(-2px);
 }
-
 .btn-secondary {
     background: var(--gold);
 }
-
 .btn-secondary:hover {
     background: var(--navy);
 }
-
 .btn-outline {
     background: transparent;
     border: 2px solid var(--navy);
     color: var(--navy);
 }
-
 .btn-outline:hover {
     background: var(--navy);
     color: white;
 }
-
 .btn-small {
     padding: 10px 24px;
     background: var(--navy);
@@ -329,22 +343,37 @@ h1 {
     font-weight: 500;
     transition: all 0.3s;
 }
-
 .btn-small:hover {
     background: var(--gold);
 }
 
-/* Dashboard Styles */
+/* ============================================
+   連結
+============================================ */
+.link {
+    text-align: center;
+    margin-top: 20px;
+}
+.link a {
+    color: var(--gold);
+    text-decoration: none;
+    font-size: 14px;
+}
+.link a:hover {
+    text-decoration: underline;
+}
+
+/* ============================================
+   儀表板樣式
+============================================ */
 .user-greeting {
     text-align: center;
     margin-bottom: 30px;
 }
-
 .user-greeting h2 {
     font-family: 'Cinzel', serif;
     color: var(--navy);
 }
-
 .plan-status-card {
     background: linear-gradient(135deg, #faf7f2, #f0ebe2);
     border-radius: 24px;
@@ -352,28 +381,23 @@ h1 {
     margin-bottom: 25px;
     border-left: 4px solid var(--gold);
 }
-
 .plan-status-card h3 {
     font-family: 'Cinzel', serif;
     color: var(--navy);
     margin-bottom: 15px;
 }
-
 .plan-details p {
     margin: 10px 0;
     font-size: 16px;
 }
-
 .progress-section {
     margin: 25px 0;
 }
-
 .progress-section h4 {
     font-family: 'Cinzel', serif;
     color: var(--navy);
     margin-bottom: 15px;
 }
-
 .progress-bar-container {
     background: #e0e0e0;
     border-radius: 30px;
@@ -381,7 +405,6 @@ h1 {
     margin: 15px 0;
     overflow: hidden;
 }
-
 .progress-bar {
     background: var(--success);
     height: 100%;
@@ -389,91 +412,65 @@ h1 {
     transition: width 0.5s ease;
     width: 0%;
 }
-
 .progress-stats {
     text-align: center;
     margin: 10px 0;
     font-size: 14px;
     color: #666;
 }
-
 .delivery-list {
     background: linear-gradient(135deg, #faf7f2, #f0ebe2);
     border-radius: 24px;
     padding: 20px;
 }
-
 .delivery-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 15px;
-    border-bottom: 1px solid #e0d5b8;
+    border-bottom: 1px solid var(--border-light);
 }
-
 .delivery-item:last-child {
     border-bottom: none;
 }
-
 .delivery-date {
     font-weight: 600;
     color: var(--navy);
 }
-
 .delivery-status {
     padding: 5px 15px;
     border-radius: 30px;
     font-size: 12px;
     font-weight: 600;
 }
-
 .delivery-status.delivered {
     background: var(--success);
     color: white;
 }
-
 .delivery-status.pending {
     background: var(--warning);
     color: white;
 }
-
 .delivery-status.upcoming {
     background: var(--gold);
     color: white;
 }
-
 .action-buttons {
     display: flex;
     gap: 15px;
     margin-top: 25px;
 }
-
 .action-buttons .btn {
     flex: 1;
     margin: 0;
 }
 
-/* Links */
-.link {
-    text-align: center;
-    margin-top: 20px;
-}
-
-.link a {
-    color: var(--gold);
-    text-decoration: none;
-    font-size: 14px;
-}
-
-.link a:hover {
-    text-decoration: underline;
-}
-
-/* Receipts List */
+/* ============================================
+   收據列表
+============================================ */
 .receipts-list {
     margin: 20px 0;
 }
-
 .receipt-item {
     background: linear-gradient(135deg, #faf7f2, #f0ebe2);
     border-radius: 20px;
@@ -483,23 +480,19 @@ h1 {
     justify-content: space-between;
     align-items: center;
 }
-
 .receipt-info h4 {
     font-family: 'Cinzel', serif;
     color: var(--navy);
     margin-bottom: 5px;
 }
-
 .receipt-info p {
     color: #666;
     font-size: 13px;
 }
-
 .receipt-actions {
     display: flex;
     gap: 10px;
 }
-
 .receipt-img {
     max-width: 80px;
     max-height: 80px;
@@ -508,7 +501,35 @@ h1 {
     border: 2px solid var(--gold);
 }
 
-/* Footer */
+/* ============================================
+   促銷橫幅
+============================================ */
+.promo-banner {
+    background: linear-gradient(135deg, #0f2b5b, #1a3a7a);
+    text-align: center;
+    padding: 40px;
+    border-radius: 24px;
+    margin-bottom: 30px;
+}
+.promo-banner h3 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    font-size: 28px;
+    margin-bottom: 15px;
+}
+.promo-banner p {
+    color: white;
+    font-size: 18px;
+}
+.promo-banner .chinese {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+/* ============================================
+   底部
+============================================ */
 .footer {
     background: var(--navy);
     color: var(--gold);
@@ -519,63 +540,65 @@ h1 {
     letter-spacing: 2px;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    body {
-        padding: 20px;
-    }
-    
-    .header {
-        padding: 40px 20px 15px;
-    }
-    
-    h1 {
-        font-size: 32px;
-    }
-    
-    .section-title {
-        font-size: 28px;
-    }
-    
-    .main-content {
-        padding: 0 20px 30px;
-    }
-    
-    .plan-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-    }
-    
-    .leaf {
-        font-size: 60px;
-    }
-    
-    .language-switch {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-    }
-    
-    .footer {
-        font-size: 18px;
-        padding: 20px;
-    }
-}
-
-/* Chinese text */
+/* ============================================
+   中英文切換
+============================================ */
 .lang-zh {
     display: none;
 }
-
 html[lang="zh"] .lang-zh,
 html[lang="zh-TW"] .lang-zh {
     display: block;
 }
 
-/* Animations */
+/* ============================================
+   響應式設計
+============================================ */
+@media (max-width: 768px) {
+    body {
+        padding: 20px;
+    }
+    .header {
+        padding: 40px 20px 15px;
+    }
+    .header h1 {
+        font-size: 32px;
+    }
+    .section-title {
+        font-size: 28px;
+    }
+    .content {
+        padding: 0 20px 30px;
+    }
+    .plan-grid {
+        grid-template-columns: 1fr;
+    }
+    .action-buttons {
+        flex-direction: column;
+    }
+    .leaf {
+        font-size: 60px;
+    }
+    .language-switch {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+    }
+    .footer {
+        font-size: 18px;
+        padding: 20px;
+    }
+    .promo-banner h3 {
+        font-size: 22px;
+    }
+    .promo-banner p {
+        font-size: 14px;
+    }
+}
+
+/* ============================================
+   動畫
+============================================ */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -586,33 +609,34 @@ html[lang="zh-TW"] .lang-zh {
         transform: translateY(0);
     }
 }
-
-.card, .plan-card, .receipt-item {
+.card, .plan-card, .receipt-item, .inner-card, .promo-banner {
     animation: fadeIn 0.4s ease-out;
 }
 
-/* Loading */
+/* ============================================
+   加載動畫
+============================================ */
 .loading-spinner {
     text-align: center;
     padding: 40px;
 }
-
 .loading-spinner::after {
     content: "";
     display: inline-block;
     width: 40px;
     height: 40px;
-    border: 3px solid var(--border);
+    border: 3px solid var(--border-light);
     border-top-color: var(--gold);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
-
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 
-/* Modal */
+/* ============================================
+   彈窗
+============================================ */
 .modal {
     display: none;
     position: fixed;
@@ -625,7 +649,6 @@ html[lang="zh-TW"] .lang-zh {
     align-items: center;
     z-index: 2000;
 }
-
 .modal-content {
     background: white;
     border-radius: 28px;
@@ -636,7 +659,6 @@ html[lang="zh-TW"] .lang-zh {
     overflow-y: auto;
     border: 3px solid var(--gold);
 }
-
 .modal-content img {
     max-width: 100%;
     border-radius: 16px;

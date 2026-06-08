@@ -4,59 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - Healthy Bowl</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/common.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
-<div class="language-switch">
-    <button onclick="document.documentElement.lang='en'">English</button>
-    <button onclick="document.documentElement.lang='zh'">中文</button>
-</div>
+<div class="main-container">
+    <div class="leaf l1">❦</div>
+    <div class="leaf l2">❦</div>
+    <div class="leaf l3">❦</div>
+    <div class="leaf l4">❦</div>
 
-<div class="container">
-    <div class="card">
-        <div class="logo">🥗 Healthy Bowl</div>
-        <div class="subtitle">Create Account</div>
-        <div class="subtitle lang-zh">建立帳號</div>
+    <div class="language-switch">
+        <button onclick="document.documentElement.lang='en'">EN</button>
+        <button onclick="document.documentElement.lang='zh'">中文</button>
+    </div>
 
-        <div class="input-group">
-            <label>Full Name</label>
-            <label class="lang-zh">全名</label>
-            <input id="fullName" placeholder="John Doe">
+    <div class="header" style="padding-bottom: 20px;">
+        <h1>CREATE ACCOUNT</h1>
+        <div class="subtitle">Join Healthy Bowl today</div>
+        <div class="chinese">立即加入 Healthy Bowl</div>
+    </div>
+
+    <div class="content">
+        <div class="inner-card card-limited">
+            <div class="input-group">
+                <label>Full Name / 全名</label>
+                <input id="fullName" placeholder="John Doe">
+            </div>
+            <div class="input-group">
+                <label>Phone Number / 電話號碼</label>
+                <input id="phone" type="tel" placeholder="0123456789">
+            </div>
+            <div class="input-group">
+                <label>Delivery Address / 送餐地址</label>
+                <input id="address" placeholder="Your full address">
+            </div>
+            <div class="input-group">
+                <label>Email / 電子郵件</label>
+                <input id="email" type="email" placeholder="example@email.com">
+            </div>
+            <div class="input-group">
+                <label>Password / 密碼</label>
+                <input id="password" type="password" placeholder="At least 6 characters">
+            </div>
+            <button class="btn" onclick="register()">Create Account / 註冊</button>
+            <div class="link">
+                <a href="login.html">Already have an account? Sign In / 已有帳號？登入</a>
+            </div>
         </div>
+    </div>
 
-        <div class="input-group">
-            <label>Phone Number</label>
-            <label class="lang-zh">電話號碼</label>
-            <input id="phone" type="tel" placeholder="0912345678">
-        </div>
-
-        <div class="input-group">
-            <label>Delivery Address</label>
-            <label class="lang-zh">送餐地址</label>
-            <input id="address" placeholder="Your full address">
-        </div>
-
-        <div class="input-group">
-            <label>Email</label>
-            <label class="lang-zh">電子郵件</label>
-            <input id="email" type="email" placeholder="example@email.com">
-        </div>
-
-        <div class="input-group">
-            <label>Password</label>
-            <label class="lang-zh">密碼</label>
-            <input id="password" type="password" placeholder="At least 6 characters">
-        </div>
-
-        <button class="btn" onclick="register()">Create Account</button>
-        <button class="btn lang-zh" onclick="register()">註冊</button>
-
-        <div class="link">
-            <a href="login.html">Already have an account? Sign In</a>
-            <a href="login.html" class="lang-zh">已有帳號？登入</a>
-        </div>
+    <div class="footer">
+        EAT WELL. LIVE WELL.
     </div>
 </div>
 

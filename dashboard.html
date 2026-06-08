@@ -4,66 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Healthy Bowl</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/common.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
-<div class="language-switch">
-    <button onclick="document.documentElement.lang='en'">English</button>
-    <button onclick="document.documentElement.lang='zh'">中文</button>
-</div>
+<div class="main-container">
+    <div class="leaf l1">❦</div>
+    <div class="leaf l2">❦</div>
+    <div class="leaf l3">❦</div>
+    <div class="leaf l4">❦</div>
 
-<div class="container dashboard-container">
-    <div class="card">
-        <div class="logo">🥗 Healthy Bowl</div>
-        
+    <div class="language-switch">
+        <button onclick="document.documentElement.lang='en'">EN</button>
+        <button onclick="document.documentElement.lang='zh'">中文</button>
+    </div>
+
+    <div class="header" style="padding-bottom: 20px;">
+        <h1>MY DASHBOARD</h1>
+        <div class="subtitle">Track your meal plan progress</div>
+        <div class="chinese">追蹤您的餐盒進度</div>
+    </div>
+
+    <div class="content">
         <div class="user-greeting">
             <h2>Welcome back, <span id="userName">Loading...</span>!</h2>
-            <h2 class="lang-zh">歡迎回來，<span id="userNameZh">Loading...</span>！</h2>
+            <div class="chinese">歡迎回來，<span id="userNameZh">Loading...</span>！</div>
         </div>
-        
-        <!-- Current Plan Status -->
-        <div class="plan-status-card" id="planStatusCard">
-            <h3>📋 Current Plan</h3>
-            <h3 class="lang-zh">當前方案</h3>
+
+        <div class="plan-status-card">
+            <h3>📋 Current Plan / 當前方案</h3>
             <div id="planDetails" class="plan-details">
                 <p>Loading your plan information...</p>
             </div>
         </div>
-        
-        <!-- Progress Bar -->
-        <div class="progress-section" id="progressSection">
-            <h4>📊 Plan Progress</h4>
-            <h4 class="lang-zh">方案進度</h4>
+
+        <div class="progress-section">
+            <h4>📊 Plan Progress / 方案進度</h4>
             <div class="progress-bar-container">
                 <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
             </div>
             <div class="progress-stats">
                 <span id="mealsReceived">0</span> meals received / <span id="totalMeals">0</span> total
-                <span class="lang-zh">已收到</span>
-                <span id="mealsReceivedZh">0</span> 餐 / 共 <span id="totalMealsZh">0</span> 餐
+                <span class="chinese">已收到 <span id="mealsReceivedZh">0</span> 餐 / 共 <span id="totalMealsZh">0</span> 餐</span>
             </div>
             <div class="progress-stats">
                 ⏰ <span id="daysRemaining">0</span> days remaining
-                <span class="lang-zh">剩餘</span>
-                <span id="daysRemainingZh">0</span> 天
+                <span class="chinese">剩餘 <span id="daysRemainingZh">0</span> 天</span>
             </div>
         </div>
-        
-        <!-- Delivery Schedule -->
+
         <div class="delivery-section">
-            <h3>🚚 Upcoming Deliveries</h3>
-            <h3 class="lang-zh">即將送達</h3>
+            <h3 style="margin-bottom: 15px;">🚚 Upcoming Deliveries / 即將送達</h3>
             <div id="deliverySchedule" class="delivery-list">
                 <p>Loading delivery schedule...</p>
             </div>
         </div>
-        
-        <div class="action-buttons-dashboard">
-            <a href="receipt.html" class="btn btn-outline">📄 View Receipts</a>
-            <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
+
+        <div class="action-buttons">
+            <a href="receipt.html" class="btn btn-outline">📄 View Receipts / 查看收據</a>
+            <button class="btn btn-outline" onclick="logout()">🚪 Logout / 登出</button>
         </div>
+    </div>
+
+    <div class="footer">
+        EAT WELL. LIVE WELL.
     </div>
 </div>
 
