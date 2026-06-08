@@ -1,22 +1,31 @@
+// ============================================
+// 方案選擇 - 直接創建訂閱（無需付款）
+// ============================================
+
 let selectedPlan = null;
 let selectedPlanData = null;
 
 // Plan selection handling
 document.querySelectorAll('.plan-card').forEach(card => {
     card.addEventListener('click', (e) => {
-        if (e.target.classList.contains('select-plan') || e.target.classList.contains('btn-small')) {
+        // 點擊按鈕或卡片時觸發
+        if (e.target.classList.contains('select-plan') || e.target.classList.contains('btn-small') || e.target.closest('.plan-card')) {
+            // 獲取卡片元素
+            const targetCard = e.target.closest('.plan-card');
+            if (!targetCard) return;
+            
             // Get plan data
-            selectedPlan = card.dataset.plan;
-            const days = parseInt(card.dataset.days);
-            const price = parseInt(card.dataset.price);
+            selectedPlan = targetCard.dataset.plan;
+            const days = parseInt(targetCard.dataset.days);
+            const price = parseInt(targetCard.dataset.price);
             
             selectedPlanData = { plan: selectedPlan, days, price };
             
             // Highlight selected plan
             document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
-            card.classList.add('selected');
+            targetCard.classList.add('selected');
             
-            // 直接確認方案，不需要顯示付款區
+            // 直接確認方案
             confirmPlanDirect();
         }
     });
@@ -53,7 +62,7 @@ async function confirmPlanDirect() {
         return;
     }
     
-    // Create subscription (pending payment status)
+    // Create subscription (直接 active，無需付款)
     const { data: subscription, error: subError } = await supabaseClient
         .from('subscriptions')
         .insert({
@@ -63,9 +72,9 @@ async function confirmPlanDirect() {
             meals_received: 0,
             start_date: startDate,
             end_date: endDate,
-            status: 'active',  // 直接設為 active，不需要付款
+            status: 'active',
             total_price: selectedPlanData.price,
-            payment_method: 'pending',  // 標記為待付款
+            payment_method: 'pending',
             created_at: new Date()
         })
         .select()
@@ -91,9 +100,16 @@ async function confirmPlanDirect() {
         });
     }
     
-    await supabaseClient
+    const { error: deliveryError } = await supabaseClient
         .from('deliveries')
         .insert(deliveries);
+    
+    if (deliveryError) {
+        console.error('Delivery error:', deliveryError);
+        alert('Subscription created but delivery schedule failed. Please contact support.');
+        location.href = 'dashboard.html';
+        return;
+    }
     
     alert('Subscription successful! Welcome to Healthy Bowl!');
     location.href = 'dashboard.html';
