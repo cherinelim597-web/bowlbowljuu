@@ -29,6 +29,7 @@
 
     <div class="content">
         <div class="plan-grid" id="planGrid">
+            <!-- Single Purchase -->
             <div class="plan-card" data-plan="single" data-days="1" data-price="12">
                 <div class="plan-icon">🛒</div>
                 <h3>Single Purchase</h3>
@@ -37,6 +38,7 @@
                 <button class="btn-small select-plan">Select</button>
             </div>
 
+            <!-- Weekly -->
             <div class="plan-card" data-plan="weekly" data-days="7" data-price="75">
                 <div class="plan-icon">📅</div>
                 <h3>Weekly Plan</h3>
@@ -45,6 +47,7 @@
                 <button class="btn-small select-plan">Select</button>
             </div>
 
+            <!-- 1 Month -->
             <div class="plan-card popular" data-plan="1month" data-days="30" data-price="280">
                 <div class="popular-badge">MOST POPULAR</div>
                 <div class="plan-icon">🌟</div>
@@ -54,6 +57,7 @@
                 <button class="btn-small select-plan">Select</button>
             </div>
 
+            <!-- 2 Months -->
             <div class="plan-card" data-plan="2months" data-days="60" data-price="530">
                 <div class="plan-icon">🚀</div>
                 <h3>2 Months Plan</h3>
@@ -62,6 +66,7 @@
                 <button class="btn-small select-plan">Select</button>
             </div>
 
+            <!-- 3 Months -->
             <div class="plan-card" data-plan="3months" data-days="90" data-price="750">
                 <div class="plan-icon">💪</div>
                 <h3>3 Months Plan</h3>
@@ -71,23 +76,11 @@
             </div>
         </div>
 
-        <div class="inner-card" id="paymentSection" style="display: none;">
-            <h3 style="font-family: Cinzel; color: var(--navy); margin-bottom: 20px;">Payment Summary / 付款摘要</h3>
-            <p id="selectedPlanInfo" style="margin-bottom: 20px;"></p>
-            <div class="input-group">
-                <label>Payment Method / 付款方式</label>
-                <select id="paymentMethod">
-                    <option value="credit_card">Credit Card / 信用卡</option>
-                    <option value="bank_transfer">Bank Transfer / 銀行轉帳</option>
-                    <option value="cash">Cash on Delivery / 貨到付款</option>
-                    <option value="touchngo">Touch 'n Go / 電子錢包</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label>Upload Payment Receipt (Optional) / 上傳付款收據（選填）</label>
-                <input type="file" id="receiptUpload" accept="image/*,.pdf">
-            </div>
-            <button class="btn" onclick="confirmPlan()">Confirm & Subscribe / 確認訂閱</button>
+        <!-- 促銷橫幅 -->
+        <div class="promo-banner">
+            <h3>✨ 3 MONTH PLAN EXCLUSIVE BENEFIT ✨</h3>
+            <p>Enjoy 2 Days of Soup in Every Single Week</p>
+            <div class="chinese">3个月计划专属福利：每个星期享有2天汤品</div>
         </div>
     </div>
 
