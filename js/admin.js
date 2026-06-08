@@ -1,300 +1,75 @@
-// Admin credentials - 使用你的管理員帳號
-const ADMIN_EMAIL = "admin@cherinebowl.com";
+// ============================================
+// 管理後台主邏輯
+// ============================================
 
-async function adminLogin() {
-    const email = document.getElementById('adminEmail').value;
-    const password = document.getElementById('adminPassword').value;
-    
-    if (!email || !password) {
-        alert('Please enter email and password');
-        return;
-    }
-    
-    const btn = event.target;
-    const originalText = btn.innerText;
-    btn.innerText = 'Logging in...';
-    btn.disabled = true;
-    
-    try {
-        // 使用 Supabase 認證
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-        
-        if (error) {
-            alert('Invalid email or password: ' + error.message);
-            return;
-        }
-        
-        // 檢查是否是管理員
-        const isAdmin = email === ADMIN_EMAIL;
-        
-        if (isAdmin) {
-            sessionStorage.setItem('adminLoggedIn', 'true');
-            sessionStorage.setItem('adminEmail', email);
-            
-            document.getElementById('adminLoginSection').style.display = 'none';
-            document.getElementById('adminDashboard').style.display = 'block';
-            loadAllUsers();
-        } else {
-            alert('You do not have admin privileges');
-            await supabaseClient.auth.signOut();
-        }
-        
-    } catch (err) {
-        console.error('Login error:', err);
-        alert('Login failed, please try again');
-    } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
-}
+let currentPage = 'dashboard';
 
-function adminLogout() {
-    supabaseClient.auth.signOut();
-    sessionStorage.removeItem('adminLoggedIn');
-    sessionStorage.removeItem('adminEmail');
+// 顯示頁面
+async function showPage(page) {
+    currentPage = page;
     
-    document.getElementById('adminLoginSection').style.display = 'block';
-    document.getElementById('adminDashboard').style.display = 'none';
-    
-    document.getElementById('adminEmail').value = '';
-    document.getElementById('adminPassword').value = '';
-}
-
-function checkAdminAuth() {
-    const isLoggedIn = sessionStorage.getItem('adminLoggedIn');
-    if (isLoggedIn === 'true') {
-        document.getElementById('adminLoginSection').style.display = 'none';
-        document.getElementById('adminDashboard').style.display = 'block';
-        loadAllUsers();
-    }
-}
-
-async function loadAllUsers() {
-    const userList = document.getElementById('userList');
-    userList.innerHTML = '<div class="loading-spinner"></div>';
-    
-    try {
-        const { data: users, error } = await supabaseClient
-            .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
-        
-        if (error) {
-            console.error('Error loading users:', error);
-            userList.innerHTML = '<p>Error loading users.</p>';
-            return;
+    // 更新導航樣式
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.getAttribute('data-page') === page) {
+            item.classList.add('active');
         }
-        
-        if (!users || users.length === 0) {
-            userList.innerHTML = '<p>No users found.</p>';
-            return;
-        }
-        
-        userList.innerHTML = '';
-        
-        for (const user of users) {
-            const { data: subscription } = await supabaseClient
-                .from('subscriptions')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('status', 'active')
-                .single();
-            
-            let deliveries = [];
-            if (subscription) {
-                const { data: d } = await supabaseClient
-                    .from('deliveries')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .eq('subscription_id', subscription.id)
-                    .order('delivery_date', { ascending: true });
-                deliveries = d || [];
-            }
-            
-            const planNames = {
-                single: 'Single Purchase',
-                weekly: 'Weekly Plan',
-                '1month': '1 Month Plan',
-                '2months': '2 Months Plan',
-                '3months': '3 Months Plan'
-            };
-            
-            const mealsReceived = subscription?.meals_received || 0;
-            const totalMeals = subscription?.total_days || 0;
-            
-            const userCard = document.createElement('div');
-            userCard.className = 'user-card';
-            userCard.innerHTML = `
-                <div class="user-header">
-                    <span class="user-name">${escapeHtml(user.full_name || 'No Name')}</span>
-                    <span class="user-plan">${subscription ? planNames[subscription.plan_type] : 'No active plan'}</span>
-                </div>
-                <div class="user-details">
-                    <div>
-                        <strong>📧 Email:</strong> ${escapeHtml(user.email)}<br>
-                        <strong>📱 Phone:</strong> ${escapeHtml(user.phone || 'N/A')}<br>
-                        <strong>📍 Address:</strong> ${escapeHtml(user.address || 'N/A')}
-                    </div>
-                    <div>
-                        <strong>🍽️ Meals Received:</strong> ${mealsReceived} / ${totalMeals}<br>
-                        <strong>📦 Remaining:</strong> ${totalMeals - mealsReceived}<br>
-                        <strong>📅 Start:</strong> ${subscription ? new Date(subscription.start_date).toLocaleDateString() : 'N/A'}<br>
-                        <strong>📅 End:</strong> ${subscription ? new Date(subscription.end_date).toLocaleDateString() : 'N/A'}
-                    </div>
-                </div>
-                <div class="delivery-tracking" id="delivery-${user.id}">
-                    <strong>🚚 Daily Delivery Tracking:</strong><br>
-                    ${generateDeliveryCheckboxes(deliveries, user.id, subscription?.id)}
-                </div>
-                <button class="upload-receipt-btn" onclick="uploadReceiptForUser('${user.id}')">📄 Upload Receipt</button>
-            `;
-            userList.appendChild(userCard);
-        }
-    } catch (err) {
-        console.error('Error:', err);
-        userList.innerHTML = '<p>Error loading users.</p>';
-    }
-}
-
-function generateDeliveryCheckboxes(deliveries, userId, subscriptionId) {
-    if (!deliveries || deliveries.length === 0) {
-        return '<p>No deliveries scheduled.</p>';
-    }
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const relevantDeliveries = deliveries.filter(d => {
-        const deliveryDate = new Date(d.delivery_date);
-        deliveryDate.setHours(0, 0, 0, 0);
-        const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
-        return diffDays >= -1 && diffDays < 14;
     });
     
-    if (relevantDeliveries.length === 0) {
-        return '<p>No upcoming deliveries.</p>';
+    // 隱藏所有頁面
+    document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+    
+    // 顯示目標頁面
+    const targetPage = document.getElementById(`page_${page}`);
+    if (targetPage) {
+        targetPage.classList.add('active');
     }
     
-    return relevantDeliveries.map(delivery => {
-        const deliveryDate = new Date(d.delivery_date);
-        const isDelivered = delivery.status === 'delivered';
-        const isPast = deliveryDate < today && !isDelivered;
-        const dateStr = deliveryDate.toLocaleDateString();
-        
-        return `
-            <div class="delivery-checkbox">
-                <input type="checkbox" 
-                       id="delivery-${delivery.id}" 
-                       ${isDelivered ? 'checked disabled' : ''}
-                       ${isPast ? 'disabled' : ''}
-                       onchange="markDelivery('${delivery.id}', this.checked, '${userId}', '${subscriptionId}')">
-                <label for="delivery-${delivery.id}">
-                    ${dateStr} - Meal #${delivery.meal_number}
-                    ${isDelivered ? '✓ Delivered' : ''}
-                </label>
-            </div>
-        `;
-    }).join('');
-}
-
-async function markDelivery(deliveryId, isChecked, userId, subscriptionId) {
-    if (!isChecked) return;
-    
-    try {
-        const { error } = await supabaseClient
-            .from('deliveries')
-            .update({ status: 'delivered' })
-            .eq('id', deliveryId);
-        
-        if (error) {
-            alert('Error: ' + error.message);
-            return;
-        }
-        
-        const { data: subscription } = await supabaseClient
-            .from('subscriptions')
-            .select('meals_received')
-            .eq('id', subscriptionId)
-            .single();
-        
-        const newCount = (subscription?.meals_received || 0) + 1;
-        
-        await supabaseClient
-            .from('subscriptions')
-            .update({ meals_received: newCount })
-            .eq('id', subscriptionId);
-        
-        alert('Delivery marked as delivered!');
-        loadAllUsers();
-        
-    } catch (err) {
-        console.error('Error:', err);
-        alert('Failed to mark delivery');
+    // 載入頁面數據
+    switch(page) {
+        case 'dashboard':
+            if (typeof loadDashboard === 'function') await loadDashboard();
+            break;
+        case 'users':
+            if (typeof loadUsersPage === 'function') await loadUsersPage();
+            break;
+        case 'deliveries':
+            if (typeof loadDeliveriesPage === 'function') await loadDeliveriesPage();
+            break;
+        case 'receipts':
+            if (typeof loadReceiptsPage === 'function') await loadReceiptsPage();
+            break;
+        case 'reports':
+            if (typeof loadReportsPage === 'function') await loadReportsPage();
+            break;
     }
-}
-
-async function uploadReceiptForUser(userId) {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*,.pdf';
     
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${userId}_receipt_${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabaseClient.storage
-            .from('receipts')
-            .upload(fileName, file);
-        
-        if (uploadError) {
-            alert('Upload failed: ' + uploadError.message);
-            return;
-        }
-        
-        const { data: urlData } = supabaseClient.storage
-            .from('receipts')
-            .getPublicUrl(fileName);
-        
-        const { data: subscription } = await supabaseClient
-            .from('subscriptions')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .single();
-        
-        if (subscription) {
-            await supabaseClient
-                .from('receipts')
-                .insert({
-                    user_id: userId,
-                    subscription_id: subscription.id,
-                    amount: 0,
-                    receipt_url: urlData.publicUrl,
-                    payment_method: 'admin_upload',
-                    created_at: new Date()
-                });
-        }
-        
-        alert('Receipt uploaded successfully!');
-        loadAllUsers();
-    };
+    // 更新標題
+    const titles = { dashboard: 'Dashboard', users: 'User Management', deliveries: 'Daily Delivery', receipts: 'Receipts', reports: 'Reports' };
+    document.getElementById('pageTitle').innerText = titles[page] || page;
+}
+
+// 初始化
+async function initAdmin() {
+    const user = await checkAdminAuth();
+    if (!user) return;
     
-    input.click();
+    // 綁定導航事件
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const page = item.getAttribute('data-page');
+            if (page) showPage(page);
+        });
+    });
+    
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        window.location.href = 'login.html';
+    });
+    
+    // 載入默認頁面
+    await showPage('dashboard');
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    checkAdminAuth();
-});
+// 啟動
+initAdmin();
