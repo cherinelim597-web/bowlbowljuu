@@ -2,6 +2,9 @@
 // 共用函數
 // ============================================
 
+// 全局管理員郵箱常量
+const ADMIN_EMAIL = "admin@cherinebowl.com";
+
 let currentLanguage = 'en';
 
 // 語言切換

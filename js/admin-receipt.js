@@ -2,7 +2,7 @@
 // 收據管理模組 - 支持上傳
 // ============================================
 
-const ADMIN_EMAIL = "admin@cherinebowl.com";
+// ADMIN_EMAIL 已在 admin-common.js 中定義
 
 async function loadReceiptsPage() {
     const container = document.getElementById('page_receipts');

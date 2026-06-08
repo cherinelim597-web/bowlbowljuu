@@ -2,7 +2,7 @@
 // 每日配送模組 - 顯示今/明/後天
 // ============================================
 
-const ADMIN_EMAIL = "admin@cherinebowl.com";
+// ADMIN_EMAIL 已在 admin-common.js 中定義
 
 async function loadDeliveriesPage() {
     const container = document.getElementById('page_deliveries');

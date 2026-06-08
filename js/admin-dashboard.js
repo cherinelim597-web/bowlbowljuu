@@ -2,7 +2,7 @@
 // 管理員儀表板模組
 // ============================================
 
-const ADMIN_EMAIL = "admin@cherinebowl.com";
+// ADMIN_EMAIL 已在 admin-common.js 中定義
 
 async function loadDashboard() {
     const container = document.getElementById('page_dashboard');

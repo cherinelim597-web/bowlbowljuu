@@ -2,7 +2,7 @@
 // 用戶管理模組
 // ============================================
 
-const ADMIN_EMAIL = "admin@cherinebowl.com";
+// ADMIN_EMAIL 已在 admin-common.js 中定義
 
 async function loadUsersPage() {
     const container = document.getElementById('page_users');
