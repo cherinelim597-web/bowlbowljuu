@@ -256,9 +256,11 @@ async function initAdmin() {
     });
     
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-        await supabaseClient.auth.signOut();
-        window.location.href = 'login.html';
-    });
+    await supabaseClient.auth.signOut();
+    sessionStorage.removeItem('adminLoggedIn');
+    sessionStorage.removeItem('adminEmail');
+    window.location.href = 'admin-login.html';
+});
     
     await showPage('dashboard');
 }
