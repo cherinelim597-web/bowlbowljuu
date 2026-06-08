@@ -1,338 +1,58 @@
-// ============================================
-// 管理員後台邏輯 - 使用 Supabase 認證
-// ============================================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Healthy Bowl</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
 
-// 管理員登入
-async function adminLogin() {
-    const email = document.getElementById('adminEmail').value;
-    const password = document.getElementById('adminPassword').value;
-    
-    if (!email || !password) {
-        alert('Please enter email and password');
-        return;
-    }
-    
-    const btn = event.target;
-    const originalText = btn.innerText;
-    btn.innerText = 'Logging in...';
-    btn.disabled = true;
-    
-    try {
-        // 使用 Supabase 認證
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-        
-        if (error) {
-            alert('Invalid email or password: ' + error.message);
-            return;
-        }
-        
-        // 檢查是否是管理員（檢查 email 是否包含 admin 或特殊標記）
-        // 你可以修改這裡的管理員判斷條件
-        const isAdmin = email === 'admin@healthybowl.com' || 
-                        email.includes('admin') ||
-                        email === 'manager@healthybowl.com';
-        
-        if (isAdmin) {
-            // 儲存管理員登入狀態
-            sessionStorage.setItem('adminLoggedIn', 'true');
-            sessionStorage.setItem('adminEmail', email);
-            
-            document.getElementById('adminLoginSection').style.display = 'none';
-            document.getElementById('adminDashboard').style.display = 'block';
-            loadAllUsers();
-        } else {
-            alert('You do not have admin privileges');
-            await supabaseClient.auth.signOut();
-        }
-        
-    } catch (err) {
-        console.error('Login error:', err);
-        alert('Login failed, please try again');
-    } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
-}
+<div class="language-switch">
+    <button onclick="document.documentElement.lang='en'">English</button>
+    <button onclick="document.documentElement.lang='zh'">中文</button>
+</div>
 
-// 管理員登出
-function adminLogout() {
-    supabaseClient.auth.signOut();
-    sessionStorage.removeItem('adminLoggedIn');
-    sessionStorage.removeItem('adminEmail');
-    
-    document.getElementById('adminLoginSection').style.display = 'block';
-    document.getElementById('adminDashboard').style.display = 'none';
-    
-    // 清空表單
-    document.getElementById('adminEmail').value = '';
-    document.getElementById('adminPassword').value = '';
-}
-
-// 檢查是否已登入
-function checkAdminAuth() {
-    const isLoggedIn = sessionStorage.getItem('adminLoggedIn');
-    if (isLoggedIn === 'true') {
-        document.getElementById('adminLoginSection').style.display = 'none';
-        document.getElementById('adminDashboard').style.display = 'block';
-        loadAllUsers();
-    }
-}
-
-// 載入所有用戶
-async function loadAllUsers() {
-    const userList = document.getElementById('userList');
-    userList.innerHTML = '<div class="loading-spinner"></div>';
-    
-    try {
-        // 獲取所有用戶（從 auth.users 需要 admin 權限，改用從 users 表獲取）
-        const { data: users, error } = await supabaseClient
-            .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
+<div class="container admin-container">
+    <div class="card">
+        <div class="logo">🥗 Healthy Bowl Admin</div>
+        <div class="subtitle">User & Order Management</div>
+        <div class="subtitle lang-zh">用戶與訂單管理</div>
         
-        if (error) {
-            console.error('Error loading users:', error);
-            userList.innerHTML = '<p>Error loading users. Please check console.</p>';
-            return;
-        }
-        
-        if (!users || users.length === 0) {
-            userList.innerHTML = '<p>No users found.</p>';
-            return;
-        }
-        
-        userList.innerHTML = '';
-        
-        for (const user of users) {
-            // 獲取用戶的 active 訂閱
-            const { data: subscription } = await supabaseClient
-                .from('subscriptions')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('status', 'active')
-                .single();
-            
-            // 獲取配送記錄
-            let deliveries = [];
-            if (subscription) {
-                const { data: d } = await supabaseClient
-                    .from('deliveries')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .eq('subscription_id', subscription.id)
-                    .order('delivery_date', { ascending: true });
-                deliveries = d || [];
-            }
-            
-            const planNames = {
-                single: 'Single Purchase',
-                weekly: 'Weekly Plan',
-                '1month': '1 Month Plan',
-                '2months': '2 Months Plan',
-                '3months': '3 Months Plan'
-            };
-            
-            const mealsReceived = subscription?.meals_received || 0;
-            const totalMeals = subscription?.total_days || 0;
-            const mealsRemaining = totalMeals - mealsReceived;
-            
-            const userCard = document.createElement('div');
-            userCard.className = 'user-card';
-            userCard.innerHTML = `
-                <div class="user-header">
-                    <span class="user-name">${escapeHtml(user.full_name || 'No Name')}</span>
-                    <span class="user-plan">${subscription ? planNames[subscription.plan_type] : 'No active plan'}</span>
-                </div>
-                <div class="user-details">
-                    <div>
-                        <strong>📧 Email:</strong> ${escapeHtml(user.email)}<br>
-                        <strong>📱 Phone:</strong> ${escapeHtml(user.phone || 'N/A')}<br>
-                        <strong>📍 Address:</strong> ${escapeHtml(user.address || 'N/A')}<br>
-                        <strong>🆔 User ID:</strong> <small>${user.id.substring(0, 8)}...</small>
-                    </div>
-                    <div>
-                        <strong>🍽️ Meals Received:</strong> ${mealsReceived} / ${totalMeals}<br>
-                        <strong>📦 Meals Remaining:</strong> ${mealsRemaining}<br>
-                        <strong>📅 Start Date:</strong> ${subscription ? new Date(subscription.start_date).toLocaleDateString() : 'N/A'}<br>
-                        <strong>📅 End Date:</strong> ${subscription ? new Date(subscription.end_date).toLocaleDateString() : 'N/A'}
-                    </div>
-                </div>
-                <div class="delivery-tracking" id="delivery-${user.id}">
-                    <strong>🚚 Daily Delivery Tracking:</strong><br>
-                    ${generateDeliveryCheckboxes(deliveries, user.id, subscription?.id)}
-                </div>
-                <button class="upload-receipt-btn" onclick="uploadReceiptForUser('${user.id}')">📄 Upload Receipt</button>
-            `;
-            userList.appendChild(userCard);
-        }
-    } catch (err) {
-        console.error('Error:', err);
-        userList.innerHTML = '<p>Error loading users. Please refresh.</p>';
-    }
-}
-
-// 生成配送核取方塊
-function generateDeliveryCheckboxes(deliveries, userId, subscriptionId) {
-    if (!deliveries || deliveries.length === 0) {
-        return '<p>No deliveries scheduled. User needs to subscribe first.</p>';
-    }
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // 顯示最近 7 天和未來的配送
-    const relevantDeliveries = deliveries.filter(d => {
-        const deliveryDate = new Date(d.delivery_date);
-        deliveryDate.setHours(0, 0, 0, 0);
-        const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
-        return diffDays >= -1 && diffDays < 14; // 顯示昨天到未來14天
-    });
-    
-    if (relevantDeliveries.length === 0) {
-        return '<p>No upcoming deliveries.</p>';
-    }
-    
-    return relevantDeliveries.map(delivery => {
-        const deliveryDate = new Date(delivery.delivery_date);
-        const isDelivered = delivery.status === 'delivered';
-        const isPast = deliveryDate < today && !isDelivered;
-        const dateStr = deliveryDate.toLocaleDateString();
-        
-        return `
-            <div class="delivery-checkbox">
-                <input type="checkbox" 
-                       id="delivery-${delivery.id}" 
-                       ${isDelivered ? 'checked disabled' : ''}
-                       ${isPast ? 'disabled' : ''}
-                       onchange="markDelivery('${delivery.id}', this.checked, '${userId}', '${subscriptionId}')">
-                <label for="delivery-${delivery.id}" style="${isPast ? 'color: #999;' : ''}">
-                    ${dateStr} - Meal #${delivery.meal_number}
-                    ${isDelivered ? '✓ Delivered' : ''}
-                    ${isPast ? ' (Missed)' : ''}
-                </label>
+        <!-- Admin Login Section -->
+        <div id="adminLoginSection" class="admin-login">
+            <div class="input-group">
+                <label>Admin Email</label>
+                <label class="lang-zh">管理員電子郵件</label>
+                <input type="email" id="adminEmail" placeholder="admin@cherinebowl.com">
             </div>
-        `;
-    }).join('');
-}
+            <div class="input-group">
+                <label>Admin Password</label>
+                <label class="lang-zh">管理員密碼</label>
+                <input type="password" id="adminPassword" placeholder="********">
+            </div>
+            <button class="btn" onclick="adminLogin()">Login as Admin</button>
+            <button class="btn lang-zh" onclick="adminLogin()">管理員登入</button>
+        </div>
+        
+        <!-- Admin Dashboard (hidden until login) -->
+        <div id="adminDashboard" style="display: none;">
+            <div class="admin-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>User Management / 用戶管理</h3>
+                <button class="btn-small" onclick="adminLogout()">Logout / 登出</button>
+            </div>
+            
+            <!-- User List -->
+            <div class="user-list" id="userList">
+                <p>Loading users...</p>
+            </div>
+        </div>
+    </div>
+</div>
 
-// 標記配送為已送達
-async function markDelivery(deliveryId, isChecked, userId, subscriptionId) {
-    if (!isChecked) return;
-    
-    try {
-        // 更新配送狀態
-        const { error } = await supabaseClient
-            .from('deliveries')
-            .update({ status: 'delivered' })
-            .eq('id', deliveryId);
-        
-        if (error) {
-            alert('Error updating delivery: ' + error.message);
-            return;
-        }
-        
-        // 更新訂閱的已收到餐數
-        const { data: subscription } = await supabaseClient
-            .from('subscriptions')
-            .select('meals_received')
-            .eq('id', subscriptionId)
-            .single();
-        
-        const newCount = (subscription?.meals_received || 0) + 1;
-        
-        await supabaseClient
-            .from('subscriptions')
-            .update({ meals_received: newCount })
-            .eq('id', subscriptionId);
-        
-        alert('Delivery marked as delivered!');
-        loadAllUsers(); // 刷新列表
-        
-    } catch (err) {
-        console.error('Error:', err);
-        alert('Failed to mark delivery');
-    }
-}
+<script src="js/supabase.js"></script>
+<script src="js/admin.js"></script>
 
-// 為用戶上傳收據
-async function uploadReceiptForUser(userId) {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*,.pdf';
-    
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${userId}_receipt_${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabaseClient.storage
-            .from('receipts')
-            .upload(fileName, file);
-        
-        if (uploadError) {
-            alert('Upload failed: ' + uploadError.message);
-            return;
-        }
-        
-        const { data: urlData } = supabaseClient.storage
-            .from('receipts')
-            .getPublicUrl(fileName);
-        
-        // 獲取用戶的 active 訂閱
-        const { data: subscription } = await supabaseClient
-            .from('subscriptions')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .single();
-        
-        if (subscription) {
-            await supabaseClient
-                .from('receipts')
-                .insert({
-                    user_id: userId,
-                    subscription_id: subscription.id,
-                    amount: 0,
-                    receipt_url: urlData.publicUrl,
-                    payment_method: 'admin_upload',
-                    created_at: new Date()
-                });
-        }
-        
-        alert('Receipt uploaded successfully!');
-        loadAllUsers();
-    };
-    
-    input.click();
-}
-
-// HTML 跳脫函數（防止 XSS）
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// 自動刷新（每 30 秒）
-let refreshInterval = null;
-
-function startAutoRefresh() {
-    if (refreshInterval) clearInterval(refreshInterval);
-    refreshInterval = setInterval(() => {
-        if (document.getElementById('adminDashboard').style.display === 'block') {
-            loadAllUsers();
-        }
-    }, 30000);
-}
-
-// 頁面載入時檢查
-document.addEventListener('DOMContentLoaded', () => {
-    checkAdminAuth();
-    startAutoRefresh();
-});
+</body>
+</html>

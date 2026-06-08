@@ -1,99 +1,161 @@
-// Admin credentials (in production, use proper authentication)
-const ADMIN_EMAIL = "admin@healthybowl.com";
-const ADMIN_PASSWORD = "admin123";
+// Admin credentials - 使用你的管理員帳號
+const ADMIN_EMAIL = "admin@cherinebowl.com";
 
-function adminLogin() {
+async function adminLogin() {
     const email = document.getElementById('adminEmail').value;
     const password = document.getElementById('adminPassword').value;
     
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        document.getElementById('adminLoginSection').style.display = 'none';
-        document.getElementById('adminDashboard').style.display = 'block';
-        loadAllUsers();
-    } else {
-        alert('Invalid admin credentials');
+    if (!email || !password) {
+        alert('Please enter email and password');
+        return;
+    }
+    
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = 'Logging in...';
+    btn.disabled = true;
+    
+    try {
+        // 使用 Supabase 認證
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+        
+        if (error) {
+            alert('Invalid email or password: ' + error.message);
+            return;
+        }
+        
+        // 檢查是否是管理員
+        const isAdmin = email === ADMIN_EMAIL;
+        
+        if (isAdmin) {
+            sessionStorage.setItem('adminLoggedIn', 'true');
+            sessionStorage.setItem('adminEmail', email);
+            
+            document.getElementById('adminLoginSection').style.display = 'none';
+            document.getElementById('adminDashboard').style.display = 'block';
+            loadAllUsers();
+        } else {
+            alert('You do not have admin privileges');
+            await supabaseClient.auth.signOut();
+        }
+        
+    } catch (err) {
+        console.error('Login error:', err);
+        alert('Login failed, please try again');
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
     }
 }
 
 function adminLogout() {
+    supabaseClient.auth.signOut();
+    sessionStorage.removeItem('adminLoggedIn');
+    sessionStorage.removeItem('adminEmail');
+    
     document.getElementById('adminLoginSection').style.display = 'block';
     document.getElementById('adminDashboard').style.display = 'none';
+    
+    document.getElementById('adminEmail').value = '';
+    document.getElementById('adminPassword').value = '';
+}
+
+function checkAdminAuth() {
+    const isLoggedIn = sessionStorage.getItem('adminLoggedIn');
+    if (isLoggedIn === 'true') {
+        document.getElementById('adminLoginSection').style.display = 'none';
+        document.getElementById('adminDashboard').style.display = 'block';
+        loadAllUsers();
+    }
 }
 
 async function loadAllUsers() {
-    const { data: users } = await supabaseClient
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
-    
     const userList = document.getElementById('userList');
+    userList.innerHTML = '<div class="loading-spinner"></div>';
     
-    if (!users || users.length === 0) {
-        userList.innerHTML = '<p>No users found.</p>';
-        return;
-    }
-    
-    userList.innerHTML = '';
-    
-    for (const user of users) {
-        // Get user's active subscription
-        const { data: subscription } = await supabaseClient
-            .from('subscriptions')
+    try {
+        const { data: users, error } = await supabaseClient
+            .from('users')
             .select('*')
-            .eq('user_id', user.id)
-            .eq('status', 'active')
-            .single();
+            .order('created_at', { ascending: false });
         
-        // Get deliveries
-        let deliveries = [];
-        if (subscription) {
-            const { data: d } = await supabaseClient
-                .from('deliveries')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('subscription_id', subscription.id)
-                .order('delivery_date', { ascending: true });
-            deliveries = d || [];
+        if (error) {
+            console.error('Error loading users:', error);
+            userList.innerHTML = '<p>Error loading users.</p>';
+            return;
         }
         
-        const planNames = {
-            single: 'Single',
-            weekly: 'Weekly',
-            '1month': '1 Month',
-            '2months': '2 Months',
-            '3months': '3 Months'
-        };
+        if (!users || users.length === 0) {
+            userList.innerHTML = '<p>No users found.</p>';
+            return;
+        }
         
-        const mealsReceived = subscription?.meals_received || 0;
-        const totalMeals = subscription?.total_days || 0;
-        const mealsRemaining = totalMeals - mealsReceived;
+        userList.innerHTML = '';
         
-        const userCard = document.createElement('div');
-        userCard.className = 'user-card';
-        userCard.innerHTML = `
-            <div class="user-header">
-                <span class="user-name">${user.full_name}</span>
-                <span class="user-plan">${subscription ? planNames[subscription.plan_type] : 'No active plan'}</span>
-            </div>
-            <div class="user-details">
-                <div>
-                    <strong>📧 Email:</strong> ${user.email}<br>
-                    <strong>📱 Phone:</strong> ${user.phone}<br>
-                    <strong>📍 Address:</strong> ${user.address}
+        for (const user of users) {
+            const { data: subscription } = await supabaseClient
+                .from('subscriptions')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('status', 'active')
+                .single();
+            
+            let deliveries = [];
+            if (subscription) {
+                const { data: d } = await supabaseClient
+                    .from('deliveries')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .eq('subscription_id', subscription.id)
+                    .order('delivery_date', { ascending: true });
+                deliveries = d || [];
+            }
+            
+            const planNames = {
+                single: 'Single Purchase',
+                weekly: 'Weekly Plan',
+                '1month': '1 Month Plan',
+                '2months': '2 Months Plan',
+                '3months': '3 Months Plan'
+            };
+            
+            const mealsReceived = subscription?.meals_received || 0;
+            const totalMeals = subscription?.total_days || 0;
+            
+            const userCard = document.createElement('div');
+            userCard.className = 'user-card';
+            userCard.innerHTML = `
+                <div class="user-header">
+                    <span class="user-name">${escapeHtml(user.full_name || 'No Name')}</span>
+                    <span class="user-plan">${subscription ? planNames[subscription.plan_type] : 'No active plan'}</span>
                 </div>
-                <div>
-                    <strong>🍽️ Meals:</strong> ${mealsReceived} / ${totalMeals} received<br>
-                    <strong>📦 Remaining:</strong> ${mealsRemaining} meals<br>
-                    <strong>📅 Started:</strong> ${subscription ? new Date(subscription.start_date).toLocaleDateString() : 'N/A'}
+                <div class="user-details">
+                    <div>
+                        <strong>📧 Email:</strong> ${escapeHtml(user.email)}<br>
+                        <strong>📱 Phone:</strong> ${escapeHtml(user.phone || 'N/A')}<br>
+                        <strong>📍 Address:</strong> ${escapeHtml(user.address || 'N/A')}
+                    </div>
+                    <div>
+                        <strong>🍽️ Meals Received:</strong> ${mealsReceived} / ${totalMeals}<br>
+                        <strong>📦 Remaining:</strong> ${totalMeals - mealsReceived}<br>
+                        <strong>📅 Start:</strong> ${subscription ? new Date(subscription.start_date).toLocaleDateString() : 'N/A'}<br>
+                        <strong>📅 End:</strong> ${subscription ? new Date(subscription.end_date).toLocaleDateString() : 'N/A'}
+                    </div>
                 </div>
-            </div>
-            <div class="delivery-tracking" id="delivery-${user.id}">
-                <strong>🚚 Daily Delivery Tracking:</strong><br>
-                ${generateDeliveryCheckboxes(deliveries, user.id, subscription?.id)}
-            </div>
-            <button class="upload-receipt-btn" onclick="uploadReceiptForUser('${user.id}')">📄 Upload Receipt</button>
-        `;
-        userList.appendChild(userCard);
+                <div class="delivery-tracking" id="delivery-${user.id}">
+                    <strong>🚚 Daily Delivery Tracking:</strong><br>
+                    ${generateDeliveryCheckboxes(deliveries, user.id, subscription?.id)}
+                </div>
+                <button class="upload-receipt-btn" onclick="uploadReceiptForUser('${user.id}')">📄 Upload Receipt</button>
+            `;
+            userList.appendChild(userCard);
+        }
+    } catch (err) {
+        console.error('Error:', err);
+        userList.innerHTML = '<p>Error loading users.</p>';
     }
 }
 
@@ -105,16 +167,21 @@ function generateDeliveryCheckboxes(deliveries, userId, subscriptionId) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const next7Days = deliveries.filter(d => {
+    const relevantDeliveries = deliveries.filter(d => {
         const deliveryDate = new Date(d.delivery_date);
         deliveryDate.setHours(0, 0, 0, 0);
         const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
-        return diffDays >= 0 && diffDays < 7;
+        return diffDays >= -1 && diffDays < 14;
     });
     
-    return next7Days.map(delivery => {
-        const deliveryDate = new Date(delivery.delivery_date);
+    if (relevantDeliveries.length === 0) {
+        return '<p>No upcoming deliveries.</p>';
+    }
+    
+    return relevantDeliveries.map(delivery => {
+        const deliveryDate = new Date(d.delivery_date);
         const isDelivered = delivery.status === 'delivered';
+        const isPast = deliveryDate < today && !isDelivered;
         const dateStr = deliveryDate.toLocaleDateString();
         
         return `
@@ -122,10 +189,11 @@ function generateDeliveryCheckboxes(deliveries, userId, subscriptionId) {
                 <input type="checkbox" 
                        id="delivery-${delivery.id}" 
                        ${isDelivered ? 'checked disabled' : ''}
+                       ${isPast ? 'disabled' : ''}
                        onchange="markDelivery('${delivery.id}', this.checked, '${userId}', '${subscriptionId}')">
                 <label for="delivery-${delivery.id}">
                     ${dateStr} - Meal #${delivery.meal_number}
-                    ${isDelivered ? '(Delivered)' : '(Mark as delivered)'}
+                    ${isDelivered ? '✓ Delivered' : ''}
                 </label>
             </div>
         `;
@@ -135,33 +203,37 @@ function generateDeliveryCheckboxes(deliveries, userId, subscriptionId) {
 async function markDelivery(deliveryId, isChecked, userId, subscriptionId) {
     if (!isChecked) return;
     
-    // Update delivery status
-    const { error } = await supabaseClient
-        .from('deliveries')
-        .update({ status: 'delivered' })
-        .eq('id', deliveryId);
-    
-    if (error) {
-        alert('Error updating delivery: ' + error.message);
-        return;
+    try {
+        const { error } = await supabaseClient
+            .from('deliveries')
+            .update({ status: 'delivered' })
+            .eq('id', deliveryId);
+        
+        if (error) {
+            alert('Error: ' + error.message);
+            return;
+        }
+        
+        const { data: subscription } = await supabaseClient
+            .from('subscriptions')
+            .select('meals_received')
+            .eq('id', subscriptionId)
+            .single();
+        
+        const newCount = (subscription?.meals_received || 0) + 1;
+        
+        await supabaseClient
+            .from('subscriptions')
+            .update({ meals_received: newCount })
+            .eq('id', subscriptionId);
+        
+        alert('Delivery marked as delivered!');
+        loadAllUsers();
+        
+    } catch (err) {
+        console.error('Error:', err);
+        alert('Failed to mark delivery');
     }
-    
-    // Update meals received count in subscription
-    const { data: subscription } = await supabaseClient
-        .from('subscriptions')
-        .select('meals_received')
-        .eq('id', subscriptionId)
-        .single();
-    
-    const newCount = (subscription.meals_received || 0) + 1;
-    
-    await supabaseClient
-        .from('subscriptions')
-        .update({ meals_received: newCount })
-        .eq('id', subscriptionId);
-    
-    alert('Delivery marked as delivered!');
-    loadAllUsers(); // Refresh the list
 }
 
 async function uploadReceiptForUser(userId) {
@@ -176,7 +248,7 @@ async function uploadReceiptForUser(userId) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${userId}_receipt_${Date.now()}.${fileExt}`;
         
-        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+        const { error: uploadError } = await supabaseClient.storage
             .from('receipts')
             .upload(fileName, file);
         
@@ -189,7 +261,6 @@ async function uploadReceiptForUser(userId) {
             .from('receipts')
             .getPublicUrl(fileName);
         
-        // Get user's active subscription
         const { data: subscription } = await supabaseClient
             .from('subscriptions')
             .select('id')
@@ -217,9 +288,13 @@ async function uploadReceiptForUser(userId) {
     input.click();
 }
 
-// Refresh user list every 30 seconds
-setInterval(() => {
-    if (document.getElementById('adminDashboard').style.display === 'block') {
-        loadAllUsers();
-    }
-}, 30000);
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    checkAdminAuth();
+});
