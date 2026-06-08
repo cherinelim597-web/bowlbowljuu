@@ -1,54 +1,45 @@
 // ============================================
 // 方案選擇 - 直接創建訂閱（無需付款）
-// 完整版 - 無 paymentSection 相關代碼
 // ============================================
 
-let selectedPlan = null;
-let selectedPlanData = null;
-
-// 頁面加載完成後綁定事件
+// 等待頁面加載完成
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Onboarding page loaded');
+    
     // 綁定所有方案卡片的點擊事件
     const planCards = document.querySelectorAll('.plan-card');
+    console.log('Found plan cards:', planCards.length);
     
     if (planCards.length === 0) {
-        console.log('No plan cards found');
+        console.log('No plan cards found - check HTML');
         return;
     }
     
     planCards.forEach(card => {
         card.addEventListener('click', function(e) {
-            // 獲取卡片元素
-            const targetCard = this;
+            console.log('Plan card clicked');
             
             // 獲取方案數據
-            selectedPlan = targetCard.dataset.plan;
-            const days = parseInt(targetCard.dataset.days);
-            const price = parseInt(targetCard.dataset.price);
+            const plan = this.dataset.plan;
+            const days = parseInt(this.dataset.days);
+            const price = parseInt(this.dataset.price);
             
-            if (!selectedPlan) {
+            if (!plan) {
                 console.error('No plan data found');
                 return;
             }
             
-            selectedPlanData = { plan: selectedPlan, days, price };
+            console.log('Selected plan:', plan, days, price);
             
-            // 高亮選中的方案
-            planCards.forEach(c => c.classList.remove('selected'));
-            targetCard.classList.add('selected');
-            
-            // 直接確認方案
-            confirmPlanDirect();
+            // 直接確認方案（不需要付款）
+            confirmPlanDirect(plan, days, price);
         });
     });
 });
 
-// 直接確認方案（不需要付款）
-async function confirmPlanDirect() {
-    if (!selectedPlanData) {
-        alert('Please select a plan first');
-        return;
-    }
+// 直接確認方案（不需要付款，不需要上傳收據）
+async function confirmPlanDirect(plan, days, price) {
+    console.log('Confirming plan:', plan, days, price);
     
     // 獲取當前用戶
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
@@ -60,9 +51,11 @@ async function confirmPlanDirect() {
         return;
     }
     
+    console.log('User:', user.email);
+    
     const startDate = new Date();
     let endDate = new Date();
-    endDate.setDate(endDate.getDate() + selectedPlanData.days);
+    endDate.setDate(endDate.getDate() + days);
     
     // 檢查是否已有 active 訂閱
     const { data: existingSubscription } = await supabaseClient
@@ -70,7 +63,7 @@ async function confirmPlanDirect() {
         .select('*')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .maybeSingle();  // 使用 maybeSingle 避免錯誤
+        .maybeSingle();
     
     if (existingSubscription) {
         alert('You already have an active subscription!');
@@ -78,18 +71,18 @@ async function confirmPlanDirect() {
         return;
     }
     
-    // 創建訂閱
+    // 創建訂閱（直接 active，無需付款）
     const { data: subscription, error: subError } = await supabaseClient
         .from('subscriptions')
         .insert({
             user_id: user.id,
-            plan_type: selectedPlanData.plan,
-            total_days: selectedPlanData.days,
+            plan_type: plan,
+            total_days: days,
             meals_received: 0,
             start_date: startDate.toISOString().split('T')[0],
             end_date: endDate.toISOString().split('T')[0],
             status: 'active',
-            total_price: selectedPlanData.price,
+            total_price: price,
             payment_method: 'pending',
             created_at: new Date()
         })
@@ -102,9 +95,11 @@ async function confirmPlanDirect() {
         return;
     }
     
+    console.log('Subscription created:', subscription.id);
+    
     // 創建配送日程
     const deliveries = [];
-    for (let i = 0; i < selectedPlanData.days; i++) {
+    for (let i = 0; i < days; i++) {
         const deliveryDate = new Date();
         deliveryDate.setDate(deliveryDate.getDate() + i);
         deliveries.push({
