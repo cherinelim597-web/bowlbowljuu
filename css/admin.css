@@ -409,3 +409,12 @@ td {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* 頁面容器 - 默認隱藏，只有 active 才顯示 */
+.page {
+    display: none !important;
+}
+
+.page.active {
+    display: block !important;
+}
