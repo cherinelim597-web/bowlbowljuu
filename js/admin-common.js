@@ -53,17 +53,22 @@ function showToast(message, type = 'success') {
 
 // 格式化日期
 function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
     const d = new Date(dateStr);
     return d.toLocaleDateString();
 }
 
-// 檢查管理員登入
-async function checkAdminAuth() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user || user.email !== 'admin@cherinebowl.com') {
-        window.location.href = 'login.html';
-        return null;
+// 檢查管理員登入（改用 localStorage）
+function checkAdminAuth() {
+    const isLoggedIn = localStorage.getItem('adminLoggedIn');
+    const adminEmail = localStorage.getItem('adminEmail');
+    
+    if (!isLoggedIn || isLoggedIn !== 'true') {
+        window.location.href = 'admin-login.html';
+        return false;
     }
-    document.getElementById('adminEmail').innerText = user.email;
-    return user;
+    
+    const adminName = document.getElementById('adminEmail');
+    if (adminName) adminName.innerText = adminEmail || 'Admin';
+    return true;
 }

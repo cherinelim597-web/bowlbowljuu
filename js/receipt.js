@@ -1,5 +1,19 @@
+// ============================================
+// 收據頁面（使用 localStorage）
+// ============================================
+
+function getCurrentUser() {
+    const userStr = localStorage.getItem('currentUser');
+    if (!userStr) return null;
+    try {
+        return JSON.parse(userStr);
+    } catch {
+        return null;
+    }
+}
+
 async function loadReceipts() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const user = getCurrentUser();
     
     if (!user) {
         location.href = 'login.html';
@@ -15,7 +29,7 @@ async function loadReceipts() {
     const receiptsList = document.getElementById('receiptsList');
     
     if (!receipts || receipts.length === 0) {
-        receiptsList.innerHTML = '<p>No receipts found.</p><p class="lang-zh">暫無收據記錄。</p>';
+        receiptsList.innerHTML = '<p>No receipts found.</p>';
         return;
     }
     
@@ -35,16 +49,7 @@ async function loadReceipts() {
 }
 
 function viewReceipt(url) {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'flex';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <img src="${url}" alt="Receipt" style="max-width: 100%;">
-            <button class="btn-small" onclick="this.closest('.modal').remove()">Close</button>
-        </div>
-    `;
-    document.body.appendChild(modal);
+    window.open(url, '_blank');
 }
 
 loadReceipts();

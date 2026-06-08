@@ -1,42 +1,51 @@
 // ============================================
-// 用戶儀表板 - Healthy Bowl
+// 用戶儀表板（使用 localStorage）
 // ============================================
 
-// Load dashboard data
+// 獲取當前用戶
+function getCurrentUser() {
+    const userStr = localStorage.getItem('currentUser');
+    if (!userStr) return null;
+    try {
+        return JSON.parse(userStr);
+    } catch {
+        return null;
+    }
+}
+
+// 登出
+function logout() {
+    localStorage.removeItem('currentUser');
+    location.href = 'login.html';
+}
+
+// 加載儀表板
 async function loadDashboard() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const user = getCurrentUser();
     
     if (!user) {
         location.href = 'login.html';
         return;
     }
     
-    // Get user profile
-    const { data: profile } = await supabaseClient
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+    // 顯示用戶名稱
+    document.getElementById('userName').innerText = user.full_name || user.email;
+    document.getElementById('userNameZh').innerText = user.full_name || user.email;
     
-    if (profile) {
-        document.getElementById('userName').innerText = profile.full_name;
-        document.getElementById('userNameZh').innerText = profile.full_name;
-    }
-    
-    // Get active subscription
+    // 獲取訂閱信息
     const { data: subscription } = await supabaseClient
         .from('subscriptions')
         .select('*')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
     
     if (!subscription) {
         location.href = 'onboarding.html';
         return;
     }
     
-    // Display plan details
+    // 顯示方案詳情
     const planNames = {
         single: 'Single Purchase',
         weekly: 'Weekly Plan',
@@ -51,7 +60,6 @@ async function loadDashboard() {
     
     const totalDays = subscription.total_days;
     const mealsReceived = subscription.meals_received || 0;
-    
     const daysRemaining = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
     const progressPercent = (mealsReceived / totalDays) * 100;
     
@@ -60,18 +68,14 @@ async function loadDashboard() {
         <p>📅 <strong>Period:</strong> ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}</p>
         <p>🍽️ <strong>Meals:</strong> ${mealsReceived} / ${totalDays} received</p>
         <p>💰 <strong>Price:</strong> RM ${subscription.total_price}</p>
-        <p>⏰ <strong>Status:</strong> Active</p>
     `;
     
     document.getElementById('mealsReceived').innerText = mealsReceived;
     document.getElementById('totalMeals').innerText = totalDays;
-    document.getElementById('mealsReceivedZh').innerText = mealsReceived;
-    document.getElementById('totalMealsZh').innerText = totalDays;
     document.getElementById('daysRemaining').innerText = daysRemaining > 0 ? daysRemaining : 0;
-    document.getElementById('daysRemainingZh').innerText = daysRemaining > 0 ? daysRemaining : 0;
     document.getElementById('progressBar').style.width = `${progressPercent}%`;
     
-    // Load upcoming deliveries
+    // 加載配送日程
     const { data: deliveries } = await supabaseClient
         .from('deliveries')
         .select('*')
@@ -84,28 +88,13 @@ async function loadDashboard() {
     if (deliveries && deliveries.length > 0) {
         deliveryList.innerHTML = deliveries.map(d => {
             const deliveryDate = new Date(d.delivery_date);
-            const isDelivered = d.status === 'delivered';
             const isToday = deliveryDate.toDateString() === today.toDateString();
-            
-            let statusText = '';
-            let statusClass = '';
-            
-            if (isDelivered) {
-                statusText = '✅ Delivered';
-                statusClass = 'delivered';
-            } else if (isToday) {
-                statusText = '🚚 Today';
-                statusClass = 'pending';
-            } else {
-                statusText = '📅 Upcoming';
-                statusClass = 'upcoming';
-            }
-            
+            let statusText = d.status === 'delivered' ? '✅ Delivered' : (isToday ? '🚚 Today' : '📅 Upcoming');
             return `
                 <div class="delivery-item">
                     <span class="delivery-date">${deliveryDate.toLocaleDateString()}</span>
                     <span>Meal #${d.meal_number}</span>
-                    <span class="delivery-status ${statusClass}">${statusText}</span>
+                    <span class="delivery-status">${statusText}</span>
                 </div>
             `;
         }).join('');
@@ -114,9 +103,9 @@ async function loadDashboard() {
     }
 }
 
-// Check subscription status periodically
+// 檢查訂閱狀態
 async function checkSubscriptionStatus() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const user = getCurrentUser();
     if (!user) return;
     
     const { data: subscription } = await supabaseClient
@@ -124,32 +113,22 @@ async function checkSubscriptionStatus() {
         .select('*')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
     
     if (subscription) {
         const endDate = new Date(subscription.end_date);
         const today = new Date();
-        
         if (endDate < today) {
             await supabaseClient
                 .from('subscriptions')
                 .update({ status: 'expired' })
                 .eq('id', subscription.id);
-            
-            alert('Your subscription has expired. Please renew to continue receiving meals.');
+            alert('Your subscription has expired. Please renew.');
             location.href = 'onboarding.html';
         }
     }
 }
 
-// Listen to auth state changes
-supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT') {
-        location.href = 'login.html';
-    }
-});
-
-// Load data
+// 加載數據
 loadDashboard();
 checkSubscriptionStatus();
-setInterval(checkSubscriptionStatus, 86400000); // Check daily

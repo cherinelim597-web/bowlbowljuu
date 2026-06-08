@@ -417,27 +417,30 @@
         </div>
     </div>
 
-    <script src="js/supabase.js"></script>
+        <script src="js/supabase.js"></script>
     <script>
         // ============================================
-        // 儀表板邏輯 - 玻璃態奢華風
+        // 儀表板邏輯 - 使用 localStorage
         // ============================================
 
-        let currentUser = null;
-        let currentSubscription = null;
-
-        // 登出函數
-        async function logout() {
+        // 獲取當前用戶
+        function getCurrentUser() {
+            const userStr = localStorage.getItem('currentUser');
+            if (!userStr) return null;
             try {
-                await supabaseClient.auth.signOut();
-            } catch (err) {
-                console.error('Logout error:', err);
-            } finally {
-                location.href = 'login.html';
+                return JSON.parse(userStr);
+            } catch {
+                return null;
             }
         }
 
-        // 獲取中文名稱
+        // 登出
+        function logout() {
+            localStorage.removeItem('currentUser');
+            location.href = 'login.html';
+        }
+
+        // 獲取方案名稱
         function getPlanName(planType, lang = 'en') {
             const planNames = {
                 en: { single: 'Single', weekly: 'Weekly', '1month': '1 Month', '2months': '2 Months', '3months': '3 Months' },
@@ -453,27 +456,17 @@
             return d.toLocaleDateString();
         }
 
-        // 加載儀表板數據
+        // 加載儀表板
         async function loadDashboard() {
-            // 獲取當前用戶
-            const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+            const user = getCurrentUser();
             
-            if (userError || !user) {
-                console.error('Auth error:', userError);
+            if (!user) {
                 location.href = 'login.html';
                 return;
             }
             
-            currentUser = user;
-            
-            // 更新用戶信息
-            const { data: profile } = await supabaseClient
-                .from('users')
-                .select('*')
-                .eq('id', user.id)
-                .single();
-            
-            const displayName = profile?.full_name || user.email?.split('@')[0] || 'Member';
+            // 顯示用戶名稱
+            const displayName = user.full_name || user.email?.split('@')[0] || 'Member';
             document.getElementById('userName').innerText = displayName;
             document.getElementById('userAvatar').innerHTML = displayName.charAt(0).toUpperCase();
             
@@ -490,10 +483,8 @@
                 .eq('status', 'active')
                 .maybeSingle();
             
-            currentSubscription = subscription;
-            
             if (!subscription) {
-                // 無訂閱，顯示提示並跳轉
+                // 無訂閱，顯示提示
                 document.getElementById('subscriptionDetails').innerHTML = `
                     <div class="info-row">
                         <span class="info-label">Status</span>
@@ -603,21 +594,11 @@
         
         // 監聽語言變化
         const observer = new MutationObserver(() => {
-            if (currentSubscription) {
-                const isZh = document.documentElement.lang === 'zh';
-                document.getElementById('welcomeTitle').innerText = isZh ? '您的健康儀式' : 'Your Wellness Ritual';
-                document.getElementById('welcomeText').innerText = isZh ? '每一餐，滋養您的身體' : 'Nourishing your body, one bowl at a time';
-                document.getElementById('planType').innerText = getPlanName(currentSubscription.plan_type, isZh ? 'zh' : 'en');
-            }
+            const isZh = document.documentElement.lang === 'zh';
+            document.getElementById('welcomeTitle').innerText = isZh ? '您的健康儀式' : 'Your Wellness Ritual';
+            document.getElementById('welcomeText').innerText = isZh ? '每一餐，滋養您的身體' : 'Nourishing your body, one bowl at a time';
         });
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
-        
-        // 監聽認證狀態
-        supabaseClient.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_OUT') {
-                location.href = 'login.html';
-            }
-        });
         
         // 加載數據
         loadDashboard();

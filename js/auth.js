@@ -1,4 +1,8 @@
-// Register Function
+// ============================================
+// 本地認證系統（不使用 Supabase Auth）
+// ============================================
+
+// 註冊功能
 async function register() {
     const fullName = document.getElementById('fullName').value;
     const phone = document.getElementById('phone').value;
@@ -22,37 +26,37 @@ async function register() {
     btn.disabled = true;
     
     try {
-        const { data, error } = await supabaseClient.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    full_name: fullName,
-                    phone: phone,
-                    address: address
-                }
-            }
-        });
+        // 檢查郵箱是否已存在
+        const { data: existingUsers } = await supabaseClient
+            .from('users')
+            .select('email')
+            .eq('email', email);
         
-        if (error) {
-            alert(error.message);
+        if (existingUsers && existingUsers.length > 0) {
+            alert('Email already registered');
             return;
         }
         
-        // Create user profile
-        const { error: profileError } = await supabaseClient
+        // 生成唯一 ID
+        const userId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+        
+        // 儲存用戶到 Supabase
+        const { error: insertError } = await supabaseClient
             .from('users')
             .insert({
-                id: data.user.id,
+                id: userId,
                 full_name: fullName,
                 phone: phone,
                 address: address,
                 email: email,
+                password: btoa(password), // 簡單編碼（正式環境請用更安全的方式）
                 created_at: new Date()
             });
         
-        if (profileError) {
-            console.error('Profile error:', profileError);
+        if (insertError) {
+            console.error('Insert error:', insertError);
+            alert('Registration failed: ' + insertError.message);
+            return;
         }
         
         alert('Registration successful! Please login');
@@ -67,7 +71,7 @@ async function register() {
     }
 }
 
-// Login Function
+// 登入功能
 async function login() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
@@ -83,23 +87,41 @@ async function login() {
     btn.disabled = true;
     
     try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email,
-            password
-        });
+        // 從 Supabase 驗證用戶
+        const { data: users, error } = await supabaseClient
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .eq('password', btoa(password));
         
         if (error) {
+            alert('Login failed: ' + error.message);
+            return;
+        }
+        
+        if (!users || users.length === 0) {
             alert('Invalid email or password');
             return;
         }
         
-        // Check if user has an active subscription
+        const user = users[0];
+        
+        // 儲存登入狀態到 localStorage
+        localStorage.setItem('currentUser', JSON.stringify({
+            id: user.id,
+            email: user.email,
+            full_name: user.full_name,
+            phone: user.phone,
+            address: user.address
+        }));
+        
+        // 檢查是否有訂閱
         const { data: subscription } = await supabaseClient
             .from('subscriptions')
             .select('*')
-            .eq('user_id', data.user.id)
+            .eq('user_id', user.id)
             .eq('status', 'active')
-            .single();
+            .maybeSingle();
         
         if (subscription) {
             location.href = "dashboard.html";
@@ -116,23 +138,30 @@ async function login() {
     }
 }
 
-// Logout Function
-async function logout() {
+// 登出功能
+function logout() {
+    localStorage.removeItem('currentUser');
+    location.href = 'login.html';
+}
+
+// 獲取當前登入用戶
+function getCurrentUser() {
+    const userStr = localStorage.getItem('currentUser');
+    if (!userStr) return null;
     try {
-        await supabaseClient.auth.signOut();
-    } catch (err) {
-        console.error('Logout error:', err);
-    } finally {
-        location.href = 'login.html';
+        return JSON.parse(userStr);
+    } catch {
+        return null;
     }
 }
 
-// Check if user is logged in
-async function checkAuth() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user && !window.location.pathname.includes('login') && 
-        !window.location.pathname.includes('register') && 
-        !window.location.pathname.includes('index.html')) {
+// 檢查是否已登入
+function checkAuth() {
+    const user = getCurrentUser();
+    const publicPages = ['login.html', 'register.html', 'index.html', 'admin-login.html'];
+    const currentPage = window.location.pathname.split('/').pop();
+    
+    if (!user && !publicPages.includes(currentPage)) {
         location.href = 'login.html';
     }
     return user;

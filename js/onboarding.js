@@ -1,63 +1,28 @@
 // ============================================
-// 方案選擇 - 直接創建訂閱（無需付款）
+// 方案選擇（使用 localStorage）
 // ============================================
 
-// 等待頁面加載完成
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Onboarding page loaded');
-    
-    // 綁定所有方案卡片的點擊事件
-    const planCards = document.querySelectorAll('.plan-card');
-    console.log('Found plan cards:', planCards.length);
-    
-    if (planCards.length === 0) {
-        console.log('No plan cards found - check HTML');
-        return;
+// 獲取當前用戶
+function getCurrentUser() {
+    const userStr = localStorage.getItem('currentUser');
+    if (!userStr) return null;
+    try {
+        return JSON.parse(userStr);
+    } catch {
+        return null;
     }
-    
-    planCards.forEach(card => {
-        card.addEventListener('click', function(e) {
-            console.log('Plan card clicked');
-            
-            // 獲取方案數據
-            const plan = this.dataset.plan;
-            const days = parseInt(this.dataset.days);
-            const price = parseInt(this.dataset.price);
-            
-            if (!plan) {
-                console.error('No plan data found');
-                return;
-            }
-            
-            console.log('Selected plan:', plan, days, price);
-            
-            // 直接確認方案（不需要付款）
-            confirmPlanDirect(plan, days, price);
-        });
-    });
-});
+}
 
-// 直接確認方案（不需要付款，不需要上傳收據）
-async function confirmPlanDirect(plan, days, price) {
-    console.log('Confirming plan:', plan, days, price);
+// 確認方案
+async function confirmPlan(plan, days, price) {
+    const user = getCurrentUser();
     
-    // 獲取當前用戶
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    
-    if (userError || !user) {
-        console.error('Auth error:', userError);
-        alert('Please login first');
+    if (!user) {
         location.href = 'login.html';
         return;
     }
     
-    console.log('User:', user.email);
-    
-    const startDate = new Date();
-    let endDate = new Date();
-    endDate.setDate(endDate.getDate() + days);
-    
-    // 檢查是否已有 active 訂閱
+    // 檢查是否已有訂閱
     const { data: existingSubscription } = await supabaseClient
         .from('subscriptions')
         .select('*')
@@ -71,7 +36,11 @@ async function confirmPlanDirect(plan, days, price) {
         return;
     }
     
-    // 創建訂閱（直接 active，無需付款）
+    const startDate = new Date();
+    let endDate = new Date();
+    endDate.setDate(endDate.getDate() + days);
+    
+    // 創建訂閱
     const { data: subscription, error: subError } = await supabaseClient
         .from('subscriptions')
         .insert({
@@ -90,12 +59,9 @@ async function confirmPlanDirect(plan, days, price) {
         .single();
     
     if (subError) {
-        console.error('Subscription error:', subError);
         alert('Failed to create subscription: ' + subError.message);
         return;
     }
-    
-    console.log('Subscription created:', subscription.id);
     
     // 創建配送日程
     const deliveries = [];
@@ -111,18 +77,22 @@ async function confirmPlanDirect(plan, days, price) {
         });
     }
     
-    const { error: deliveryError } = await supabaseClient
-        .from('deliveries')
-        .insert(deliveries);
-    
-    if (deliveryError) {
-        console.error('Delivery error:', deliveryError);
-        // 即使配送創建失敗，訂閱已經成功
-        alert('Subscription created! Welcome to Healthy Bowl!');
-        location.href = 'dashboard.html';
-        return;
-    }
+    await supabaseClient.from('deliveries').insert(deliveries);
     
     alert('Subscription successful! Welcome to Healthy Bowl!');
     location.href = 'dashboard.html';
 }
+
+// 綁定卡片點擊事件
+document.querySelectorAll('.plan-card').forEach(card => {
+    const handleSelect = () => {
+        const plan = card.dataset.plan;
+        const days = parseInt(card.dataset.days);
+        const price = parseInt(card.dataset.price);
+        if (plan) confirmPlan(plan, days, price);
+    };
+    
+    card.addEventListener('click', handleSelect);
+    const btn = card.querySelector('.select-plan');
+    if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); handleSelect(); });
+});

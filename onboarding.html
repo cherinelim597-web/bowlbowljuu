@@ -445,34 +445,21 @@
         <div class="spinner"></div>
     </div>
 
-    <script src="js/supabase.js"></script>
+        <script src="js/supabase.js"></script>
     <script>
         // ============================================
-        // Onboarding - 玻璃態奢華風
+        // Onboarding - 使用 localStorage
         // ============================================
 
-        let selectedPlan = null;
-        let selectedPlanData = null;
-        let currentUser = null;
-
-        // 加載用戶信息
-        async function loadUserInfo() {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) {
-                location.href = 'login.html';
-                return;
+        // 獲取當前用戶
+        function getCurrentUser() {
+            const userStr = localStorage.getItem('currentUser');
+            if (!userStr) return null;
+            try {
+                return JSON.parse(userStr);
+            } catch {
+                return null;
             }
-            currentUser = user;
-            
-            const { data: profile } = await supabaseClient
-                .from('users')
-                .select('*')
-                .eq('id', user.id)
-                .single();
-            
-            const displayName = profile?.full_name || user.email?.split('@')[0] || 'Member';
-            document.getElementById('userName').innerText = displayName;
-            document.getElementById('userAvatar').innerHTML = displayName.charAt(0).toUpperCase();
         }
 
         // 顯示加載動畫
@@ -484,9 +471,24 @@
             document.getElementById('loadingOverlay').classList.remove('active');
         }
 
+        // 加載用戶信息
+        function loadUserInfo() {
+            const user = getCurrentUser();
+            if (!user) {
+                location.href = 'login.html';
+                return;
+            }
+            
+            const displayName = user.full_name || user.email?.split('@')[0] || 'Member';
+            document.getElementById('userName').innerText = displayName;
+            document.getElementById('userAvatar').innerHTML = displayName.charAt(0).toUpperCase();
+        }
+
         // 確認方案
         async function confirmPlan(plan, days, price) {
-            if (!currentUser) {
+            const user = getCurrentUser();
+            
+            if (!user) {
                 location.href = 'login.html';
                 return;
             }
@@ -501,7 +503,7 @@
             const { data: existingSubscription } = await supabaseClient
                 .from('subscriptions')
                 .select('*')
-                .eq('user_id', currentUser.id)
+                .eq('user_id', user.id)
                 .eq('status', 'active')
                 .maybeSingle();
             
@@ -516,7 +518,7 @@
             const { data: subscription, error: subError } = await supabaseClient
                 .from('subscriptions')
                 .insert({
-                    user_id: currentUser.id,
+                    user_id: user.id,
                     plan_type: plan,
                     total_days: days,
                     meals_received: 0,
@@ -543,7 +545,7 @@
                 const deliveryDate = new Date();
                 deliveryDate.setDate(deliveryDate.getDate() + i);
                 deliveries.push({
-                    user_id: currentUser.id,
+                    user_id: user.id,
                     subscription_id: subscription.id,
                     delivery_date: deliveryDate.toISOString().split('T')[0],
                     status: i === 0 ? 'pending' : 'upcoming',
@@ -566,24 +568,16 @@
                 const plan = card.dataset.plan;
                 const days = parseInt(card.dataset.days);
                 const price = parseInt(card.dataset.price);
-                
-                if (!plan) return;
-                
-                // 高亮選中的卡片
-                document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                
-                // 直接確認方案
-                confirmPlan(plan, days, price);
+                if (plan) confirmPlan(plan, days, price);
             };
             
-            // 點擊按鈕觸發
-            selectBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                handleSelect();
-            });
+            if (selectBtn) {
+                selectBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handleSelect();
+                });
+            }
             
-            // 點擊卡片也可以觸發
             card.addEventListener('click', handleSelect);
         });
 
