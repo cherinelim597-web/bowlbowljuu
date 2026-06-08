@@ -4,38 +4,391 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Choose Your Plan - Healthy Bowl</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/common.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: url('https://images.unsplash.com/photo-1505253758473-96b7015fcd40?q=80&w=2070') center/cover fixed;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            padding: 40px;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(10,20,40,0.85), rgba(5,15,30,0.9));
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* 玻璃卡片效果 */
+        .glass {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(15px);
+            border-radius: 32px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        /* 頂欄 */
+        .top-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding: 20px 32px;
+        }
+
+        .logo h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 32px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #c8a15e, #f0d49e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .language-switch {
+            display: flex;
+            gap: 10px;
+        }
+
+        .language-switch button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(200,161,94,0.3);
+            padding: 8px 16px;
+            border-radius: 30px;
+            color: #eef5ff;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .language-switch button:hover {
+            background: rgba(200,161,94,0.3);
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(255,255,255,0.08);
+            padding: 8px 20px 8px 24px;
+            border-radius: 60px;
+        }
+
+        .user-text {
+            text-align: right;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #eef5ff;
+        }
+
+        .user-status {
+            font-size: 11px;
+            color: #c8a15e;
+        }
+
+        .user-avatar {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #c8a15e, #a07840);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #0a1a2e;
+        }
+
+        /* 歡迎區 */
+        .hero-section {
+            text-align: center;
+            padding: 50px 40px;
+            margin-bottom: 40px;
+        }
+
+        .hero-section h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 48px;
+            font-weight: 500;
+            color: #c8a15e;
+            margin-bottom: 12px;
+        }
+
+        .hero-section p {
+            color: rgba(255,255,255,0.7);
+            font-size: 18px;
+        }
+
+        .hero-section .decor {
+            font-size: 24px;
+            margin-top: 16px;
+            letter-spacing: 8px;
+            color: #c8a15e;
+        }
+
+        /* 方案卡片網格 */
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 28px;
+            margin-bottom: 40px;
+        }
+
+        .plan-card {
+            padding: 32px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .plan-card:hover {
+            transform: translateY(-8px);
+            background: rgba(255,255,255,0.1);
+        }
+
+        .plan-card.selected {
+            background: rgba(200,161,94,0.15);
+            border: 1px solid rgba(200,161,94,0.5);
+        }
+
+        .plan-card.popular {
+            border: 1px solid rgba(200,161,94,0.5);
+            position: relative;
+        }
+
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #c8a15e;
+            color: #0a1a2e;
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .plan-icon {
+            width: 74px;
+            height: 74px;
+            background: rgba(200,161,94,0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            margin: 0 auto 20px;
+            transition: all 0.3s;
+        }
+
+        .plan-card:hover .plan-icon {
+            background: rgba(200,161,94,0.3);
+            transform: scale(1.05);
+        }
+
+        .plan-card h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 26px;
+            font-weight: 600;
+            color: #eef5ff;
+            margin-bottom: 8px;
+        }
+
+        .plan-card p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 16px;
+        }
+
+        .price {
+            font-size: 36px;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 700;
+            color: #c8a15e;
+            margin: 16px 0;
+        }
+
+        .price small {
+            font-size: 14px;
+            font-weight: 400;
+        }
+
+        .btn-select {
+            background: rgba(200,161,94,0.15);
+            border: 1px solid rgba(200,161,94,0.3);
+            padding: 12px 24px;
+            border-radius: 40px;
+            color: #c8a15e;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        .btn-select:hover {
+            background: rgba(200,161,94,0.3);
+        }
+
+        /* 促銷橫幅 */
+        .promo-banner {
+            background: linear-gradient(135deg, rgba(200,161,94,0.1), rgba(200,161,94,0.05));
+            border: 1px solid rgba(200,161,94,0.3);
+            border-radius: 24px;
+            padding: 32px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .promo-banner h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 28px;
+            color: #c8a15e;
+            margin-bottom: 12px;
+        }
+
+        .promo-banner p {
+            color: rgba(255,255,255,0.7);
+            font-size: 16px;
+        }
+
+        /* 加載動畫 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .loading-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(200,161,94,0.3);
+            border-top-color: #c8a15e;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 底部 */
+        .footer {
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            text-align: center;
+            padding: 24px;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 20px;
+            color: #c8a15e;
+            border-radius: 32px;
+            margin-top: 20px;
+        }
+
+        /* 裝飾葉子 */
+        .leaf {
+            position: absolute;
+            font-size: 100px;
+            opacity: 0.04;
+            color: #c8a15e;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .leaf-1 { top: 20px; left: 20px; }
+        .leaf-2 { bottom: 20px; right: 20px; }
+        .leaf-3 { top: 30%; left: 5px; }
+        .leaf-4 { bottom: 30%; right: 5px; }
+
+        /* 響應式 */
+        @media (max-width: 900px) {
+            body { padding: 20px; }
+            .hero-section h2 { font-size: 32px; }
+            .plans-grid { grid-template-columns: 1fr; }
+            .top-section { flex-direction: column; gap: 16px; }
+        }
+    </style>
 </head>
 <body>
+    <div class="leaf leaf-1">❦</div>
+    <div class="leaf leaf-2">❦</div>
+    <div class="leaf leaf-3">❦</div>
+    <div class="leaf leaf-4">❦</div>
 
-<div class="main-container">
-    <div class="leaf l1">❦</div>
-    <div class="leaf l2">❦</div>
-    <div class="leaf l3">❦</div>
-    <div class="leaf l4">❦</div>
+    <div class="container">
+        <div class="top-section glass">
+            <div class="logo">
+                <h1>HEALTHY BOWL</h1>
+            </div>
+            <div class="language-switch">
+                <button onclick="document.documentElement.lang='en'">EN</button>
+                <button onclick="document.documentElement.lang='zh'">中文</button>
+            </div>
+            <div class="user-badge" id="userBadge">
+                <div class="user-text">
+                    <div class="user-name" id="userName">Loading...</div>
+                    <div class="user-status">New Member</div>
+                </div>
+                <div class="user-avatar" id="userAvatar">👤</div>
+            </div>
+        </div>
 
-    <div class="language-switch">
-        <button onclick="document.documentElement.lang='en'">EN</button>
-        <button onclick="document.documentElement.lang='zh'">中文</button>
-    </div>
+        <div class="hero-section glass">
+            <h2 id="heroTitle">Choose Your Path to Wellness</h2>
+            <p id="heroSubtitle">Select the perfect meal plan that fits your lifestyle</p>
+            <div class="decor">❦ ❦ ❦</div>
+        </div>
 
-    <div class="header" style="padding-bottom: 20px;">
-        <h1>CHOOSE YOUR PLAN</h1>
-        <div class="subtitle">Select the perfect meal plan for you</div>
-        <div class="chinese">選擇最適合您的餐盒方案</div>
-    </div>
-
-    <div class="content">
-        <div class="plan-grid" id="planGrid">
+        <div class="plans-grid" id="plansGrid">
             <!-- Single Purchase -->
             <div class="plan-card" data-plan="single" data-days="1" data-price="12">
                 <div class="plan-icon">🛒</div>
                 <h3>Single Purchase</h3>
                 <p>單次購買 / One delicious meal</p>
                 <div class="price">RM 12</div>
-                <button class="btn-small select-plan">Select</button>
+                <button class="btn-select select-plan">Select Plan</button>
             </div>
 
             <!-- Weekly -->
@@ -44,7 +397,7 @@
                 <h3>Weekly Plan</h3>
                 <p>週方案 / 7 meals • Save 10%</p>
                 <div class="price">RM 75</div>
-                <button class="btn-small select-plan">Select</button>
+                <button class="btn-select select-plan">Select Plan</button>
             </div>
 
             <!-- 1 Month -->
@@ -54,7 +407,7 @@
                 <h3>1 Month Plan</h3>
                 <p>月方案 / 30 meals • Save 22%</p>
                 <div class="price">RM 280</div>
-                <button class="btn-small select-plan">Select</button>
+                <button class="btn-select select-plan">Select Plan</button>
             </div>
 
             <!-- 2 Months -->
@@ -63,7 +416,7 @@
                 <h3>2 Months Plan</h3>
                 <p>2個月方案 / 60 meals • Save 26%</p>
                 <div class="price">RM 530</div>
-                <button class="btn-small select-plan">Select</button>
+                <button class="btn-select select-plan">Select Plan</button>
             </div>
 
             <!-- 3 Months -->
@@ -72,25 +425,182 @@
                 <h3>3 Months Plan</h3>
                 <p>3個月方案 / 90 meals • Save 30%</p>
                 <div class="price">RM 750</div>
-                <button class="btn-small select-plan">Select</button>
+                <button class="btn-select select-plan">Select Plan</button>
             </div>
         </div>
 
-        <!-- 促銷橫幅 -->
         <div class="promo-banner">
             <h3>✨ 3 MONTH PLAN EXCLUSIVE BENEFIT ✨</h3>
             <p>Enjoy 2 Days of Soup in Every Single Week</p>
-            <div class="chinese">3个月计划专属福利：每个星期享有2天汤品</div>
+            <p style="font-size: 14px; margin-top: 8px;">3个月计划专属福利：每个星期享有2天汤品</p>
+        </div>
+
+        <div class="footer">
+            EAT WELL. LIVE WELL.
         </div>
     </div>
 
-    <div class="footer">
-        EAT WELL. LIVE WELL.
+    <!-- 加載動畫 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
     </div>
-</div>
 
-<script src="js/supabase.js"></script>
-<script src="js/onboarding.js"></script>
+    <script src="js/supabase.js"></script>
+    <script>
+        // ============================================
+        // Onboarding - 玻璃態奢華風
+        // ============================================
 
+        let selectedPlan = null;
+        let selectedPlanData = null;
+        let currentUser = null;
+
+        // 加載用戶信息
+        async function loadUserInfo() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) {
+                location.href = 'login.html';
+                return;
+            }
+            currentUser = user;
+            
+            const { data: profile } = await supabaseClient
+                .from('users')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+            
+            const displayName = profile?.full_name || user.email?.split('@')[0] || 'Member';
+            document.getElementById('userName').innerText = displayName;
+            document.getElementById('userAvatar').innerHTML = displayName.charAt(0).toUpperCase();
+        }
+
+        // 顯示加載動畫
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        }
+
+        // 確認方案
+        async function confirmPlan(plan, days, price) {
+            if (!currentUser) {
+                location.href = 'login.html';
+                return;
+            }
+            
+            showLoading();
+            
+            const startDate = new Date();
+            let endDate = new Date();
+            endDate.setDate(endDate.getDate() + days);
+            
+            // 檢查是否已有訂閱
+            const { data: existingSubscription } = await supabaseClient
+                .from('subscriptions')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .eq('status', 'active')
+                .maybeSingle();
+            
+            if (existingSubscription) {
+                alert('You already have an active subscription!');
+                hideLoading();
+                location.href = 'dashboard.html';
+                return;
+            }
+            
+            // 創建訂閱
+            const { data: subscription, error: subError } = await supabaseClient
+                .from('subscriptions')
+                .insert({
+                    user_id: currentUser.id,
+                    plan_type: plan,
+                    total_days: days,
+                    meals_received: 0,
+                    start_date: startDate.toISOString().split('T')[0],
+                    end_date: endDate.toISOString().split('T')[0],
+                    status: 'active',
+                    total_price: price,
+                    payment_method: 'pending',
+                    created_at: new Date()
+                })
+                .select()
+                .single();
+            
+            if (subError) {
+                console.error('Subscription error:', subError);
+                alert('Failed to create subscription: ' + subError.message);
+                hideLoading();
+                return;
+            }
+            
+            // 創建配送日程
+            const deliveries = [];
+            for (let i = 0; i < days; i++) {
+                const deliveryDate = new Date();
+                deliveryDate.setDate(deliveryDate.getDate() + i);
+                deliveries.push({
+                    user_id: currentUser.id,
+                    subscription_id: subscription.id,
+                    delivery_date: deliveryDate.toISOString().split('T')[0],
+                    status: i === 0 ? 'pending' : 'upcoming',
+                    meal_number: i + 1
+                });
+            }
+            
+            await supabaseClient.from('deliveries').insert(deliveries);
+            
+            hideLoading();
+            alert('Subscription successful! Welcome to Healthy Bowl!');
+            location.href = 'dashboard.html';
+        }
+
+        // 綁定卡片點擊事件
+        document.querySelectorAll('.plan-card').forEach(card => {
+            const selectBtn = card.querySelector('.select-plan');
+            
+            const handleSelect = () => {
+                const plan = card.dataset.plan;
+                const days = parseInt(card.dataset.days);
+                const price = parseInt(card.dataset.price);
+                
+                if (!plan) return;
+                
+                // 高亮選中的卡片
+                document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                
+                // 直接確認方案
+                confirmPlan(plan, days, price);
+            };
+            
+            // 點擊按鈕觸發
+            selectBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleSelect();
+            });
+            
+            // 點擊卡片也可以觸發
+            card.addEventListener('click', handleSelect);
+        });
+
+        // 語言切換更新文字
+        function updateLanguage() {
+            const isZh = document.documentElement.lang === 'zh';
+            document.getElementById('heroTitle').innerText = isZh ? '選擇您的健康之路' : 'Choose Your Path to Wellness';
+            document.getElementById('heroSubtitle').innerText = isZh ? '選擇最適合您生活方式的餐盒方案' : 'Select the perfect meal plan that fits your lifestyle';
+        }
+
+        // 監聽語言變化
+        const observer = new MutationObserver(updateLanguage);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+        
+        // 初始化
+        loadUserInfo();
+        updateLanguage();
+    </script>
 </body>
 </html>
