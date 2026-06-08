@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Healthy Bowl</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<!-- Language Switch / 語言切換 -->
+<div class="language-switch">
+    <button onclick="document.documentElement.lang='en'">English</button>
+    <button onclick="document.documentElement.lang='zh'">中文</button>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div class="logo">🥗 Healthy Bowl</div>
+        
+        <h2>Welcome Back! / 歡迎回來！</h2>
+        
+        <div class="user-info">
+            <p><strong>📧 Email / 電子郵件：</strong> <span id="userEmail">Loading...</span></p>
+            <p><strong>👤 Name / 姓名：</strong> <span id="userName">Loading...</span></p>
+            <p><strong>📱 Phone / 電話：</strong> <span id="userPhone">Loading...</span></p>
+        </div>
+        
+        <hr style="margin: 20px 0; border-color: var(--border);">
+        
+        <div class="meal-plan">
+            <h3>Today's Meals / 今日餐盒</h3>
+            <div class="meal-card">
+                <p>🥑 Avocado Chicken Salad / 酪梨雞胸沙拉</p>
+                <small>Calories: 450kcal | Protein: 35g</small>
+                <small class="lang-zh">熱量：450kcal | 蛋白質：35g</small>
+            </div>
+            <div class="meal-card">
+                <p>🐟 Grilled Salmon Quinoa Bowl / 烤鮭魚藜麥碗</p>
+                <small>Calories: 520kcal | Protein: 42g</small>
+                <small class="lang-zh">熱量：520kcal | 蛋白質：42g</small>
+            </div>
+        </div>
+        
+        <hr style="margin: 20px 0; border-color: var(--border);">
+        
+        <button class="btn" onclick="logout()">Logout / 登出</button>
+    </div>
+</div>
+
+<script src="js/supabase.js"></script>
+<script src="js/dashboard.js"></script>
+
+</body>
+</html>
