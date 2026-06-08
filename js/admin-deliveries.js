@@ -1,8 +1,8 @@
 // ============================================
-// 每日配送模組 - 不顯示管理員
+// 每日配送模組 - 顯示今/明/後天
 // ============================================
 
-const ADMIN_EMAIL_DELIVERY = "admin@cherinebowl.com";
+const ADMIN_EMAIL = "admin@cherinebowl.com";
 
 async function loadDeliveriesPage() {
     const container = document.getElementById('page_deliveries');
@@ -11,75 +11,90 @@ async function loadDeliveriesPage() {
     container.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        const dates = [
+            { name: '今天', date: today, offset: 0 },
+            { name: '明天', date: new Date(today.setDate(today.getDate() + 1)), offset: 1 },
+            { name: '後天', date: new Date(today.setDate(today.getDate() + 1)), offset: 2 }
+        ];
         
-        // 獲取今日配送，排除管理員
-        const { data: deliveries, error } = await supabaseClient
-            .from('deliveries')
-            .select(`
-                *,
-                users (id, full_name, email, phone, address)
-            `)
-            .eq('delivery_date', today)
-            .order('meal_number', { ascending: true });
+        // 重新計算日期避免引用問題
+        const todayStr = new Date().toISOString().split('T')[0];
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        const dayAfter = new Date();
+        dayAfter.setDate(dayAfter.getDate() + 2);
+        const dayAfterStr = dayAfter.toISOString().split('T')[0];
         
-        if (error) {
-            console.error('Error loading deliveries:', error);
-            container.innerHTML = '<div class="table-container"><p>Error loading deliveries</p></div>';
-            return;
-        }
+        const deliveriesByDate = {};
         
-        // 過濾掉管理員的配送
-        const filteredDeliveries = deliveries?.filter(d => d.users?.email !== ADMIN_EMAIL_DELIVERY) || [];
-        
-        if (filteredDeliveries.length === 0) {
-            container.innerHTML = `
-                <div class="table-container">
-                    <h3>Today's Deliveries (${today})</h3>
-                    <p style="text-align: center; padding: 40px;">No deliveries scheduled for today.</p>
-                </div>
-            `;
-            return;
+        for (const dateStr of [todayStr, tomorrowStr, dayAfterStr]) {
+            const { data: deliveries } = await supabaseClient
+                .from('deliveries')
+                .select(`
+                    *,
+                    users (id, full_name, email, phone, address)
+                `)
+                .eq('delivery_date', dateStr)
+                .order('meal_number', { ascending: true });
+            
+            deliveriesByDate[dateStr] = deliveries?.filter(d => d.users?.email !== ADMIN_EMAIL) || [];
         }
         
         container.innerHTML = `
-            <div class="table-container">
-                <h3>Today's Deliveries (${today})</h3>
-                <p style="margin-bottom: 16px; color: #8a9abb;">Total: ${filteredDeliveries.length} deliveries</p>
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%;">
-                        <thead>
-                            <tr><th>User</th><th>Phone</th><th>Address</th><th>Meal #</th><th>Status</th><th>Action</th></tr>
-                        </thead>
-                        <tbody id="deliveryTableBody"></tbody>
-                    </table>
-                </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+                ${renderDeliveryCard('今天', todayStr, deliveriesByDate[todayStr])}
+                ${renderDeliveryCard('明天', tomorrowStr, deliveriesByDate[tomorrowStr])}
+                ${renderDeliveryCard('後天', dayAfterStr, deliveriesByDate[dayAfterStr])}
             </div>
         `;
         
-        const tbody = document.getElementById('deliveryTableBody');
-        tbody.innerHTML = filteredDeliveries.map(d => `
-            <tr>
-                <td><strong>${escapeHtml(d.users?.full_name || 'N/A')}</strong><br><small style="color:#8a9abb">${escapeHtml(d.users?.email || '')}</small></td>
-                <td>${escapeHtml(d.users?.phone || 'N/A')}</td>
-                <td>${escapeHtml(d.users?.address || 'N/A')}</td>
-                <td>#${d.meal_number}</td>
-                <td><span class="badge ${d.status === 'delivered' ? 'badge-active' : 'badge-pending'}">${d.status || 'pending'}</span></td>
-                <td>
-                    ${d.status !== 'delivered' ? `<button class="btn-deliver" onclick="markDelivered('${d.id}', '${d.user_id}', '${d.subscription_id}')">✓ Mark Delivered</button>` : '<span style="color:#2ed15a;">✓ Completed</span>'}
-                </td>
-            </tr>
-        `).join('');
-        
     } catch (err) {
         console.error('Deliveries page error:', err);
-        container.innerHTML = '<div class="table-container"><p>Error loading deliveries</p></div>';
+        container.innerHTML = '<div class="table-container"><p>加載失敗</p></div>';
     }
+}
+
+function renderDeliveryCard(title, dateStr, deliveries) {
+    const deliveryCount = deliveries?.length || 0;
+    const completedCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
+    
+    return `
+        <div class="table-container" style="padding: 0; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #1a2a3a, #0f1a2a); padding: 16px 20px;">
+                <h3 style="margin: 0;">📅 ${title}</h3>
+                <p style="margin: 5px 0 0; color: #8a9abb; font-size: 13px;">${dateStr}</p>
+                <div style="margin-top: 10px;">
+                    <span class="badge badge-active">📦 共 ${deliveryCount} 單</span>
+                    <span class="badge badge-gold">✅ 已完成 ${completedCount}</span>
+                </div>
+            </div>
+            <div style="max-height: 500px; overflow-y: auto; padding: 16px;">
+                ${deliveries && deliveries.length > 0 ? deliveries.map(d => `
+                    <div class="delivery-item" style="margin-bottom: 12px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <strong style="color: #c8a15e;">${escapeHtml(d.users?.full_name || 'N/A')}</strong>
+                                <div style="font-size: 12px; color: #8a9abb;">📧 ${escapeHtml(d.users?.email || '')}</div>
+                                <div style="font-size: 12px; color: #8a9abb;">📱 ${escapeHtml(d.users?.phone || 'N/A')}</div>
+                                <div style="font-size: 12px; color: #8a9abb; max-width: 200px;">📍 ${escapeHtml(d.users?.address || 'N/A')}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div><span class="badge ${d.status === 'delivered' ? 'badge-active' : 'badge-pending'}">${d.status === 'delivered' ? '✅ 已送達' : '🚚 待配送'}</span></div>
+                                <div style="margin-top: 8px;"><small>餐點 #${d.meal_number}</small></div>
+                                ${d.status !== 'delivered' ? `<button class="btn-deliver" style="margin-top: 8px;" onclick="markDelivered('${d.id}', '${d.user_id}', '${d.subscription_id}')">✓ 標記送達</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('') : '<div style="text-align: center; padding: 40px; color: #8a9abb;">🎉 今日無配送任務</div>'}
+            </div>
+        </div>
+    `;
 }
 
 async function markDelivered(deliveryId, userId, subscriptionId) {
     try {
-        // 更新配送狀態
         const { error: deliveryError } = await supabaseClient
             .from('deliveries')
             .update({ status: 'delivered' })
@@ -87,7 +102,6 @@ async function markDelivered(deliveryId, userId, subscriptionId) {
         
         if (deliveryError) throw deliveryError;
         
-        // 更新訂閱的已收到餐數
         const { data: sub } = await supabaseClient
             .from('subscriptions')
             .select('meals_received')
@@ -101,17 +115,16 @@ async function markDelivered(deliveryId, userId, subscriptionId) {
             .update({ meals_received: newCount })
             .eq('id', subscriptionId);
         
-        showToast('Delivery marked as delivered!');
+        showToast('配送已標記為送達！');
         loadDeliveriesPage();
         
-        // 如果儀表板當前可見，也刷新它
         if (document.getElementById('page_dashboard')?.classList.contains('active')) {
             loadDashboard();
         }
         
     } catch (err) {
         console.error('Error marking delivery:', err);
-        showToast('Failed to mark delivery: ' + err.message, 'error');
+        showToast('操作失敗: ' + err.message, 'error');
     }
 }
 

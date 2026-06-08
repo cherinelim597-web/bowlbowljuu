@@ -1,5 +1,5 @@
 // ============================================
-// 用戶管理模組 - 不顯示管理員
+// 用戶管理模組
 // ============================================
 
 const ADMIN_EMAIL = "admin@cherinebowl.com";
@@ -11,46 +11,70 @@ async function loadUsersPage() {
     container.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
-        // 獲取所有用戶，排除管理員
+        // 獲取所有用戶（排除管理員）
         const { data: users, error } = await supabaseClient
             .from('users')
             .select('*')
             .not('email', 'eq', ADMIN_EMAIL)
             .order('created_at', { ascending: false });
         
-        if (error) {
-            console.error('Error loading users:', error);
-            container.innerHTML = '<div class="table-container"><p>Error loading users</p></div>';
-            return;
-        }
+        if (error) throw error;
         
         if (!users || users.length === 0) {
-            container.innerHTML = '<div class="table-container"><p>No users found</p></div>';
+            container.innerHTML = '<div class="table-container"><p>暫無用戶</p></div>';
             return;
         }
         
-        // 獲取所有用戶的訂閱
-        const subscriptions = {};
+        // 獲取每個用戶的訂閱和配送統計
+        const userData = [];
         for (const user of users) {
-            const { data: sub } = await supabaseClient
+            // 訂閱信息
+            const { data: subscription } = await supabaseClient
                 .from('subscriptions')
                 .select('*')
                 .eq('user_id', user.id)
                 .eq('status', 'active')
-                .single();
-            subscriptions[user.id] = sub;
+                .maybeSingle();
+            
+            // 配送統計
+            const { data: deliveries } = await supabaseClient
+                .from('deliveries')
+                .select('status')
+                .eq('user_id', user.id);
+            
+            const totalDeliveries = deliveries?.length || 0;
+            const deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
+            
+            // 收據統計
+            const { data: receipts } = await supabaseClient
+                .from('receipts')
+                .select('amount')
+                .eq('user_id', user.id);
+            
+            const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+            
+            userData.push({
+                ...user,
+                subscription,
+                totalDeliveries,
+                deliveredCount,
+                totalPaid
+            });
         }
+        
+        const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
         
         container.innerHTML = `
             <div class="table-container">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3>All Users (${users.length})</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <h3>👥 用戶管理 (共 ${users.length} 人)</h3>
+                    <button class="btn-small" onclick="exportUsersData()" style="background: #2d6a4f;"><i class="fas fa-download"></i> 導出數據</button>
                 </div>
                 <div style="overflow-x: auto;">
-                    <table style="width: 100%;">
+                    <table style="width: 100%; min-width: 800px;">
                         <thead>
                             <tr>
-                                <th>Name</th><th>Email</th><th>Phone</th><th>Plan</th><th>Meals</th><th>Status</th><th>Actions</th>
+                                <th>用戶信息</th><th>聯繫方式</th><th>當前方案</th><th>配送進度</th><th>消費金額</th><th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="usersTableBody"></tbody>
@@ -60,25 +84,46 @@ async function loadUsersPage() {
         `;
         
         const tbody = document.getElementById('usersTableBody');
-        const planNames = { single: 'Single', weekly: 'Weekly', '1month': '1 Month', '2months': '2 Months', '3months': '3 Months' };
-        
-        tbody.innerHTML = users.map(user => {
-            const sub = subscriptions[user.id];
-            const mealsReceived = sub?.meals_received || 0;
-            const totalMeals = sub?.total_days || 0;
+        tbody.innerHTML = userData.map(user => {
+            const sub = user.subscription;
+            const progressPercent = sub ? (user.deliveredCount / sub.total_days) * 100 : 0;
             
             return `
                 <tr>
-                    <td><strong>${escapeHtml(user.full_name || 'N/A')}</strong></td>
-                    <td>${escapeHtml(user.email)}</td>
-                    <td>${escapeHtml(user.phone || 'N/A')}</td>
-                    <td>${sub ? planNames[sub.plan_type] : '<span style="color:#ffb84d;">— No Plan —</span>'}</td>
-                    <td>${sub ? `${mealsReceived}/${totalMeals}` : '—'}</td>
-                    <td><span class="badge ${sub ? 'badge-active' : 'badge-expired'}">${sub ? 'Active' : 'Inactive'}</span></td>
                     <td>
-                        <button class="btn-icon" onclick="editUser('${user.id}')" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" onclick="uploadReceiptForUser('${user.id}')" title="Upload Receipt"><i class="fas fa-receipt"></i></button>
-                        <button class="btn-icon" onclick="viewUserDeliveries('${user.id}')" title="View Deliveries"><i class="fas fa-truck"></i></button>
+                        <strong>${escapeHtml(user.full_name || 'N/A')}</strong><br>
+                        <small style="color:#8a9abb;">ID: ${user.id.substring(0, 8)}...</small><br>
+                        <small>註冊: ${formatDate(user.created_at)}</small>
+                    </td>
+                    <td>
+                        📧 ${escapeHtml(user.email)}<br>
+                        📱 ${escapeHtml(user.phone || 'N/A')}<br>
+                        📍 ${escapeHtml(user.address || 'N/A')}
+                    </td>
+                    <td>
+                        ${sub ? `
+                            <span class="badge badge-active">${planNames[sub.plan_type]}</span><br>
+                            <small>${formatDate(sub.start_date)} - ${formatDate(sub.end_date)}</small><br>
+                            <small>💰 RM ${sub.total_price}</small>
+                        ` : '<span class="badge badge-expired">無訂閱</span>'}
+                    </td>
+                    <td>
+                        ${sub ? `
+                            <div style="width: 100px; background: #1e2a3a; border-radius: 10px; height: 6px;">
+                                <div style="width: ${progressPercent}%; background: #c8a15e; border-radius: 10px; height: 6px;"></div>
+                            </div>
+                            <small>${user.deliveredCount} / ${sub.total_days} 餐</small><br>
+                            <small>📦 剩餘 ${sub.total_days - user.deliveredCount} 天</small>
+                        ` : '—'}
+                    </td>
+                    <td>
+                        RM ${user.totalPaid.toLocaleString()}<br>
+                        <small>💰 總消費</small>
+                    </td>
+                    <td>
+                        <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" onclick="uploadReceiptForUser('${user.id}')" title="上傳收據"><i class="fas fa-receipt"></i></button>
+                        <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情"><i class="fas fa-eye"></i></button>
                     </td>
                 </tr>
             `;
@@ -86,142 +131,80 @@ async function loadUsersPage() {
         
     } catch (err) {
         console.error('Users page error:', err);
-        container.innerHTML = '<div class="table-container"><p>Error loading users</p></div>';
+        container.innerHTML = '<div class="table-container"><p>加載失敗</p></div>';
     }
 }
 
-// 查看用戶的配送記錄
-async function viewUserDeliveries(userId) {
-    const { data: deliveries } = await supabaseClient
-        .from('deliveries')
-        .select('*')
-        .eq('user_id', userId)
-        .order('delivery_date', { ascending: false })
-        .limit(14);
+// 查看用戶詳情
+async function viewUserDetail(userId) {
+    const { data: user } = await supabaseClient.from('users').select('*').eq('id', userId).single();
+    const { data: subscription } = await supabaseClient.from('subscriptions').select('*').eq('user_id', userId).maybeSingle();
+    const { data: deliveries } = await supabaseClient.from('deliveries').select('*').eq('user_id', userId).order('delivery_date', { ascending: false }).limit(14);
+    const { data: receipts } = await supabaseClient.from('receipts').select('*').eq('user_id', userId);
     
-    if (!deliveries || deliveries.length === 0) {
-        showToast('No delivery records found', 'info');
-        return;
-    }
+    const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+    const deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
     
-    const deliveryList = deliveries.map(d => 
-        `${formatDate(d.delivery_date)} - Meal #${d.meal_number} - ${d.status === 'delivered' ? '✅ Delivered' : '⏳ Pending'}`
-    ).join('\n');
-    
-    alert(`Delivery History:\n${deliveryList}`);
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3><i class="fas fa-user"></i> 用戶詳情</h3>
+            <hr style="margin: 15px 0; border-color: #1e2a3a;">
+            <div><strong>姓名：</strong> ${escapeHtml(user.full_name)}</div>
+            <div><strong>郵箱：</strong> ${escapeHtml(user.email)}</div>
+            <div><strong>電話：</strong> ${escapeHtml(user.phone || 'N/A')}</div>
+            <div><strong>地址：</strong> ${escapeHtml(user.address || 'N/A')}</div>
+            <div><strong>註冊時間：</strong> ${formatDate(user.created_at)}</div>
+            <hr style="margin: 15px 0; border-color: #1e2a3a;">
+            <h4>📋 訂閱信息</h4>
+            ${subscription ? `
+                <div><strong>方案：</strong> ${subscription.plan_type}</div>
+                <div><strong>期間：</strong> ${formatDate(subscription.start_date)} - ${formatDate(subscription.end_date)}</div>
+                <div><strong>總餐數：</strong> ${subscription.total_days} 餐</div>
+                <div><strong>已送達：</strong> ${deliveredCount} 餐</div>
+                <div><strong>金額：</strong> RM ${subscription.total_price}</div>
+            ` : '<p>無活躍訂閱</p>'}
+            <hr style="margin: 15px 0; border-color: #1e2a3a;">
+            <h4>💰 消費記錄</h4>
+            <div><strong>總消費：</strong> RM ${totalPaid}</div>
+            <div><strong>收據數量：</strong> ${receipts?.length || 0} 張</div>
+            <hr style="margin: 15px 0; border-color: #1e2a3a;">
+            <h4>📦 最近配送</h4>
+            ${deliveries?.slice(0, 7).map(d => `
+                <div>${formatDate(d.delivery_date)} - 餐點 #${d.meal_number} - ${d.status === 'delivered' ? '✅ 已送達' : '⏳ 待配送'}</div>
+            `).join('') || '<p>暫無配送記錄</p>'}
+            <div style="margin-top: 20px;">
+                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">關閉</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
-async function editUser(userId) {
-    const { data: user } = await supabaseClient
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
+// 導出用戶數據
+async function exportUsersData() {
+    const { data: users } = await supabaseClient.from('users').select('*').not('email', 'eq', ADMIN_EMAIL);
+    const csv = [
+        ['姓名', '郵箱', '電話', '地址', '註冊時間'],
+        ...users.map(u => [u.full_name, u.email, u.phone, u.address, u.created_at])
+    ].map(row => row.join(',')).join('\n');
     
-    if (!user) return;
-    
-    document.getElementById('editUserId').value = userId;
-    document.getElementById('editFullName').value = user.full_name || '';
-    document.getElementById('editPhone').value = user.phone || '';
-    document.getElementById('editAddress').value = user.address || '';
-    document.getElementById('userModal').style.display = 'flex';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('導出成功');
 }
 
-async function saveUserEdit() {
-    const userId = document.getElementById('editUserId').value;
-    const fullName = document.getElementById('editFullName').value;
-    const phone = document.getElementById('editPhone').value;
-    const address = document.getElementById('editAddress').value;
-    
-    const { error } = await supabaseClient
-        .from('users')
-        .update({ full_name: fullName, phone, address })
-        .eq('id', userId);
-    
-    if (error) {
-        showToast('Update failed: ' + error.message, 'error');
-    } else {
-        showToast('User updated successfully');
-        closeUserModal();
-        loadUsersPage();
-    }
-}
-
-function closeUserModal() {
-    document.getElementById('userModal').style.display = 'none';
-}
-
-function closeReceiptModal() {
-    document.getElementById('receiptModal').style.display = 'none';
-}
-
-// 在 uploadReceiptForUser 函數中
-async function uploadReceiptForUser(userId) {
-    const { data: subscription } = await supabaseClient
-        .from('subscriptions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .single();
-    
-    if (!subscription) {
-        showToast('User has no active subscription. Please ask them to subscribe first.', 'error');
-        return;
-    }
-    
-    document.getElementById('receiptUserId').value = userId;
-    document.getElementById('receiptAmount').value = '';
-    document.getElementById('receiptFile').value = '';
-    document.getElementById('receiptModal').style.display = 'flex';
-}
-
-async function uploadReceipt() {
-    const userId = document.getElementById('receiptUserId').value;
-    const amount = parseInt(document.getElementById('receiptAmount').value) || 0;
-    const file = document.getElementById('receiptFile').files[0];
-    
-    if (!file) {
-        showToast('Please select a file', 'error');
-        return;
-    }
-    
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}_receipt_${Date.now()}.${fileExt}`;
-    
-    const { error: uploadError } = await supabaseClient.storage
-        .from('receipts')
-        .upload(fileName, file);
-    
-    if (uploadError) {
-        showToast('Upload failed: ' + uploadError.message, 'error');
-        return;
-    }
-    
-    const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
-    
-    const { data: subscription } = await supabaseClient
-        .from('subscriptions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .single();
-    
-    if (subscription) {
-        await supabaseClient.from('receipts').insert({
-            user_id: userId,
-            subscription_id: subscription.id,
-            amount: amount,
-            receipt_url: urlData.publicUrl,
-            payment_method: 'admin_upload',
-            created_at: new Date()
-        });
-    }
-    
-    showToast(`Receipt uploaded successfully! Amount: RM ${amount}`);
-    closeReceiptModal();
-    if (document.getElementById('page_receipts')?.classList.contains('active')) {
-        loadReceiptsPage();
-    }
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString();
 }
 
 function escapeHtml(text) {
