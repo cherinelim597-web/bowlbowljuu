@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Login</title>
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="card">
+
+<div class="logo">
+Healthy Bowl
+</div>
+
+<div class="subtitle">
+Sign In
+</div>
+
+<div class="input-group">
+<label>Email</label>
+<input id="email">
+</div>
+
+<div class="input-group">
+<label>Password</label>
+<input id="password" type="password">
+</div>
+
+<button class="btn" onclick="login()">
+Sign In
+</button>
+
+<div class="link">
+<a href="register.html">Create Account</a>
+</div>
+
+</div>
+
+</div>
+
+<script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,91 @@
+:root{
+    --navy:#18345C;
+    --gold:#C9A15D;
+    --cream:#F8F6F1;
+    --border:#E0D5B8;
+    --success:#5E8C61;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI',sans-serif;
+}
+
+body{
+    background:var(--cream);
+    color:#333;
+}
+
+.container{
+    width:100%;
+    max-width:420px;
+    margin:auto;
+    padding:30px;
+}
+
+.card{
+    background:white;
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:30px;
+    box-shadow:0 10px 30px rgba(0,0,0,.05);
+}
+
+.logo{
+    text-align:center;
+    color:var(--navy);
+    font-size:32px;
+    font-weight:700;
+    margin-bottom:30px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#666;
+    margin-bottom:25px;
+}
+
+.input-group{
+    margin-bottom:15px;
+}
+
+.input-group label{
+    display:block;
+    margin-bottom:8px;
+    font-weight:600;
+}
+
+.input-group input{
+    width:100%;
+    padding:14px;
+    border:1px solid #ddd;
+    border-radius:12px;
+}
+
+.btn{
+    width:100%;
+    border:none;
+    padding:15px;
+    background:var(--navy);
+    color:white;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:16px;
+    font-weight:600;
+}
+
+.btn:hover{
+    opacity:.9;
+}
+
+.link{
+    text-align:center;
+    margin-top:15px;
+}
+
+.link a{
+    color:var(--gold);
+    text-decoration:none;
+}
