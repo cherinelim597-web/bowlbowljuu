@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Healthy Bowl</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a1a2e, #0d2a45);
+            font-family: 'Montserrat', sans-serif;
+            min-height: 100vh;
+            padding: 40px;
+            position: relative;
+        }
+
+        /* 裝飾背景 */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="10" y="30" font-size="20" fill="rgba(200,161,94,0.03)">❦</text><text x="80" y="80" font-size="30" fill="rgba(200,161,94,0.03)">❦</text><text x="30" y="90" font-size="25" fill="rgba(200,161,94,0.03)">❦</text></svg>');
+            background-repeat: repeat;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 主卡片 */
+        .admin-card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(15px);
+            border-radius: 32px;
+            padding: 48px 40px;
+            border: 1px solid rgba(200,161,94,0.3);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+        }
+
+        /* 標誌 */
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 36px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #c8a15e, #f0d49e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 3px;
+        }
+
+        .logo .badge {
+            display: inline-block;
+            background: rgba(200,161,94,0.2);
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-size: 12px;
+            color: #c8a15e;
+            margin-top: 12px;
+        }
+
+        /* 標題 */
+        .title {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .title h2 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #eef5ff;
+            margin-bottom: 8px;
+        }
+
+        .title p {
+            color: #8a9abb;
+            font-size: 14px;
+        }
+
+        /* 表單 */
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #c8a15e;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 16px 20px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(200,161,94,0.2);
+            border-radius: 16px;
+            font-size: 16px;
+            color: #eef5ff;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #c8a15e;
+            background: rgba(255,255,255,0.12);
+        }
+
+        .input-group input::placeholder {
+            color: #5a6e8a;
+        }
+
+        /* 按鈕 */
+        .btn-login {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #c8a15e, #a07840);
+            border: none;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #0a1a2e;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 16px;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(200,161,94,0.3);
+        }
+
+        /* 返回鏈接 */
+        .back-link {
+            text-align: center;
+            margin-top: 24px;
+        }
+
+        .back-link a {
+            color: #8a9abb;
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.3s;
+        }
+
+        .back-link a:hover {
+            color: #c8a15e;
+        }
+
+        /* 分隔線 */
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 28px 0;
+            color: #5a6e8a;
+            font-size: 12px;
+        }
+
+        .divider-line {
+            flex: 1;
+            height: 1px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .divider-text {
+            padding: 0 16px;
+        }
+
+        /* 提示 */
+        .info-note {
+            background: rgba(200,161,94,0.1);
+            border-radius: 16px;
+            padding: 16px;
+            margin-top: 24px;
+            text-align: center;
+        }
+
+        .info-note p {
+            font-size: 12px;
+            color: #c8a15e;
+        }
+
+        .info-note i {
+            margin-right: 8px;
+        }
+
+        /* 裝飾葉子 */
+        .leaf {
+            position: absolute;
+            font-size: 100px;
+            opacity: 0.04;
+            color: #c8a15e;
+            pointer-events: none;
+        }
+        .leaf-1 { top: 20px; left: 20px; }
+        .leaf-2 { bottom: 20px; right: 20px; }
+        .leaf-3 { top: 50%; left: 10px; transform: translateY(-50%); }
+        .leaf-4 { top: 30%; right: 15px; }
+
+        /* 響應式 */
+        @media (max-width: 600px) {
+            body { padding: 20px; }
+            .admin-card { padding: 32px 24px; }
+            .logo h1 { font-size: 28px; }
+            .title h2 { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="leaf leaf-1">❦</div>
+    <div class="leaf leaf-2">❦</div>
+    <div class="leaf leaf-3">❦</div>
+    <div class="leaf leaf-4">❦</div>
+
+    <div class="container">
+        <div class="admin-card">
+            <div class="logo">
+                <h1>HEALTHY BOWL</h1>
+                <div class="badge">ADMIN PORTAL</div>
+            </div>
+
+            <div class="title">
+                <h2>Welcome Back</h2>
+                <p>Sign in to manage your platform</p>
+            </div>
+
+            <div class="input-group">
+                <label><i class="fas fa-envelope"></i> ADMIN EMAIL</label>
+                <input type="email" id="adminEmail" placeholder="admin@cherinebowl.com">
+            </div>
+
+            <div class="input-group">
+                <label><i class="fas fa-lock"></i> PASSWORD</label>
+                <input type="password" id="adminPassword" placeholder="Enter your password">
+            </div>
+
+            <button class="btn-login" onclick="adminLogin()">
+                <i class="fas fa-sign-in-alt"></i> Login to Admin
+            </button>
+
+            <div class="divider">
+                <div class="divider-line"></div>
+                <span class="divider-text">SECURE ACCESS</span>
+                <div class="divider-line"></div>
+            </div>
+
+            <div class="back-link">
+                <a href="index.html">← Back to Homepage</a>
+            </div>
+
+            <div class="info-note">
+                <p><i class="fas fa-shield-alt"></i> Authorized personnel only. All activities are logged.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = "https://otvxjshpbldqnrdnmfsn.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_Li8pGTW9YrMwtRY-ICPkGQ_ceEBkAyt";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // 管理員郵箱列表
+        const ADMIN_EMAILS = [
+            "admin@cherinebowl.com",
+            "admin2@cherinebowl.com",
+            "admin@healthybowl.com"
+        ];
+
+        async function adminLogin() {
+            const email = document.getElementById('adminEmail').value;
+            const password = document.getElementById('adminPassword').value;
+            
+            if (!email || !password) {
+                alert('Please enter email and password');
+                return;
+            }
+            
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+            btn.disabled = true;
+            
+            try {
+                // 使用 Supabase 認證
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) {
+                    alert('Invalid email or password');
+                    return;
+                }
+                
+                // 檢查是否是管理員
+                if (!ADMIN_EMAILS.includes(email.toLowerCase())) {
+                    alert('You do not have admin privileges');
+                    await supabaseClient.auth.signOut();
+                    return;
+                }
+                
+                // 儲存登入狀態
+                sessionStorage.setItem('adminLoggedIn', 'true');
+                sessionStorage.setItem('adminEmail', email);
+                
+                // 跳轉到管理後台
+                window.location.href = 'admin.html';
+                
+            } catch (err) {
+                console.error('Login error:', err);
+                alert('Login failed, please try again');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // 按 Enter 鍵登入
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                adminLogin();
+            }
+        });
+    </script>
+</body>
+</html>
