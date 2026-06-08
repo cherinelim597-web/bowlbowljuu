@@ -2,13 +2,13 @@
 // 管理後台主邏輯
 // ============================================
 
+const ADMIN_EMAIL_MAIN = "admin@cherinebowl.com";
 let currentPage = 'dashboard';
 
 // 顯示頁面
 async function showPage(page) {
     currentPage = page;
     
-    // 更新導航樣式
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
         if (item.getAttribute('data-page') === page) {
@@ -16,16 +16,11 @@ async function showPage(page) {
         }
     });
     
-    // 隱藏所有頁面
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
     
-    // 顯示目標頁面
     const targetPage = document.getElementById(`page_${page}`);
-    if (targetPage) {
-        targetPage.classList.add('active');
-    }
+    if (targetPage) targetPage.classList.add('active');
     
-    // 載入頁面數據
     switch(page) {
         case 'dashboard':
             if (typeof loadDashboard === 'function') await loadDashboard();
@@ -44,9 +39,29 @@ async function showPage(page) {
             break;
     }
     
-    // 更新標題
     const titles = { dashboard: 'Dashboard', users: 'User Management', deliveries: 'Daily Delivery', receipts: 'Receipts', reports: 'Reports' };
     document.getElementById('pageTitle').innerText = titles[page] || page;
+}
+
+// 檢查管理員登入
+async function checkAdminAuth() {
+    const { data: { user }, error } = await supabaseClient.auth.getUser();
+    
+    if (error || !user) {
+        window.location.href = 'login.html';
+        return null;
+    }
+    
+    // 只允許 admin@cherinebowl.com 登入後台
+    if (user.email !== ADMIN_EMAIL_MAIN) {
+        alert('You do not have admin privileges');
+        await supabaseClient.auth.signOut();
+        window.location.href = 'login.html';
+        return null;
+    }
+    
+    document.getElementById('adminEmail').innerText = user.email;
+    return user;
 }
 
 // 初始化
@@ -67,7 +82,6 @@ async function initAdmin() {
         window.location.href = 'login.html';
     });
     
-    // 載入默認頁面
     await showPage('dashboard');
 }
 
