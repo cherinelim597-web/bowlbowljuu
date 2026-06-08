@@ -2,6 +2,7 @@
 // 管理後台主邏輯
 // ============================================
 
+// 管理員郵箱（請確認與登錄郵箱完全一致）
 const ADMIN_EMAIL_MAIN = "admin@cherinebowl.com";
 let currentPage = 'dashboard';
 
@@ -117,7 +118,6 @@ async function loadReportsPage() {
     container.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
-        // 獲取統計數據
         const { data: users } = await supabaseClient
             .from('users')
             .select('id, created_at')
@@ -135,14 +135,12 @@ async function loadReportsPage() {
         
         const totalRevenue = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
         
-        // 按月統計營收
         const monthlyRevenue = {};
         receipts?.forEach(r => {
             const month = new Date(r.created_at).toLocaleDateString('en', { year: 'numeric', month: 'short' });
             monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (r.amount || 0);
         });
         
-        // 方案統計
         const planStats = { single: 0, weekly: 0, '1month': 0, '2months': 0, '3months': 0 };
         subscriptions?.forEach(s => {
             if (planStats[s.plan_type] !== undefined) planStats[s.plan_type]++;
@@ -184,7 +182,6 @@ async function loadReportsPage() {
             </div>
         `;
         
-        // 方案圖表
         const planChart = echarts.init(document.getElementById('reportPlanChart'));
         planChart.setOption({
             tooltip: { trigger: 'item', backgroundColor: '#1a2a3a' },
@@ -198,7 +195,6 @@ async function loadReportsPage() {
             }]
         });
         
-        // 營收圖表
         const revenueChart = echarts.init(document.getElementById('revenueChart'));
         revenueChart.setOption({
             tooltip: { trigger: 'axis', backgroundColor: '#1a2a3a' },
@@ -217,19 +213,32 @@ async function loadReportsPage() {
 async function checkAdminAuth() {
     const { data: { user }, error } = await supabaseClient.auth.getUser();
     
+    console.log('Checking admin auth...', user?.email);
+    
     if (error || !user) {
+        console.error('No user found:', error);
         window.location.href = 'login.html';
         return null;
     }
     
-    // 只允許 admin@cherinebowl.com 登入後台
-    if (user.email !== ADMIN_EMAIL_MAIN) {
+    // 允許的管理員郵箱列表
+    const adminEmails = [
+        "admin@cherinebowl.com",
+        "admin@healthybowl.com",
+        "cherinebowl@gmail.com"
+    ];
+    
+    const isAdmin = adminEmails.includes(user.email.toLowerCase());
+    
+    if (!isAdmin) {
+        console.log('Not admin, redirecting. User email:', user.email);
         alert('You do not have admin privileges');
         await supabaseClient.auth.signOut();
         window.location.href = 'login.html';
         return null;
     }
     
+    console.log('Admin logged in:', user.email);
     document.getElementById('adminEmail').innerText = user.email;
     return user;
 }
@@ -239,7 +248,6 @@ async function initAdmin() {
     const user = await checkAdminAuth();
     if (!user) return;
     
-    // 綁定導航事件
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
             const page = item.getAttribute('data-page');
@@ -255,7 +263,6 @@ async function initAdmin() {
     await showPage('dashboard');
 }
 
-// 輔助函數
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
