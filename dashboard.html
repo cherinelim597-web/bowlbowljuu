@@ -14,37 +14,56 @@
     <button onclick="document.documentElement.lang='zh'">中文</button>
 </div>
 
-<div class="container">
+<div class="container dashboard-container">
     <div class="card">
         <div class="logo">🥗 Healthy Bowl</div>
         
-        <h2>Welcome Back! / 歡迎回來！</h2>
-        
-        <div class="user-info">
-            <p><strong>📧 Email / 電子郵件：</strong> <span id="userEmail">Loading...</span></p>
-            <p><strong>👤 Name / 姓名：</strong> <span id="userName">Loading...</span></p>
-            <p><strong>📱 Phone / 電話：</strong> <span id="userPhone">Loading...</span></p>
+        <div class="user-greeting">
+            <h2>Welcome back, <span id="userName">Loading...</span>!</h2>
+            <h2 class="lang-zh">歡迎回來，<span id="userNameZh">Loading...</span>！</h2>
         </div>
         
-        <hr style="margin: 20px 0; border-color: var(--border);">
-        
-        <div class="meal-plan">
-            <h3>Today's Meals / 今日餐盒</h3>
-            <div class="meal-card">
-                <p>🥑 Avocado Chicken Salad / 酪梨雞胸沙拉</p>
-                <small>Calories: 450kcal | Protein: 35g</small>
-                <small class="lang-zh">熱量：450kcal | 蛋白質：35g</small>
-            </div>
-            <div class="meal-card">
-                <p>🐟 Grilled Salmon Quinoa Bowl / 烤鮭魚藜麥碗</p>
-                <small>Calories: 520kcal | Protein: 42g</small>
-                <small class="lang-zh">熱量：520kcal | 蛋白質：42g</small>
+        <!-- Current Plan Status -->
+        <div class="plan-status-card" id="planStatusCard">
+            <h3>📋 Current Plan</h3>
+            <h3 class="lang-zh">當前方案</h3>
+            <div id="planDetails" class="plan-details">
+                <p>Loading your plan information...</p>
             </div>
         </div>
         
-        <hr style="margin: 20px 0; border-color: var(--border);">
+        <!-- Progress Bar -->
+        <div class="progress-section" id="progressSection">
+            <h4>📊 Plan Progress</h4>
+            <h4 class="lang-zh">方案進度</h4>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+            </div>
+            <div class="progress-stats">
+                <span id="mealsReceived">0</span> meals received / <span id="totalMeals">0</span> total
+                <span class="lang-zh">已收到</span>
+                <span id="mealsReceivedZh">0</span> 餐 / 共 <span id="totalMealsZh">0</span> 餐
+            </div>
+            <div class="progress-stats">
+                ⏰ <span id="daysRemaining">0</span> days remaining
+                <span class="lang-zh">剩餘</span>
+                <span id="daysRemainingZh">0</span> 天
+            </div>
+        </div>
         
-        <button class="btn" onclick="logout()">Logout / 登出</button>
+        <!-- Delivery Schedule -->
+        <div class="delivery-section">
+            <h3>🚚 Upcoming Deliveries</h3>
+            <h3 class="lang-zh">即將送達</h3>
+            <div id="deliverySchedule" class="delivery-list">
+                <p>Loading delivery schedule...</p>
+            </div>
+        </div>
+        
+        <div class="action-buttons-dashboard">
+            <a href="receipt.html" class="btn btn-outline">📄 View Receipts</a>
+            <button class="btn btn-outline" onclick="logout()">🚪 Logout</button>
+        </div>
     </div>
 </div>
 

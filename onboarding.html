@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Your Plan - Healthy Bowl</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div class="language-switch">
+    <button onclick="document.documentElement.lang='en'">English</button>
+    <button onclick="document.documentElement.lang='zh'">中文</button>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div class="logo">🥗 Healthy Bowl</div>
+        <div class="subtitle">Choose Your Meal Plan</div>
+        <div class="subtitle lang-zh">選擇您的餐盒方案</div>
+        
+        <div class="plan-grid" id="planGrid">
+            <!-- Single Purchase -->
+            <div class="plan-card" data-plan="single" data-days="1" data-price="250">
+                <h3>🥡 Single Purchase</h3>
+                <h3 class="lang-zh">單次購買</h3>
+                <div class="price">NT$250</div>
+                <div class="price lang-zh">NT$250 / 餐</div>
+                <p>One delicious meal</p>
+                <p class="lang-zh">單一餐盒</p>
+                <button class="btn-small select-plan">Select</button>
+            </div>
+            
+            <!-- Weekly -->
+            <div class="plan-card" data-plan="weekly" data-days="7" data-price="1575">
+                <h3>📅 Weekly Plan</h3>
+                <h3 class="lang-zh">週方案</h3>
+                <div class="price">NT$1,575</div>
+                <div class="price lang-zh">NT$1,575 / 週</div>
+                <p>7 meals • Save 10%</p>
+                <p class="lang-zh">7餐 • 享9折優惠</p>
+                <button class="btn-small select-plan">Select</button>
+            </div>
+            
+            <!-- 1 Month -->
+            <div class="plan-card popular" data-plan="1month" data-days="30" data-price="6000">
+                <div class="popular-badge">Most Popular</div>
+                <div class="popular-badge lang-zh">最受歡迎</div>
+                <h3>🌟 1 Month Plan</h3>
+                <h3 class="lang-zh">月方案</h3>
+                <div class="price">NT$6,000</div>
+                <div class="price lang-zh">NT$6,000 / 月</div>
+                <p>30 meals • Save 20%</p>
+                <p class="lang-zh">30餐 • 享8折優惠</p>
+                <button class="btn-small select-plan">Select</button>
+            </div>
+            
+            <!-- 2 Months -->
+            <div class="plan-card" data-plan="2months" data-days="60" data-price="11400">
+                <h3>🚀 2 Months Plan</h3>
+                <h3 class="lang-zh">2個月方案</h3>
+                <div class="price">NT$11,400</div>
+                <div class="price lang-zh">NT$11,400 / 2個月</div>
+                <p>60 meals • Save 24%</p>
+                <p class="lang-zh">60餐 • 享76折優惠</p>
+                <button class="btn-small select-plan">Select</button>
+            </div>
+            
+            <!-- 3 Months -->
+            <div class="plan-card" data-plan="3months" data-days="90" data-price="16200">
+                <h3>💪 3 Months Plan</h3>
+                <h3 class="lang-zh">3個月方案</h3>
+                <div class="price">NT$16,200</div>
+                <div class="price lang-zh">NT$16,200 / 3個月</div>
+                <p>90 meals • Save 28%</p>
+                <p class="lang-zh">90餐 • 享72折優惠</p>
+                <button class="btn-small select-plan">Select</button>
+            </div>
+        </div>
+        
+        <div class="payment-section" id="paymentSection" style="display: none;">
+            <hr>
+            <h3>Payment Summary</h3>
+            <h3 class="lang-zh">付款摘要</h3>
+            <p id="selectedPlanInfo"></p>
+            <div class="input-group">
+                <label>Payment Method</label>
+                <label class="lang-zh">付款方式</label>
+                <select id="paymentMethod">
+                    <option value="credit_card">Credit Card / 信用卡</option>
+                    <option value="bank_transfer">Bank Transfer / 銀行轉帳</option>
+                    <option value="cash">Cash on Delivery / 貨到付款</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Upload Payment Receipt (Optional)</label>
+                <label class="lang-zh">上傳付款收據（選填）</label>
+                <input type="file" id="receiptUpload" accept="image/*,.pdf">
+            </div>
+            <button class="btn" onclick="confirmPlan()">Confirm & Subscribe</button>
+            <button class="btn lang-zh" onclick="confirmPlan()">確認訂閱</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/supabase.js"></script>
+<script src="js/onboarding.js"></script>
+
+</body>
+</html>

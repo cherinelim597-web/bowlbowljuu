@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Receipts - Healthy Bowl</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div class="language-switch">
+    <button onclick="document.documentElement.lang='en'">English</button>
+    <button onclick="document.documentElement.lang='zh'">中文</button>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div class="logo">🥗 Healthy Bowl</div>
+        <div class="subtitle">Payment Receipts</div>
+        <div class="subtitle lang-zh">付款收據</div>
+        
+        <div id="receiptsList" class="receipts-list">
+            <p>Loading your receipts...</p>
+        </div>
+        
+        <div class="link">
+            <a href="dashboard.html">← Back to Dashboard</a>
+            <a href="dashboard.html" class="lang-zh">← 返回儀表板</a>
+        </div>
+    </div>
+</div>
+
+<script src="js/supabase.js"></script>
+<script src="js/receipt.js"></script>
+
+</body>
+</html>

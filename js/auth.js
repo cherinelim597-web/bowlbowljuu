@@ -1,32 +1,24 @@
-// Register Function / 註冊功能
+// Register Function
 async function register() {
     const fullName = document.getElementById('fullName').value;
     const phone = document.getElementById('phone').value;
+    const address = document.getElementById('address').value;
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     
-    // Form validation / 表單驗證
-    if (!fullName || !phone || !email || !password) {
-        alert('Please fill in all fields / 請填寫所有欄位');
+    if (!fullName || !phone || !address || !email || !password) {
+        alert('Please fill in all fields');
         return;
     }
     
     if (password.length < 6) {
-        alert('Password must be at least 6 characters / 密碼長度至少需要6個字元');
+        alert('Password must be at least 6 characters');
         return;
     }
     
-    // Phone validation (Taiwan format) / 電話驗證（台灣格式）
-    const phoneClean = phone.replace(/\D/g, '');
-    if (phoneClean.length < 9 || phoneClean.length > 10) {
-        alert('Please enter a valid phone number / 請輸入有效的電話號碼');
-        return;
-    }
-    
-    // Show loading state / 顯示載入狀態
     const btn = event.target;
     const originalText = btn.innerText;
-    btn.innerText = 'Creating account... / 註冊中...';
+    btn.innerText = 'Creating account...';
     btn.disabled = true;
     
     try {
@@ -36,61 +28,58 @@ async function register() {
             options: {
                 data: {
                     full_name: fullName,
-                    phone: phone
+                    phone: phone,
+                    address: address
                 }
             }
         });
         
         if (error) {
-            if (error.message === 'User already registered') {
-                alert('Email already registered / 此電子郵件已註冊');
-            } else {
-                alert(error.message);
-            }
+            alert(error.message);
             return;
         }
         
-        // Save profile to database / 儲存個人資料到資料庫
+        // Create user profile
         const { error: profileError } = await supabaseClient
-            .from('profiles')
+            .from('users')
             .insert({
                 id: data.user.id,
                 full_name: fullName,
                 phone: phone,
+                address: address,
                 email: email,
                 created_at: new Date()
             });
         
         if (profileError) {
-            console.error('Profile error / 個人資料錯誤:', profileError);
+            console.error('Profile error:', profileError);
         }
         
-        alert('Registration successful! Please login / 註冊成功！請登入');
+        alert('Registration successful! Please login');
         location.href = "login.html";
         
     } catch (err) {
-        console.error('Registration error / 註冊錯誤:', err);
-        alert('Registration failed, please try again / 註冊失敗，請稍後再試');
+        console.error('Registration error:', err);
+        alert('Registration failed, please try again');
     } finally {
         btn.innerText = originalText;
         btn.disabled = false;
     }
 }
 
-// Login Function / 登入功能
+// Login Function
 async function login() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     
     if (!email || !password) {
-        alert('Please enter email and password / 請填寫電子郵件和密碼');
+        alert('Please enter email and password');
         return;
     }
     
-    // Show loading state / 顯示載入狀態
     const btn = event.target;
     const originalText = btn.innerText;
-    btn.innerText = 'Logging in... / 登入中...';
+    btn.innerText = 'Logging in...';
     btn.disabled = true;
     
     try {
@@ -100,21 +89,51 @@ async function login() {
         });
         
         if (error) {
-            if (error.message === 'Invalid login credentials') {
-                alert('Invalid email or password / 電子郵件或密碼錯誤');
-            } else {
-                alert(error.message);
-            }
+            alert('Invalid email or password');
             return;
         }
         
-        location.href = "dashboard.html";
+        // Check if user has an active subscription
+        const { data: subscription } = await supabaseClient
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', data.user.id)
+            .eq('status', 'active')
+            .single();
+        
+        if (subscription) {
+            location.href = "dashboard.html";
+        } else {
+            location.href = "onboarding.html";
+        }
         
     } catch (err) {
-        console.error('Login error / 登入錯誤:', err);
-        alert('Login failed, please try again / 登入失敗，請稍後再試');
+        console.error('Login error:', err);
+        alert('Login failed, please try again');
     } finally {
         btn.innerText = originalText;
         btn.disabled = false;
     }
+}
+
+// Logout Function
+async function logout() {
+    try {
+        await supabaseClient.auth.signOut();
+    } catch (err) {
+        console.error('Logout error:', err);
+    } finally {
+        location.href = 'login.html';
+    }
+}
+
+// Check if user is logged in
+async function checkAuth() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user && !window.location.pathname.includes('login') && 
+        !window.location.pathname.includes('register') && 
+        !window.location.pathname.includes('index.html')) {
+        location.href = 'login.html';
+    }
+    return user;
 }

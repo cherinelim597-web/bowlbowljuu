@@ -17,32 +17,45 @@
 <div class="container">
     <div class="card">
         <div class="logo">🥗 Healthy Bowl</div>
-        <div class="subtitle">Create Account / 建立帳號</div>
+        <div class="subtitle">Create Account</div>
+        <div class="subtitle lang-zh">建立帳號</div>
 
         <div class="input-group">
-            <label>Full Name / 全名</label>
+            <label>Full Name</label>
+            <label class="lang-zh">全名</label>
             <input id="fullName" placeholder="John Doe">
         </div>
 
         <div class="input-group">
-            <label>Phone / 電話號碼</label>
+            <label>Phone Number</label>
+            <label class="lang-zh">電話號碼</label>
             <input id="phone" type="tel" placeholder="0912345678">
         </div>
 
         <div class="input-group">
-            <label>Email / 電子郵件</label>
+            <label>Delivery Address</label>
+            <label class="lang-zh">送餐地址</label>
+            <input id="address" placeholder="Your full address">
+        </div>
+
+        <div class="input-group">
+            <label>Email</label>
+            <label class="lang-zh">電子郵件</label>
             <input id="email" type="email" placeholder="example@email.com">
         </div>
 
         <div class="input-group">
-            <label>Password / 密碼</label>
-            <input id="password" type="password" placeholder="At least 6 characters / 至少6個字元">
+            <label>Password</label>
+            <label class="lang-zh">密碼</label>
+            <input id="password" type="password" placeholder="At least 6 characters">
         </div>
 
-        <button class="btn" onclick="register()">Create Account / 註冊</button>
+        <button class="btn" onclick="register()">Create Account</button>
+        <button class="btn lang-zh" onclick="register()">註冊</button>
 
         <div class="link">
-            <a href="login.html">Already have an account? Sign In / 已有帳號？登入</a>
+            <a href="login.html">Already have an account? Sign In</a>
+            <a href="login.html" class="lang-zh">已有帳號？登入</a>
         </div>
     </div>
 </div>
