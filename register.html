@@ -1,58 +1,51 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <title>Register</title>
-
-  <link rel="stylesheet" href="css/style.css">
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Healthy Bowl</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
-
 <body>
 
+<!-- Language Switch / 語言切換 -->
+<div class="language-switch">
+    <button onclick="document.documentElement.lang='en'">English</button>
+    <button onclick="document.documentElement.lang='zh'">中文</button>
+</div>
+
 <div class="container">
+    <div class="card">
+        <div class="logo">🥗 Healthy Bowl</div>
+        <div class="subtitle">Create Account / 建立帳號</div>
 
-<div class="card">
+        <div class="input-group">
+            <label>Full Name / 全名</label>
+            <input id="fullName" placeholder="John Doe">
+        </div>
 
-<div class="logo">
-Healthy Bowl
-</div>
+        <div class="input-group">
+            <label>Phone / 電話號碼</label>
+            <input id="phone" type="tel" placeholder="0912345678">
+        </div>
 
-<div class="subtitle">
-Create Account
-</div>
+        <div class="input-group">
+            <label>Email / 電子郵件</label>
+            <input id="email" type="email" placeholder="example@email.com">
+        </div>
 
-<div class="input-group">
-<label>Full Name</label>
-<input id="fullName">
-</div>
+        <div class="input-group">
+            <label>Password / 密碼</label>
+            <input id="password" type="password" placeholder="At least 6 characters / 至少6個字元">
+        </div>
 
-<div class="input-group">
-<label>Phone</label>
-<input id="phone">
-</div>
+        <button class="btn" onclick="register()">Create Account / 註冊</button>
 
-<div class="input-group">
-<label>Email</label>
-<input id="email">
-</div>
-
-<div class="input-group">
-<label>Password</label>
-<input id="password" type="password">
-</div>
-
-<button class="btn" onclick="register()">
-Create Account
-</button>
-
-<div class="link">
-<a href="login.html">Already have an account?</a>
-</div>
-
-</div>
-
+        <div class="link">
+            <a href="login.html">Already have an account? Sign In / 已有帳號？登入</a>
+        </div>
+    </div>
 </div>
 
 <script src="js/supabase.js"></script>

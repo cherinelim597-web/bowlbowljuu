@@ -1,48 +1,41 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <title>Login</title>
-
-  <link rel="stylesheet" href="css/style.css">
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Healthy Bowl</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
-
 <body>
 
+<!-- Language Switch / 語言切換 -->
+<div class="language-switch">
+    <button onclick="document.documentElement.lang='en'">English</button>
+    <button onclick="document.documentElement.lang='zh'">中文</button>
+</div>
+
 <div class="container">
+    <div class="card">
+        <div class="logo">🥗 Healthy Bowl</div>
+        <div class="subtitle">Sign In / 登入</div>
 
-<div class="card">
+        <div class="input-group">
+            <label>Email / 電子郵件</label>
+            <input id="email" type="email" placeholder="example@email.com">
+        </div>
 
-<div class="logo">
-Healthy Bowl
-</div>
+        <div class="input-group">
+            <label>Password / 密碼</label>
+            <input id="password" type="password" placeholder="Enter your password / 請輸入密碼">
+        </div>
 
-<div class="subtitle">
-Sign In
-</div>
+        <button class="btn" onclick="login()">Sign In / 登入</button>
 
-<div class="input-group">
-<label>Email</label>
-<input id="email">
-</div>
-
-<div class="input-group">
-<label>Password</label>
-<input id="password" type="password">
-</div>
-
-<button class="btn" onclick="login()">
-Sign In
-</button>
-
-<div class="link">
-<a href="register.html">Create Account</a>
-</div>
-
-</div>
-
+        <div class="link">
+            <a href="register.html">Don't have an account? Create one / 還沒有帳號？立即註冊</a>
+        </div>
+    </div>
 </div>
 
 <script src="js/supabase.js"></script>

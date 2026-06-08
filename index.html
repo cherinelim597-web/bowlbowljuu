@@ -1,53 +1,60 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Healthy Bowl</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Healthy Bowl - Healthy Meal Subscription</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-    <div class="container">
+    <!-- Language Switch / 語言切換 -->
+    <div class="language-switch">
+        <button onclick="document.documentElement.lang='en'">English</button>
+        <button onclick="document.documentElement.lang='zh'">中文</button>
+    </div>
 
+    <div class="container">
         <header>
             <h1>🥗 Healthy Bowl</h1>
             <p>Healthy Meal Subscription Delivered To Your Doorstep</p>
+            <p class="lang-zh">健康餐盒訂閱，每日新鮮送到家</p>
         </header>
 
         <section class="hero">
             <h2>Eat Healthy Without The Hassle</h2>
+            <h2 class="lang-zh">輕鬆吃健康</h2>
             <p>
-                Choose your meal plan, receive fresh meals daily,
-                and stay on track with your health goals.
+                Choose your meal plan, receive fresh meals daily, and stay on track with your health goals.
             </p>
+            <p class="lang-zh">選擇你的餐盒方案，每日享用新鮮現做料理，輕鬆達成健康目標。</p>
 
             <div class="action-buttons">
-                <a href="register.html" class="btn">Get Started</a>
-                <a href="login.html" class="btn btn-secondary">Login</a>
+                <a href="register.html" class="btn">Get Started / 開始訂閱</a>
+                <a href="login.html" class="btn btn-secondary">Login / 登入</a>
             </div>
         </section>
 
         <section class="features">
             <div class="card">
-                <h3>🥙 Fresh Meals</h3>
+                <h3>🥙 Fresh Meals / 新鮮食材</h3>
                 <p>Prepared daily with quality ingredients.</p>
+                <p class="lang-zh">每日新鮮採購，品質嚴格把關。</p>
             </div>
 
             <div class="card">
-                <h3>🚚 Daily Delivery</h3>
+                <h3>🚚 Daily Delivery / 每日配送</h3>
                 <p>Convenient delivery right to your doorstep.</p>
+                <p class="lang-zh">專人配送，準時送達家門口。</p>
             </div>
 
             <div class="card">
-                <h3>📅 Flexible Plans</h3>
+                <h3>📅 Flexible Plans / 彈性方案</h3>
                 <p>Weekly and monthly subscription options.</p>
+                <p class="lang-zh">週訂閱 / 月訂閱，隨時可暫停。</p>
             </div>
         </section>
-
     </div>
 
 </body>
 </html>
-```
