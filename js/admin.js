@@ -2,7 +2,6 @@
 // 管理後台主邏輯
 // ============================================
 
-// 管理員郵箱（請確認與登錄郵箱完全一致）
 const ADMIN_EMAIL_MAIN = "admin@cherinebowl.com";
 let currentPage = 'dashboard';
 
@@ -209,38 +208,52 @@ async function loadReportsPage() {
     }
 }
 
-// 檢查管理員登入
+// 檢查管理員登入（修正版）
 async function checkAdminAuth() {
-    const { data: { user }, error } = await supabaseClient.auth.getUser();
-    
-    console.log('Checking admin auth...', user?.email);
-    
-    if (error || !user) {
-        console.error('No user found:', error);
-        window.location.href = 'login.html';
+    try {
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
+        
+        console.log('Checking admin auth...', user?.email);
+        
+        // 如果沒有用戶，跳轉到管理員登入頁
+        if (error || !user) {
+            console.log('No user found, redirecting to admin-login');
+            window.location.href = 'admin-login.html';
+            return null;
+        }
+        
+        // 允許的管理員郵箱列表
+        const adminEmails = [
+            "admin@cherinebowl.com",
+            "admin2@cherinebowl.com",
+            "admin@healthybowl.com"
+        ];
+        
+        const isAdmin = adminEmails.includes(user.email.toLowerCase());
+        
+        // 如果不是管理員，清除 session 並跳轉
+        if (!isAdmin) {
+            console.log('Not admin, clearing session and redirecting');
+            sessionStorage.removeItem('adminLoggedIn');
+            sessionStorage.removeItem('adminEmail');
+            await supabaseClient.auth.signOut();
+            alert('You do not have admin privileges');
+            window.location.href = 'admin-login.html';
+            return null;
+        }
+        
+        // 是管理員，更新界面
+        console.log('Admin logged in:', user.email);
+        document.getElementById('adminEmail').innerText = user.email;
+        sessionStorage.setItem('adminLoggedIn', 'true');
+        sessionStorage.setItem('adminEmail', user.email);
+        return user;
+        
+    } catch (err) {
+        console.error('Auth check error:', err);
+        window.location.href = 'admin-login.html';
         return null;
     }
-    
-    // 允許的管理員郵箱列表
-    const adminEmails = [
-        "admin@cherinebowl.com",
-        "admin@healthybowl.com",
-        "cherinebowl@gmail.com"
-    ];
-    
-    const isAdmin = adminEmails.includes(user.email.toLowerCase());
-    
-    if (!isAdmin) {
-        console.log('Not admin, redirecting. User email:', user.email);
-        alert('You do not have admin privileges');
-        await supabaseClient.auth.signOut();
-        window.location.href = 'login.html';
-        return null;
-    }
-    
-    console.log('Admin logged in:', user.email);
-    document.getElementById('adminEmail').innerText = user.email;
-    return user;
 }
 
 // 初始化
@@ -255,12 +268,13 @@ async function initAdmin() {
         });
     });
     
+    // 登出按鈕
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-    await supabaseClient.auth.signOut();
-    sessionStorage.removeItem('adminLoggedIn');
-    sessionStorage.removeItem('adminEmail');
-    window.location.href = 'admin-login.html';
-});
+        await supabaseClient.auth.signOut();
+        sessionStorage.removeItem('adminLoggedIn');
+        sessionStorage.removeItem('adminEmail');
+        window.location.href = 'admin-login.html';
+    });
     
     await showPage('dashboard');
 }

@@ -287,53 +287,58 @@
         ];
 
         async function adminLogin() {
-            const email = document.getElementById('adminEmail').value;
-            const password = document.getElementById('adminPassword').value;
-            
-            if (!email || !password) {
-                alert('Please enter email and password');
-                return;
-            }
-            
-            const btn = event.target;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
-            btn.disabled = true;
-            
-            try {
-                // 使用 Supabase 認證
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-                
-                if (error) {
-                    alert('Invalid email or password');
-                    return;
-                }
-                
-                // 檢查是否是管理員
-                if (!ADMIN_EMAILS.includes(email.toLowerCase())) {
-                    alert('You do not have admin privileges');
-                    await supabaseClient.auth.signOut();
-                    return;
-                }
-                
-                // 儲存登入狀態
-                sessionStorage.setItem('adminLoggedIn', 'true');
-                sessionStorage.setItem('adminEmail', email);
-                
-                // 跳轉到管理後台
-                window.location.href = 'admin.html';
-                
-            } catch (err) {
-                console.error('Login error:', err);
-                alert('Login failed, please try again');
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+    const email = document.getElementById('adminEmail').value;
+    const password = document.getElementById('adminPassword').value;
+    
+    if (!email || !password) {
+        alert('Please enter email and password');
+        return;
+    }
+    
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+    btn.disabled = true;
+    
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+        
+        if (error) {
+            alert('Invalid email or password');
+            return;
         }
+        
+        // 檢查是否是管理員
+        const adminEmails = [
+            "admin@cherinebowl.com",
+            "admin2@cherinebowl.com",
+            "admin@healthybowl.com"
+        ];
+        
+        if (!adminEmails.includes(email.toLowerCase())) {
+            alert('You do not have admin privileges');
+            await supabaseClient.auth.signOut();
+            return;
+        }
+        
+        // 儲存登入狀態到 sessionStorage
+        sessionStorage.setItem('adminLoggedIn', 'true');
+        sessionStorage.setItem('adminEmail', email);
+        
+        // 跳轉到管理後台
+        window.location.href = 'admin.html';
+        
+    } catch (err) {
+        console.error('Login error:', err);
+        alert('Login failed, please try again');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
 
         // 按 Enter 鍵登入
         document.addEventListener('keypress', function(e) {
