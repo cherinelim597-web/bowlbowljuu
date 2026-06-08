@@ -1,3 +1,7 @@
+// ============================================
+// 用戶儀表板 - Healthy Bowl
+// ============================================
+
 // Load dashboard data
 async function loadDashboard() {
     const { data: { user } } = await supabaseClient.auth.getUser();
@@ -47,7 +51,6 @@ async function loadDashboard() {
     
     const totalDays = subscription.total_days;
     const mealsReceived = subscription.meals_received || 0;
-    const mealsRemaining = totalDays - mealsReceived;
     
     const daysRemaining = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
     const progressPercent = (mealsReceived / totalDays) * 100;
@@ -56,6 +59,7 @@ async function loadDashboard() {
         <p>📋 <strong>Plan:</strong> ${planNames[subscription.plan_type]}</p>
         <p>📅 <strong>Period:</strong> ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}</p>
         <p>🍽️ <strong>Meals:</strong> ${mealsReceived} / ${totalDays} received</p>
+        <p>💰 <strong>Price:</strong> RM ${subscription.total_price}</p>
         <p>⏰ <strong>Status:</strong> Active</p>
     `;
     
@@ -137,6 +141,13 @@ async function checkSubscriptionStatus() {
         }
     }
 }
+
+// Listen to auth state changes
+supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+        location.href = 'login.html';
+    }
+});
 
 // Load data
 loadDashboard();

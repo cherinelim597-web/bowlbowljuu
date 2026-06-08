@@ -155,8 +155,8 @@ function closeReceiptModal() {
     document.getElementById('receiptModal').style.display = 'none';
 }
 
+// 在 uploadReceiptForUser 函數中
 async function uploadReceiptForUser(userId) {
-    // 先檢查用戶是否有 active 訂閱
     const { data: subscription } = await supabaseClient
         .from('subscriptions')
         .select('id')
@@ -217,7 +217,7 @@ async function uploadReceipt() {
         });
     }
     
-    showToast('Receipt uploaded successfully');
+    showToast(`Receipt uploaded successfully! Amount: RM ${amount}`);
     closeReceiptModal();
     if (document.getElementById('page_receipts')?.classList.contains('active')) {
         loadReceiptsPage();

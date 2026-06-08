@@ -30,7 +30,7 @@ document.querySelectorAll('.plan-card').forEach(card => {
             
             document.getElementById('selectedPlanInfo').innerHTML = `
                 <strong>Selected Plan:</strong> ${planNames[selectedPlan]}<br>
-                <strong>Total Price:</strong> NT$${price}
+                <strong>Total Price:</strong> RM ${price}
             `;
         }
     });

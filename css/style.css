@@ -57,8 +57,7 @@ body {
     padding: 30px;
 }
 
-.dashboard-container,
-.admin-container {
+.dashboard-container {
     max-width: 900px;
 }
 
@@ -419,77 +418,6 @@ body {
     cursor: pointer;
 }
 
-/* Admin Panel */
-.admin-login {
-    max-width: 400px;
-    margin: 0 auto;
-}
-
-.user-list {
-    margin-top: 20px;
-}
-
-.user-card {
-    background: var(--cream);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 20px;
-    border-left: 4px solid var(--gold);
-}
-
-.user-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
-}
-
-.user-name {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--navy);
-}
-
-.user-plan {
-    background: var(--gold);
-    color: white;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-}
-
-.user-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    margin: 15px 0;
-}
-
-.delivery-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 5px 0;
-}
-
-.delivery-checkbox input {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-}
-
-.upload-receipt-btn {
-    background: var(--navy);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 12px;
-    margin-top: 10px;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
     .language-switch {
@@ -525,12 +453,6 @@ body {
     .action-buttons-dashboard {
         flex-direction: column;
     }
-    
-    .user-header {
-        flex-direction: column;
-        gap: 10px;
-        align-items: flex-start;
-    }
 }
 
 /* Chinese text */
@@ -541,11 +463,6 @@ body {
 html[lang="zh"] .lang-zh,
 html[lang="zh-TW"] .lang-zh {
     display: block;
-}
-
-html[lang="zh"] .lang-en,
-html[lang="zh-TW"] .lang-en {
-    display: none;
 }
 
 /* Animations */
@@ -560,7 +477,7 @@ html[lang="zh-TW"] .lang-en {
     }
 }
 
-.card, .plan-card, .user-card, .receipt-item {
+.card, .plan-card, .receipt-item {
     animation: fadeIn 0.3s ease-out;
 }
 

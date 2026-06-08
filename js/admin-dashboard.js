@@ -1,5 +1,5 @@
 // ============================================
-// 儀表板模組 - 不顯示管理員
+// 管理員儀表板模組 - 不顯示管理員，使用 RM
 // ============================================
 
 const ADMIN_EMAIL_DASHBOARD = "admin@cherinebowl.com";
@@ -64,7 +64,7 @@ async function loadDashboard() {
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
-                    <div class="stat-value">NT$${totalRevenue.toLocaleString()}</div>
+                    <div class="stat-value">RM ${totalRevenue.toLocaleString()}</div>
                     <div class="stat-label">Total Revenue</div>
                 </div>
             </div>
@@ -163,7 +163,7 @@ async function loadDashboard() {
                 `;
             }).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="5">No users yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5">No users yet</tr>';
         }
         
     } catch (err) {

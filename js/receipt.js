@@ -23,7 +23,7 @@ async function loadReceipts() {
         <div class="receipt-item">
             <div class="receipt-info">
                 <h4>Healthy Bowl Subscription</h4>
-                <p>Amount: NT$${receipt.amount}</p>
+                <p>Amount: RM ${receipt.amount}</p>
                 <p>Date: ${new Date(receipt.created_at).toLocaleDateString()}</p>
                 <p>Method: ${receipt.payment_method}</p>
             </div>
@@ -35,7 +35,6 @@ async function loadReceipts() {
 }
 
 function viewReceipt(url) {
-    // Create modal to view receipt
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.display = 'flex';
