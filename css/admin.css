@@ -624,3 +624,595 @@ td {
     background: rgba(200, 161, 94, 0.1);
     font-weight: 500;
 }
+
+/* ============================================
+   收據管理頁面樣式
+============================================ */
+
+/* 統計卡片區域 */
+.receipts-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.receipt-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.receipt-stat-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(74, 124, 255, 0.15);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: transform 0.2s;
+}
+
+.receipt-stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.receipt-stat-icon {
+    width: 54px;
+    height: 54px;
+    background: rgba(200, 161, 94, 0.15);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #c8a15e;
+}
+
+.receipt-stat-info {
+    flex: 1;
+}
+
+.receipt-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #eef5ff;
+    line-height: 1.2;
+}
+
+.receipt-stat-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.btn-upload-receipt {
+    background: linear-gradient(135deg, #c8a15e, #a07840);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 30px;
+    color: #0a1a2e;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.btn-upload-receipt:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(200, 161, 94, 0.3);
+}
+
+/* 收據列表容器 */
+.receipt-list-container {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(74, 124, 255, 0.15);
+    border-radius: 24px;
+    overflow: hidden;
+}
+
+.receipt-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.receipt-list-header h3 {
+    font-size: 18px;
+    color: #eef5ff;
+    margin: 0;
+}
+
+.receipt-list-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.receipt-search {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 8px 16px;
+    color: #eef5ff;
+    font-size: 13px;
+    width: 200px;
+}
+
+.receipt-search:focus {
+    outline: none;
+    border-color: #c8a15e;
+}
+
+.btn-refresh {
+    background: rgba(200, 161, 94, 0.15);
+    border: 1px solid rgba(200, 161, 94, 0.3);
+    border-radius: 30px;
+    padding: 8px 16px;
+    color: #c8a15e;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-refresh:hover {
+    background: rgba(200, 161, 94, 0.3);
+}
+
+/* 收據列表內容 */
+.receipt-list-content {
+    padding: 20px 24px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* 收據卡片 */
+.receipt-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.receipt-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(200, 161, 94, 0.2);
+}
+
+.receipt-card-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 200px;
+}
+
+.receipt-avatar {
+    width: 44px;
+    height: 44px;
+    background: rgba(200, 161, 94, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #c8a15e;
+}
+
+.receipt-user-name {
+    font-weight: 600;
+    color: #eef5ff;
+    margin-bottom: 4px;
+}
+
+.receipt-user-contact {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.receipt-user-contact span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.receipt-card-center {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.receipt-amount {
+    text-align: center;
+}
+
+.amount-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    display: block;
+}
+
+.amount-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #c8a15e;
+}
+
+.receipt-method .method-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.method-badge.credit_card {
+    background: rgba(74, 124, 255, 0.15);
+    color: #4a7cff;
+}
+
+.method-badge.bank_transfer {
+    background: rgba(46, 209, 90, 0.15);
+    color: #2ed15a;
+}
+
+.method-badge.cash {
+    background: rgba(255, 184, 77, 0.15);
+    color: #ffb84d;
+}
+
+.method-badge.touchngo {
+    background: rgba(200, 161, 94, 0.15);
+    color: #c8a15e;
+}
+
+.receipt-date {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.receipt-card-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.receipt-preview {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.receipt-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.receipt-preview:hover .preview-overlay {
+    opacity: 1;
+}
+
+.preview-overlay i {
+    color: white;
+    font-size: 18px;
+}
+
+.receipt-no-image {
+    width: 52px;
+    height: 52px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.receipt-no-image i {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+.btn-delete-receipt {
+    background: rgba(255, 90, 90, 0.15);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: #ff5a5a;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-delete-receipt:hover {
+    background: rgba(255, 90, 90, 0.3);
+    transform: scale(1.05);
+}
+
+/* 空狀態 */
+.receipt-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.receipt-empty i {
+    font-size: 64px;
+    opacity: 0.3;
+    margin-bottom: 16px;
+}
+
+.receipt-empty p {
+    margin-bottom: 20px;
+}
+
+.btn-empty-upload {
+    background: rgba(200, 161, 94, 0.15);
+    border: 1px solid rgba(200, 161, 94, 0.3);
+    border-radius: 30px;
+    padding: 10px 24px;
+    color: #c8a15e;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+/* 彈窗樣式 */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #eef5ff;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: var(--text-muted);
+    cursor: pointer;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #ff5a5a;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border);
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.form-group label .required {
+    color: #ff5a5a;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-input, .form-select {
+    width: 100%;
+    padding: 12px;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: #eef5ff;
+    font-size: 14px;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: #c8a15e;
+}
+
+.form-input-file {
+    width: 100%;
+    padding: 10px;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: #eef5ff;
+}
+
+/* 文件上傳區域 */
+.file-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.file-upload-area:hover {
+    border-color: #c8a15e;
+    background: rgba(200, 161, 94, 0.05);
+}
+
+.file-upload-area i {
+    font-size: 40px;
+    color: #c8a15e;
+    margin-bottom: 10px;
+}
+
+.file-upload-area p {
+    margin: 0;
+    font-size: 14px;
+    color: #eef5ff;
+}
+
+.file-upload-area small {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.file-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(200, 161, 94, 0.1);
+    border-radius: 12px;
+    margin-top: 10px;
+}
+
+.file-preview img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.remove-file {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #ff5a5a;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, #c8a15e, #a07840);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 30px;
+    color: #0a1a2e;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(200, 161, 94, 0.3);
+}
+
+/* 錯誤信息 */
+.error-message {
+    text-align: center;
+    padding: 60px;
+    color: #ff5a5a;
+}
+
+.error-message i {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+/* 滾動條 */
+.receipt-list-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.receipt-list-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.receipt-list-content::-webkit-scrollbar-thumb {
+    background: #c8a15e;
+    border-radius: 3px;
+}
+
+/* 響應式 */
+@media (max-width: 900px) {
+    .receipt-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .receipt-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .receipt-card-left, .receipt-card-center, .receipt-card-right {
+        width: 100%;
+    }
+    
+    .receipt-card-center {
+        justify-content: space-between;
+    }
+    
+    .receipt-card-right {
+        justify-content: flex-end;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .receipt-list-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .receipt-list-actions {
+        width: 100%;
+    }
+    
+    .receipt-search {
+        flex: 1;
+    }
+}
