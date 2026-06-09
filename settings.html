@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Healthy Bowl</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: url('https://images.unsplash.com/photo-1505253758473-96b7015fcd40?q=80&w=2070') center/cover fixed;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            padding: 40px;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(10,20,40,0.85), rgba(5,15,30,0.9));
+            z-index: 0;
+        }
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .glass {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(15px);
+            border-radius: 32px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .top-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding: 20px 32px;
+        }
+        .logo h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 32px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #c8a15e, #f0d49e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .back-btn {
+            background: rgba(200,161,94,0.15);
+            border: 1px solid rgba(200,161,94,0.3);
+            padding: 10px 20px;
+            border-radius: 30px;
+            color: #c8a15e;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-btn:hover {
+            background: rgba(200,161,94,0.3);
+        }
+        .settings-card {
+            padding: 40px;
+        }
+        .settings-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 32px;
+            color: #c8a15e;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 24px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #c8a15e;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .input-group input, .input-group textarea {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(200,161,94,0.2);
+            border-radius: 16px;
+            font-size: 16px;
+            color: #eef5ff;
+            font-family: inherit;
+        }
+        .input-group input:focus, .input-group textarea:focus {
+            outline: none;
+            border-color: #c8a15e;
+        }
+        .input-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .btn-save {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #c8a15e, #a07840);
+            border: none;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #0a1a2e;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .btn-save:hover {
+            transform: translateY(-2px);
+        }
+        .info-text {
+            text-align: center;
+            margin-top: 20px;
+            color: #8a9abb;
+            font-size: 13px;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #c8a15e;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 18px;
+        }
+        @media (max-width: 600px) {
+            body { padding: 20px; }
+            .settings-card { padding: 24px; }
+            .settings-title { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-section glass">
+            <div class="logo">
+                <h1>HEALTHY BOWL</h1>
+            </div>
+            <a href="dashboard.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back</a>
+        </div>
+
+        <div class="glass settings-card">
+            <div class="settings-title">
+                <i class="fas fa-user-cog"></i> Account Settings
+            </div>
+            
+            <div class="input-group">
+                <label><i class="fas fa-user"></i> Full Name</label>
+                <input type="text" id="fullName" placeholder="Your name">
+            </div>
+            
+            <div class="input-group">
+                <label><i class="fas fa-envelope"></i> Email Address</label>
+                <input type="email" id="email" placeholder="your@email.com">
+                <small style="color:#8a9abb; font-size:12px;">Optional - used for verification</small>
+            </div>
+            
+            <div class="input-group">
+                <label><i class="fas fa-phone"></i> Phone Number</label>
+                <input type="tel" id="phone" placeholder="+60 XX XXX XXXX">
+            </div>
+            
+            <div class="input-group">
+                <label><i class="fas fa-map-marker-alt"></i> Delivery Address</label>
+                <textarea id="address" placeholder="Your full delivery address"></textarea>
+            </div>
+            
+            <button class="btn-save" onclick="saveSettings()">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+            <div class="info-text">
+                <i class="fas fa-info-circle"></i> Your information helps us serve you better
+            </div>
+        </div>
+        
+        <div class="footer">
+            EAT WELL. LIVE WELL.
+        </div>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script>
+        // 獲取當前用戶
+        function getCurrentUser() {
+            const userStr = localStorage.getItem('currentUser');
+            if (!userStr) return null;
+            try {
+                return JSON.parse(userStr);
+            } catch {
+                return null;
+            }
+        }
+
+        // 加載用戶設置
+        async function loadSettings() {
+            const user = getCurrentUser();
+            if (!user) {
+                location.href = 'login.html';
+                return;
+            }
+            
+            // 從數據庫獲取最新信息
+            const { data: dbUser } = await supabaseClient
+                .from('users')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+            
+            if (dbUser) {
+                document.getElementById('fullName').value = dbUser.full_name || '';
+                document.getElementById('email').value = dbUser.email || '';
+                document.getElementById('phone').value = dbUser.phone || '';
+                document.getElementById('address').value = dbUser.address || '';
+            }
+        }
+
+        // 保存設置
+        async function saveSettings() {
+            const user = getCurrentUser();
+            if (!user) {
+                location.href = 'login.html';
+                return;
+            }
+            
+            const fullName = document.getElementById('fullName').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const address = document.getElementById('address').value;
+            
+            if (!fullName || fullName.trim() === '') {
+                alert('Name cannot be empty');
+                return;
+            }
+            
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            btn.disabled = true;
+            
+            try {
+                // 更新數據庫
+                const { error } = await supabaseClient
+                    .from('users')
+                    .update({
+                        full_name: fullName.trim(),
+                        email: email || null,
+                        phone: phone || null,
+                        address: address || null
+                    })
+                    .eq('id', user.id);
+                
+                if (error) {
+                    alert('Save failed: ' + error.message);
+                    return;
+                }
+                
+                // 更新 localStorage
+                const updatedUser = {
+                    ...user,
+                    full_name: fullName.trim(),
+                    email: email || null,
+                    phone: phone || null,
+                    address: address || null
+                };
+                localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+                
+                alert('Settings saved successfully!');
+                
+            } catch (err) {
+                console.error('Save error:', err);
+                alert('Save failed, please try again');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        // 加載頁面
+        loadSettings();
+    </script>
+</body>
+</html>

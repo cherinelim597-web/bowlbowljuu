@@ -1,22 +1,23 @@
 // ============================================
 // 本地認證系統（不使用 Supabase Auth）
+// 只需要姓名，郵箱選填
 // ============================================
+
+// 生成簡短用戶ID
+function generateUserId(name) {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 6);
+    const cleanName = name.replace(/\s/g, '').toLowerCase().substring(0, 6);
+    return `${cleanName}_${timestamp}_${random}`;
+}
 
 // 註冊功能
 async function register() {
     const fullName = document.getElementById('fullName').value;
-    const phone = document.getElementById('phone').value;
-    const address = document.getElementById('address').value;
     const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
     
-    if (!fullName || !phone || !address || !email || !password) {
-        alert('Please fill in all fields');
-        return;
-    }
-    
-    if (password.length < 6) {
-        alert('Password must be at least 6 characters');
+    if (!fullName || fullName.trim() === '') {
+        alert('Please enter your name / 請輸入您的姓名');
         return;
     }
     
@@ -26,30 +27,22 @@ async function register() {
     btn.disabled = true;
     
     try {
-        // 檢查郵箱是否已存在
+        // 檢查姓名是否已存在（簡單檢查，允許重名但會提示）
         const { data: existingUsers } = await supabaseClient
             .from('users')
-            .select('email')
-            .eq('email', email);
-        
-        if (existingUsers && existingUsers.length > 0) {
-            alert('Email already registered');
-            return;
-        }
+            .select('full_name, email')
+            .eq('full_name', fullName.trim());
         
         // 生成唯一 ID
-        const userId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+        const userId = generateUserId(fullName);
         
         // 儲存用戶到 Supabase
         const { error: insertError } = await supabaseClient
             .from('users')
             .insert({
                 id: userId,
-                full_name: fullName,
-                phone: phone,
-                address: address,
-                email: email,
-                password: btoa(password), // 簡單編碼（正式環境請用更安全的方式）
+                full_name: fullName.trim(),
+                email: email || null,
                 created_at: new Date()
             });
         
@@ -59,7 +52,7 @@ async function register() {
             return;
         }
         
-        alert('Registration successful! Please login');
+        alert('Registration successful! Please login / 註冊成功！請登入');
         location.href = "login.html";
         
     } catch (err) {
@@ -71,13 +64,13 @@ async function register() {
     }
 }
 
-// 登入功能
+// 登入功能（只需要姓名）
 async function login() {
+    const fullName = document.getElementById('fullName').value;
     const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
     
-    if (!email || !password) {
-        alert('Please enter email and password');
+    if (!fullName || fullName.trim() === '') {
+        alert('Please enter your name / 請輸入您的姓名');
         return;
     }
     
@@ -87,12 +80,18 @@ async function login() {
     btn.disabled = true;
     
     try {
-        // 從 Supabase 驗證用戶
-        const { data: users, error } = await supabaseClient
+        // 從 Supabase 查找用戶（按姓名，可選郵箱）
+        let query = supabaseClient
             .from('users')
             .select('*')
-            .eq('email', email)
-            .eq('password', btoa(password));
+            .eq('full_name', fullName.trim());
+        
+        // 如果填了郵箱，也匹配郵箱
+        if (email && email.trim() !== '') {
+            query = query.eq('email', email.trim());
+        }
+        
+        const { data: users, error } = await query;
         
         if (error) {
             alert('Login failed: ' + error.message);
@@ -100,7 +99,7 @@ async function login() {
         }
         
         if (!users || users.length === 0) {
-            alert('Invalid email or password');
+            alert('User not found. Please register first / 用戶不存在，請先註冊');
             return;
         }
         
@@ -111,8 +110,8 @@ async function login() {
             id: user.id,
             email: user.email,
             full_name: user.full_name,
-            phone: user.phone,
-            address: user.address
+            phone: user.phone || '',
+            address: user.address || ''
         }));
         
         // 檢查是否有訂閱
