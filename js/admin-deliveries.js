@@ -11,21 +11,10 @@ async function loadDeliveriesPage() {
     container.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
-        const today = new Date();
-        const dates = [
-            { name: '今天', date: today, offset: 0 },
-            { name: '明天', date: new Date(today.setDate(today.getDate() + 1)), offset: 1 },
-            { name: '後天', date: new Date(today.setDate(today.getDate() + 1)), offset: 2 }
-        ];
-        
-        // 重新計算日期避免引用問題
-        const todayStr = new Date().toISOString().split('T')[0];
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
-        const dayAfter = new Date();
-        dayAfter.setDate(dayAfter.getDate() + 2);
-        const dayAfterStr = dayAfter.toISOString().split('T')[0];
+        // 使用馬來西亞時間獲取今天、明天、後天
+        const todayStr = getTodayString();
+        const tomorrowStr = getTomorrowString();
+        const dayAfterStr = getDayAfterTomorrowString();
         
         const deliveriesByDate = {};
         

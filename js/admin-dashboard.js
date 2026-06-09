@@ -28,8 +28,8 @@ async function loadDashboard() {
         
         const activeSubscriptions = subscriptions?.length || 0;
         
-        // 今日配送
-        const today = new Date().toISOString().split('T')[0];
+        // 今日配送 - 使用馬來西亞時間
+        const today = getTodayString();
         const { data: todayDeliveries } = await supabaseClient
             .from('deliveries')
             .select('*, users!inner(email)')
@@ -48,8 +48,9 @@ async function loadDashboard() {
         const totalRevenue = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
         
         // 本月營收
-        const thisMonth = new Date().getMonth();
-        const thisYear = new Date().getFullYear();
+        const malaysiaNow = getMalaysiaDate();
+        const thisMonth = malaysiaNow.getMonth();
+        const thisYear = malaysiaNow.getFullYear();
         const monthlyRevenue = receipts?.filter(r => {
             const d = new Date(r.created_at);
             return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
@@ -61,12 +62,12 @@ async function loadDashboard() {
             if (planStats[s.plan_type] !== undefined) planStats[s.plan_type]++;
         });
         
-        // 最近7天配送統計
+        // 最近7天配送統計 - 使用馬來西亞時間
         const last7Days = [];
         for (let i = 6; i >= 0; i--) {
-            const d = new Date();
+            const d = getMalaysiaDate();
             d.setDate(d.getDate() - i);
-            last7Days.push(d.toISOString().split('T')[0]);
+            last7Days.push(formatMalaysiaDate(d));
         }
         
         const { data: dailyDeliveries } = await supabaseClient
@@ -187,26 +188,20 @@ async function loadDashboard() {
             tbody.innerHTML = recentUsers.map(u => `
                 <tr>
                     <td>${escapeHtml(u.full_name || 'N/A')}</td>
-                    <td>${escapeHtml(u.email)}</td>
+                    <td>${escapeHtml(u.email)}</td
                     <td>${escapeHtml(u.phone || 'N/A')}</td>
-                    <td>${formatDate(u.created_at)}</td>
-                    <td><span class="badge badge-active">正常</span></td>
+                    <td>${formatDisplayDate(u.created_at)}</td
+                    <td><span class="badge badge-active">正常</span></td
                 </tr>
             `).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="5">暫無用戶</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5">暫無用戶</td>';
         }
         
     } catch (err) {
         console.error('Dashboard error:', err);
         container.innerHTML = '<p>加載失敗</p>';
     }
-}
-
-function formatDate(dateStr) {
-    if (!dateStr) return 'N/A';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString();
 }
 
 function escapeHtml(text) {

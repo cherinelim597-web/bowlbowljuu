@@ -1,18 +1,26 @@
 // ============================================
 // 方案選擇（使用 localStorage）
-// 更新價格：15.90, 111.30, 447, 834, 1161
 // ============================================
 
 function getCurrentUser() {
     const userStr = localStorage.getItem('currentUser');
     if (!userStr) return null;
-    try { return JSON.parse(userStr); } catch { return null; }
+    try {
+        return JSON.parse(userStr);
+    } catch {
+        return null;
+    }
 }
 
 async function confirmPlan(plan, days, price) {
     const user = getCurrentUser();
-    if (!user) { location.href = 'login.html'; return; }
     
+    if (!user) {
+        location.href = 'login.html';
+        return;
+    }
+    
+    // 檢查是否已有訂閱
     const { data: existingSubscription } = await supabaseClient
         .from('subscriptions')
         .select('*')
@@ -26,10 +34,12 @@ async function confirmPlan(plan, days, price) {
         return;
     }
     
-    const startDate = new Date();
-    let endDate = new Date();
+    // 使用馬來西亞時間
+    const startDate = getMalaysiaDate();
+    let endDate = getMalaysiaDate();
     endDate.setDate(endDate.getDate() + days);
     
+    // 創建訂閱
     const { data: subscription, error: subError } = await supabaseClient
         .from('subscriptions')
         .insert({
@@ -37,8 +47,8 @@ async function confirmPlan(plan, days, price) {
             plan_type: plan,
             total_days: days,
             meals_received: 0,
-            start_date: startDate.toISOString().split('T')[0],
-            end_date: endDate.toISOString().split('T')[0],
+            start_date: formatMalaysiaDate(startDate),
+            end_date: formatMalaysiaDate(endDate),
             status: 'active',
             total_price: price,
             payment_method: 'pending',
@@ -52,14 +62,15 @@ async function confirmPlan(plan, days, price) {
         return;
     }
     
+    // 創建配送日程
     const deliveries = [];
     for (let i = 0; i < days; i++) {
-        const deliveryDate = new Date();
+        const deliveryDate = getMalaysiaDate();
         deliveryDate.setDate(deliveryDate.getDate() + i);
         deliveries.push({
             user_id: user.id,
             subscription_id: subscription.id,
-            delivery_date: deliveryDate.toISOString().split('T')[0],
+            delivery_date: formatMalaysiaDate(deliveryDate),
             status: i === 0 ? 'pending' : 'upcoming',
             meal_number: i + 1
         });
@@ -79,6 +90,7 @@ document.querySelectorAll('.plan-card').forEach(card => {
         const price = parseFloat(card.dataset.price);
         if (plan) confirmPlan(plan, days, price);
     };
+    
     card.addEventListener('click', handleSelect);
     const btn = card.querySelector('.select-plan');
     if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); handleSelect(); });

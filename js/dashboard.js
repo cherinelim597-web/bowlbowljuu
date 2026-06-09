@@ -56,7 +56,7 @@ async function loadDashboard() {
     
     const startDate = new Date(subscription.start_date);
     const endDate = new Date(subscription.end_date);
-    const today = new Date();
+    const today = getMalaysiaDate();
     
     const totalDays = subscription.total_days;
     const mealsReceived = subscription.meals_received || 0;
@@ -65,17 +65,21 @@ async function loadDashboard() {
     
     document.getElementById('planDetails').innerHTML = `
         <p>📋 <strong>Plan:</strong> ${planNames[subscription.plan_type]}</p>
-        <p>📅 <strong>Period:</strong> ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}</p>
+        <p>📅 <strong>Period:</strong> ${formatDisplayDate(subscription.start_date)} - ${formatDisplayDate(subscription.end_date)}</p>
         <p>🍽️ <strong>Meals:</strong> ${mealsReceived} / ${totalDays} received</p>
         <p>💰 <strong>Price:</strong> RM ${subscription.total_price}</p>
     `;
     
     document.getElementById('mealsReceived').innerText = mealsReceived;
     document.getElementById('totalMeals').innerText = totalDays;
+    document.getElementById('mealsReceivedZh').innerText = mealsReceived;
+    document.getElementById('totalMealsZh').innerText = totalDays;
     document.getElementById('daysRemaining').innerText = daysRemaining > 0 ? daysRemaining : 0;
+    document.getElementById('daysRemainingZh').innerText = daysRemaining > 0 ? daysRemaining : 0;
     document.getElementById('progressBar').style.width = `${progressPercent}%`;
     
-    // 加載配送日程
+    // 加載配送日程 - 使用馬來西亞時間判斷今天
+    const todayStr = getTodayString();
     const { data: deliveries } = await supabaseClient
         .from('deliveries')
         .select('*')
@@ -88,11 +92,11 @@ async function loadDashboard() {
     if (deliveries && deliveries.length > 0) {
         deliveryList.innerHTML = deliveries.map(d => {
             const deliveryDate = new Date(d.delivery_date);
-            const isToday = deliveryDate.toDateString() === today.toDateString();
+            const isToday = d.delivery_date === todayStr;
             let statusText = d.status === 'delivered' ? '✅ Delivered' : (isToday ? '🚚 Today' : '📅 Upcoming');
             return `
                 <div class="delivery-item">
-                    <span class="delivery-date">${deliveryDate.toLocaleDateString()}</span>
+                    <span class="delivery-date">${formatDisplayDate(d.delivery_date)}</span>
                     <span>Meal #${d.meal_number}</span>
                     <span class="delivery-status">${statusText}</span>
                 </div>
@@ -117,7 +121,7 @@ async function checkSubscriptionStatus() {
     
     if (subscription) {
         const endDate = new Date(subscription.end_date);
-        const today = new Date();
+        const today = getMalaysiaDate();
         if (endDate < today) {
             await supabaseClient
                 .from('subscriptions')

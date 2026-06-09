@@ -39,7 +39,11 @@ function getPlanName(planType) {
 function formatDate(dateStr) {
     if (!dateStr) return 'N/A';
     const d = new Date(dateStr);
-    return d.toLocaleDateString();
+    if (isNaN(d.getTime())) return 'N/A';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}/${month}/${day}`;
 }
 
 // HTML 跳脫
