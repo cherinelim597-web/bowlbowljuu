@@ -1234,3 +1234,14 @@ td {
         flex: 1;
     }
 }
+
+/* 訂單號樣式 */
+.order-no-badge {
+    background: rgba(200, 161, 94, 0.15);
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-family: monospace;
+    color: #c8a15e;
+    display: inline-block;
+}

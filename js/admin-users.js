@@ -251,6 +251,7 @@ async function loadUsersPage() {
         const userData = [];
         for (const user of users) {
             try {
+                // 獲取 active 訂閱
                 const { data: subscription, error: subError } = await supabaseClient
                     .from('subscriptions')
                     .select('*')
@@ -260,6 +261,17 @@ async function loadUsersPage() {
                 
                 if (subError) {
                     console.error('Subscription error for user', user.id, subError);
+                }
+                
+                // 獲取所有歷史訂閱（用於詳情頁）
+                const { data: allSubscriptions, error: allSubError } = await supabaseClient
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false });
+                
+                if (allSubError) {
+                    console.error('All subscriptions error for user', user.id, allSubError);
                 }
                 
                 const { data: deliveries, error: delError } = await supabaseClient
@@ -276,7 +288,7 @@ async function loadUsersPage() {
                 
                 const { data: receipts, error: recError } = await supabaseClient
                     .from('receipts')
-                    .select('amount')
+                    .select('*')
                     .eq('user_id', user.id);
                 
                 if (recError) {
@@ -289,6 +301,9 @@ async function loadUsersPage() {
                 userData.push({ 
                     ...user, 
                     subscription, 
+                    allSubscriptions,
+                    deliveries,
+                    receipts,
                     deliveredCount, 
                     totalDeliveries, 
                     totalPaid,
@@ -296,7 +311,7 @@ async function loadUsersPage() {
                 });
             } catch (err) {
                 console.error('Error processing user', user.id, err);
-                userData.push({ ...user, subscription: null, deliveredCount: 0, totalDeliveries: 0, totalPaid: 0, progressPercent: 0 });
+                userData.push({ ...user, subscription: null, allSubscriptions: [], deliveries: [], receipts: [], deliveredCount: 0, totalDeliveries: 0, totalPaid: 0, progressPercent: 0 });
             }
         }
         
@@ -358,15 +373,16 @@ async function loadUsersPage() {
             <!-- 用戶表格 -->
             <div class="table-container">
                 <div style="overflow-x: auto;">
-                    <table style="width: 100%; min-width: 1000px;">
+                    <table style="width: 100%; min-width: 1200px;">
                         <thead>
                             <tr>
-                                <th>用戶信息</th>
-                                <th>聯繫方式</th>
+                                <th>用戶名</th>
+                                <th>用戶郵箱</th>
                                 <th>當前方案</th>
-                                <th>訂單號 / 訂閱週期</th>
+                                <th>訂閱週期</th>
                                 <th>配送進度</th>
-                                <th>消費金額</th>
+                                <th>總消費金額</th>
+                                <th>帳號狀態</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -399,20 +415,26 @@ function renderUserTable(userData) {
         const sub = user.subscription;
         const startDate = sub ? formatDate(sub.start_date) : 'N/A';
         const endDate = sub ? formatDate(sub.end_date) : 'N/A';
-        const statusText = sub ? 'Active' : 'Inactive';
         const planName = sub ? getPlanName(sub.plan_type) : '—';
         const planPrice = sub ? `RM ${sub.total_price}` : '—';
         
-        // 獲取支付狀態顯示
-        let paymentStatusHtml = '';
-        if (sub && sub.payment_status) {
-            const statusMap = {
-                'paid': { label: '✅ 已支付', class: 'badge-active' },
-                'unpaid': { label: '⏳ 未支付', class: 'badge-pending' },
-                'partial': { label: '💰 部分支付', class: 'badge-warning' }
-            };
-            const ps = statusMap[sub.payment_status] || { label: sub.payment_status, class: 'badge-pending' };
-            paymentStatusHtml = `<span class="badge ${ps.class}" style="font-size: 10px;">${ps.label}</span>`;
+        // 帳號狀態（根據訂閱狀態）
+        let accountStatus = 'Inactive';
+        let statusClass = 'badge-expired';
+        if (sub) {
+            if (sub.status === 'active') {
+                accountStatus = 'Active';
+                statusClass = 'badge-active';
+            } else if (sub.status === 'expired') {
+                accountStatus = 'Expired';
+                statusClass = 'badge-expired';
+            } else if (sub.status === 'cancelled') {
+                accountStatus = 'Cancelled';
+                statusClass = 'badge-expired';
+            } else if (sub.status === 'paused') {
+                accountStatus = 'Paused';
+                statusClass = 'badge-pending';
+            }
         }
         
         // 進度條
@@ -430,28 +452,19 @@ function renderUserTable(userData) {
                 <td style="padding: 12px 16px;">
                     <div style="font-weight: 600;">${escapeHtml(user.full_name || 'N/A')}</div>
                     <div style="font-size: 11px; color: #6b7a8a;">ID: ${user.id.substring(0, 12)}...</div>
+                </td>
+                <td style="padding: 12px 16px;">
+                    <div style="font-size: 12px;">${escapeHtml(user.email || '未設置')}</div>
                     <div style="font-size: 11px; color: #6b7a8a;">📅 ${formatDate(user.created_at)}</div>
                 </td>
                 <td style="padding: 12px 16px;">
-                    <div style="font-size: 12px;"><i class="fas fa-envelope"></i> ${escapeHtml(user.email || '未設置')}</div>
-                    <div style="font-size: 12px; margin-top: 4px;"><i class="fas fa-phone"></i> ${escapeHtml(user.phone || '未設置')}</div>
-                    <div style="font-size: 12px; margin-top: 4px;"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(user.address || '未設置')}</div>
-                </td>
-                <td style="padding: 12px 16px;">
                     <div><span class="badge badge-active">${planName}</span></div>
-                    <div style="font-size: 13px; margin-top: 4px;">💰 ${planPrice}</div>
-                    <div style="font-size: 11px; color: #8a9abb;">${sub ? sub.payment_method || '—' : '—'}</div>
-                    <div style="margin-top: 4px;">${paymentStatusHtml}</div>
+                    <div style="font-size: 12px; margin-top: 4px;">${planPrice}</div>
                 </td>
                 <td style="padding: 12px 16px;">
                     ${sub ? `
-                        <div style="font-size: 12px; color: #c8a15e; margin-bottom: 4px;">
-                            <i class="fas fa-hashtag"></i> <span class="order-no-badge" style="font-size: 11px;">${sub.order_no || '無訂單號'}</span>
-                        </div>
-                        <div style="font-size: 12px;">📅 ${startDate} → ${endDate}</div>
-                        <div style="font-size: 11px; margin-top: 4px;">
-                            <span class="badge ${sub.status === 'active' ? 'badge-active' : 'badge-expired'}">${sub.status}</span>
-                        </div>
+                        <div style="font-size: 12px; margin-bottom: 2px;">📅 ${startDate} → ${endDate}</div>
+                        <div style="font-size: 10px; color: #c8a15e;">${sub.order_no || '無訂單號'}</div>
                     ` : '<span>無訂閱</span>'}
                 </td>
                 <td style="padding: 12px 16px;">
@@ -459,12 +472,17 @@ function renderUserTable(userData) {
                 </td>
                 <td style="padding: 12px 16px;">
                     <div style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</div>
-                    <div style="font-size: 11px; color: #6b7a8a;">總消費</div>
+                </td>
+                <td style="padding: 12px 16px;">
+                    <span class="badge ${statusClass}">${accountStatus}</span>
                 </td>
                 <td style="padding: 12px 16px; text-align: center;">
-                    <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯"><i class="fas fa-edit"></i></button>
-                    <button class="btn-icon" onclick="uploadReceiptForUser('${user.id}')" title="上傳收據"><i class="fas fa-receipt"></i></button>
-                    <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情"><i class="fas fa-eye"></i></button>
+                    <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯">
+                        <i class="fas fa-edit"></i>
+                    </button>
                 </td>
             </tr>
         `;
@@ -499,7 +517,295 @@ function filterUsers(allUsers) {
     
     const tbody = document.getElementById('usersTableBody');
     if (tbody && filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶<\/td><\/tr>';
+    }
+}
+
+// 查看用戶詳情（彈窗顯示完整信息）
+async function viewUserDetail(userId) {
+    // 獲取用戶基本信息
+    const { data: user } = await supabaseClient
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+    
+    // 獲取所有歷史訂閱（包括已過期、已取消的）
+    const { data: allSubscriptions } = await supabaseClient
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+    
+    // 獲取所有收據
+    const { data: receipts } = await supabaseClient
+        .from('receipts')
+        .select('*')
+        .eq('user_id', userId);
+    
+    // 獲取當前活躍訂閱
+    const activeSub = allSubscriptions?.find(s => s.status === 'active');
+    
+    // 計算總消費和未支付金額
+    const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+    const unpaidSubscriptions = allSubscriptions?.filter(s => s.payment_status === 'unpaid') || [];
+    const unpaidAmount = unpaidSubscriptions.reduce((sum, s) => sum + (s.total_price || 0), 0);
+    
+    // 計算當前訂閱的配送進度
+    let deliveredCount = 0;
+    let totalDays = 0;
+    let progressPercent = 0;
+    if (activeSub) {
+        const { data: deliveries } = await supabaseClient
+            .from('deliveries')
+            .select('status')
+            .eq('user_id', userId)
+            .eq('subscription_id', activeSub.id);
+        deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
+        totalDays = activeSub.total_days || 0;
+        progressPercent = totalDays > 0 ? (deliveredCount / totalDays) * 100 : 0;
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 1200px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <!-- 頁面上方：用戶信息卡片 -->
+            <div style="background: linear-gradient(135deg, rgba(200,161,94,0.1), rgba(200,161,94,0.05)); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
+                    <div>
+                        <h2 style="color: #c8a15e; margin-bottom: 8px;"><i class="fas fa-user-circle"></i> ${escapeHtml(user?.full_name)}</h2>
+                        <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 12px;">
+                            <div><i class="fas fa-envelope"></i> ${escapeHtml(user?.email || '未設置')}</div>
+                            <div><i class="fas fa-phone"></i> ${escapeHtml(user?.phone || '未設置')}</div>
+                            <div><i class="fas fa-map-marker-alt"></i> ${escapeHtml(user?.address || '未設置')}</div>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">關閉</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 統計卡片區域 -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+                <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
+                    <div style="font-size: 12px; color: #8a9abb;">訂閱週期</div>
+                    <div style="font-size: 14px; font-weight: 600; margin-top: 5px;">
+                        ${activeSub ? `${formatDate(activeSub.start_date)} - ${formatDate(activeSub.end_date)}` : '無活躍訂閱'}
+                    </div>
+                </div>
+                <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
+                    <div style="font-size: 12px; color: #8a9abb;">配送進度</div>
+                    <div style="margin-top: 5px;">
+                        <div style="width: 100px; background: #1e2a3a; border-radius: 10px; height: 6px; margin: 0 auto;">
+                            <div style="width: ${progressPercent}%; background: #c8a15e; border-radius: 10px; height: 6px;"></div>
+                        </div>
+                        <div style="font-size: 12px; margin-top: 4px;">${deliveredCount}/${totalDays} 餐</div>
+                    </div>
+                </div>
+                <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
+                    <div style="font-size: 12px; color: #8a9abb;">總消費</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #c8a15e;">RM ${totalPaid.toLocaleString()}</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
+                    <div style="font-size: 12px; color: #8a9abb;">未支付</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #ffb84d;">RM ${unpaidAmount.toLocaleString()}</div>
+                </div>
+            </div>
+            
+            <!-- 頁面下方：歷史訂單列表 -->
+            <h3 style="margin-bottom: 16px; color: #eef5ff;"><i class="fas fa-history"></i> 歷史訂單</h3>
+            <div class="table-container" style="padding: 0; overflow-x: auto;">
+                <table style="width: 100%; min-width: 800px;">
+                    <thead>
+                        <tr style="background: rgba(0,0,0,0.2);">
+                            <th style="padding: 12px;">訂單號</th>
+                            <th style="padding: 12px;">下單時間</th>
+                            <th style="padding: 12px;">方案</th>
+                            <th style="padding: 12px;">配送進度</th>
+                            <th style="padding: 12px;">訂單金額</th>
+                            <th style="padding: 12px;">支付狀態</th>
+                            <th style="padding: 12px;">對應收據</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderHistoryBody">
+                        ${renderOrderHistory(allSubscriptions, receipts)}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">關閉</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// 渲染歷史訂單列表
+function renderOrderHistory(subscriptions, receipts) {
+    if (!subscriptions || subscriptions.length === 0) {
+        return '<tr><td colspan="7" style="text-align: center; padding: 40px;">暫無訂單記錄<\/td><\/tr>';
+    }
+    
+    const planNames = {
+        single: '單次',
+        weekly: '週方案',
+        '1month': '1個月',
+        '2months': '2個月',
+        '3months': '3個月'
+    };
+    
+    return subscriptions.map(sub => {
+        // 獲取該訂閱的配送完成數量
+        const subReceipts = receipts?.filter(r => r.subscription_id === sub.id) || [];
+        const hasReceipt = subReceipts.length > 0;
+        const receiptUrl = subReceipts[0]?.receipt_url;
+        
+        // 支付狀態顯示
+        let paymentStatusHtml = '';
+        if (sub.payment_status === 'paid') {
+            paymentStatusHtml = '<span class="badge badge-active">✅ 已支付</span>';
+        } else if (sub.payment_status === 'unpaid') {
+            paymentStatusHtml = '<span class="badge badge-pending">⏳ 未支付</span>';
+        } else if (sub.payment_status === 'partial') {
+            paymentStatusHtml = '<span class="badge badge-warning">💰 部分支付</span>';
+        } else {
+            paymentStatusHtml = '<span class="badge badge-pending">待付款</span>';
+        }
+        
+        // 配送進度顯示
+        const mealsReceived = sub.meals_received || 0;
+        const totalDays = sub.total_days || 0;
+        const progressPercent = totalDays > 0 ? (mealsReceived / totalDays) * 100 : 0;
+        
+        return `
+            <tr style="border-bottom: 1px solid #1e2a3a;">
+                <td style="padding: 12px;">
+                    <span class="order-no-badge" style="font-size: 11px;">${sub.order_no || '無訂單號'}</span>
+                </td>
+                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.created_at)}</td>
+                <td style="padding: 12px;">${planNames[sub.plan_type] || sub.plan_type}</td>
+                <td style="padding: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 60px; background: #1e2a3a; border-radius: 10px; height: 4px;">
+                            <div style="width: ${progressPercent}%; background: #2ed15a; border-radius: 10px; height: 4px;"></div>
+                        </div>
+                        <span style="font-size: 11px;">${mealsReceived}/${totalDays}</span>
+                    </div>
+                </td>
+                <td style="padding: 12px; color: #c8a15e;">RM ${sub.total_price}</td>
+                <td style="padding: 12px;">${paymentStatusHtml}</td>
+                <td style="padding: 12px;">
+                    ${hasReceipt ? `
+                        <a href="${receiptUrl}" target="_blank" class="btn-small" style="background: #c8a15e; color: #0a1a2e; padding: 4px 8px; font-size: 10px;">
+                            <i class="fas fa-receipt"></i> 查看
+                        </a>
+                    ` : `
+                        <button class="btn-small" onclick="uploadReceiptForUserFromDetail('${sub.user_id}', '${sub.id}', '${sub.order_no}')" style="background: #4a7cff; padding: 4px 8px; font-size: 10px;">
+                            <i class="fas fa-upload"></i> 上傳
+                        </button>
+                    `}
+                 </td
+             </tr>
+        `;
+    }).join('');
+}
+
+// 從詳情頁上傳收據
+async function uploadReceiptForUserFromDetail(userId, subscriptionId, orderNo) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 450px; width: 90%;">
+            <h3>上傳收據</h3>
+            <div class="input-group">
+                <label>訂單號</label>
+                <input type="text" value="${orderNo || '無訂單號'}" readonly style="background: rgba(0,0,0,0.3);">
+            </div>
+            <div class="input-group">
+                <label>金額 (RM)</label>
+                <input type="number" id="receiptAmountDetail" step="0.01" placeholder="輸入金額">
+            </div>
+            <div class="input-group">
+                <label>付款方式</label>
+                <select id="receiptPaymentMethodDetail">
+                    <option value="credit_card">信用卡</option>
+                    <option value="bank_transfer">銀行轉帳</option>
+                    <option value="cash">貨到付款</option>
+                    <option value="touchngo">Touch n Go</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>收據圖片</label>
+                <input type="file" id="receiptFileDetail" accept="image/*,.pdf">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-save" onclick="confirmUploadReceiptFromDetail('${userId}', '${subscriptionId}', '${orderNo}')">上傳</button>
+                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function confirmUploadReceiptFromDetail(userId, subscriptionId, orderNo) {
+    const amount = parseFloat(document.getElementById('receiptAmountDetail').value) || 0;
+    const paymentMethod = document.getElementById('receiptPaymentMethodDetail').value;
+    const file = document.getElementById('receiptFileDetail').files[0];
+    
+    if (amount <= 0) {
+        showToast('請輸入有效的金額', 'error');
+        return;
+    }
+    
+    if (!file) {
+        showToast('請選擇收據文件', 'error');
+        return;
+    }
+    
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) modal.remove();
+    
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `receipt_${userId}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabaseClient.storage
+            .from('receipts')
+            .upload(fileName, file);
+        
+        if (uploadError) {
+            showToast('上傳失敗: ' + uploadError.message, 'error');
+            return;
+        }
+        
+        const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
+        
+        await supabaseClient.from('receipts').insert({
+            user_id: userId,
+            subscription_id: subscriptionId,
+            order_no: orderNo,
+            amount: amount,
+            receipt_url: urlData.publicUrl,
+            payment_method: paymentMethod,
+            created_at: new Date()
+        });
+        
+        await supabaseClient
+            .from('subscriptions')
+            .update({ payment_status: 'paid' })
+            .eq('id', subscriptionId);
+        
+        showToast('收據上傳成功！');
+        viewUserDetail(userId);
+        loadUsersPage();
+        
+    } catch (err) {
+        console.error('Upload error:', err);
+        showToast('上傳失敗: ' + err.message, 'error');
     }
 }
 
@@ -693,151 +999,6 @@ async function saveUserEdit(userId) {
     showToast('用戶信息已更新！');
     document.querySelector('.modal-overlay')?.remove();
     loadUsersPage();
-}
-
-// 查看用戶詳情
-async function viewUserDetail(userId) {
-    const { data: user } = await supabaseClient.from('users').select('*').eq('id', userId).single();
-    const { data: subscription } = await supabaseClient.from('subscriptions').select('*').eq('user_id', userId).maybeSingle();
-    const { data: receipts } = await supabaseClient.from('receipts').select('*').eq('user_id', userId);
-    
-    const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
-    
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.style.display = 'flex';
-    modal.innerHTML = `
-        <div class="modal-card" style="max-width: 500px; width: 90%;">
-            <h3>用戶詳情 - ${escapeHtml(user.full_name)}</h3>
-            <hr style="margin: 15px 0;">
-            <div><strong>姓名：</strong> ${escapeHtml(user.full_name)}</div>
-            <div><strong>郵箱：</strong> ${escapeHtml(user.email || '未設置')}</div>
-            <div><strong>電話：</strong> ${escapeHtml(user.phone || '未設置')}</div>
-            <div><strong>地址：</strong> ${escapeHtml(user.address || '未設置')}</div>
-            <hr style="margin: 15px 0;">
-            <h4>訂閱信息</h4>
-            ${subscription ? `
-                <div><strong>訂單號：</strong> ${subscription.order_no || '無'}</div>
-                <div><strong>方案：</strong> ${getPlanName(subscription.plan_type)}</div>
-                <div><strong>期間：</strong> ${formatDate(subscription.start_date)} - ${formatDate(subscription.end_date)}</div>
-                <div><strong>金額：</strong> RM ${subscription.total_price}</div>
-                <div><strong>支付狀態：</strong> ${subscription.payment_status === 'paid' ? '已支付' : '未支付'}</div>
-            ` : '<p>無活躍訂閱</p>'}
-            <hr>
-            <div><strong>總消費：</strong> RM ${totalPaid}</div>
-            <div style="margin-top: 20px;"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">關閉</button></div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-}
-
-// 上傳收據（從用戶管理頁面調用）
-async function uploadReceiptForUser(userId) {
-    const { data: subscription } = await supabaseClient
-        .from('subscriptions')
-        .select('id, order_no, total_price')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .maybeSingle();
-    
-    if (!subscription) {
-        showToast('用戶沒有活躍訂閱', 'error');
-        return;
-    }
-    
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal-card" style="max-width: 450px; width: 90%;">
-            <h3>上傳收據 - ${escapeHtml(user.full_name)}</h3>
-            <div class="input-group">
-                <label>訂單號</label>
-                <input type="text" value="${subscription.order_no || '無訂單號'}" readonly style="background: rgba(0,0,0,0.3);">
-            </div>
-            <div class="input-group">
-                <label>金額 (RM)</label>
-                <input type="number" id="receiptAmount" value="${subscription.total_price}" step="0.01">
-            </div>
-            <div class="input-group">
-                <label>付款方式</label>
-                <select id="receiptPaymentMethod">
-                    <option value="credit_card">信用卡</option>
-                    <option value="bank_transfer">銀行轉帳</option>
-                    <option value="cash">貨到付款</option>
-                    <option value="touchngo">Touch n Go</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label>收據圖片</label>
-                <input type="file" id="receiptFile" accept="image/*,.pdf">
-            </div>
-            <div class="modal-buttons">
-                <button class="btn-save" onclick="uploadReceiptForUserConfirm('${userId}', '${subscription.id}', '${subscription.order_no}')">上傳</button>
-                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-}
-
-async function uploadReceiptForUserConfirm(userId, subscriptionId, orderNo) {
-    const amount = parseFloat(document.getElementById('receiptAmount').value) || 0;
-    const paymentMethod = document.getElementById('receiptPaymentMethod').value;
-    const file = document.getElementById('receiptFile').files[0];
-    
-    if (amount <= 0) {
-        showToast('請輸入有效的金額', 'error');
-        return;
-    }
-    
-    if (!file) {
-        showToast('請選擇收據文件', 'error');
-        return;
-    }
-    
-    const modal = document.querySelector('.modal-overlay');
-    if (modal) modal.remove();
-    
-    try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `receipt_${userId}_${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabaseClient.storage
-            .from('receipts')
-            .upload(fileName, file);
-        
-        if (uploadError) {
-            showToast('上傳失敗: ' + uploadError.message, 'error');
-            return;
-        }
-        
-        const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
-        
-        await supabaseClient.from('receipts').insert({
-            user_id: userId,
-            subscription_id: subscriptionId,
-            order_no: orderNo,
-            amount: amount,
-            receipt_url: urlData.publicUrl,
-            payment_method: paymentMethod,
-            created_at: new Date()
-        });
-        
-        await supabaseClient
-            .from('subscriptions')
-            .update({ payment_status: 'paid' })
-            .eq('id', subscriptionId);
-        
-        showToast('收據上傳成功！');
-        if (document.getElementById('page_receipts')?.classList.contains('active') && typeof loadReceiptsPage === 'function') {
-            loadReceiptsPage();
-        }
-        loadUsersPage();
-        
-    } catch (err) {
-        console.error('Upload error:', err);
-        showToast('上傳失敗: ' + err.message, 'error');
-    }
 }
 
 // 導出用戶數據
