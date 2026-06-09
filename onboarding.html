@@ -8,12 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: url('https://images.unsplash.com/photo-1505253758473-96b7015fcd40?q=80&w=2070') center/cover fixed;
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -21,7 +16,6 @@
             padding: 40px;
             position: relative;
         }
-
         body::before {
             content: '';
             position: fixed;
@@ -32,15 +26,7 @@
             background: linear-gradient(135deg, rgba(10,20,40,0.85), rgba(5,15,30,0.9));
             z-index: 0;
         }
-
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        /* 玻璃卡片效果 */
+        .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; }
         .glass {
             background: rgba(255,255,255,0.05);
             backdrop-filter: blur(15px);
@@ -48,8 +34,6 @@
             border: 1px solid rgba(255,255,255,0.1);
             box-shadow: 0 20px 40px rgba(0,0,0,0.2);
         }
-
-        /* 頂欄 */
         .top-section {
             display: flex;
             justify-content: space-between;
@@ -57,23 +41,16 @@
             margin-bottom: 32px;
             padding: 20px 32px;
         }
-
         .logo h1 {
             font-family: 'Cormorant Garamond', serif;
             font-size: 32px;
             font-weight: 600;
-            letter-spacing: 2px;
             background: linear-gradient(135deg, #c8a15e, #f0d49e);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
         }
-
-        .language-switch {
-            display: flex;
-            gap: 10px;
-        }
-
+        .language-switch { display: flex; gap: 10px; }
         .language-switch button {
             background: rgba(255,255,255,0.1);
             border: 1px solid rgba(200,161,94,0.3);
@@ -82,13 +59,7 @@
             color: #eef5ff;
             cursor: pointer;
             font-size: 12px;
-            transition: all 0.3s;
         }
-
-        .language-switch button:hover {
-            background: rgba(200,161,94,0.3);
-        }
-
         .user-badge {
             display: flex;
             align-items: center;
@@ -97,24 +68,11 @@
             padding: 8px 20px 8px 24px;
             border-radius: 60px;
         }
-
-        .user-text {
-            text-align: right;
-        }
-
-        .user-name {
-            font-weight: 600;
-            color: #eef5ff;
-        }
-
-        .user-status {
-            font-size: 11px;
-            color: #c8a15e;
-        }
-
+        .user-text { text-align: right; }
+        .user-name { font-weight: 600; color: #eef5ff; }
+        .user-status { font-size: 11px; color: #c8a15e; }
         .user-avatar {
-            width: 44px;
-            height: 44px;
+            width: 44px; height: 44px;
             background: linear-gradient(135deg, #c8a15e, #a07840);
             border-radius: 50%;
             display: flex;
@@ -123,14 +81,11 @@
             font-weight: 600;
             color: #0a1a2e;
         }
-
-        /* 歡迎區 */
         .hero-section {
             text-align: center;
             padding: 50px 40px;
             margin-bottom: 40px;
         }
-
         .hero-section h2 {
             font-family: 'Cormorant Garamond', serif;
             font-size: 48px;
@@ -138,27 +93,15 @@
             color: #c8a15e;
             margin-bottom: 12px;
         }
-
-        .hero-section p {
-            color: rgba(255,255,255,0.7);
-            font-size: 18px;
-        }
-
-        .hero-section .decor {
-            font-size: 24px;
-            margin-top: 16px;
-            letter-spacing: 8px;
-            color: #c8a15e;
-        }
-
-        /* 方案卡片網格 */
+        .hero-section p { color: rgba(255,255,255,0.7); font-size: 18px; }
+        .hero-section .decor { font-size: 24px; margin-top: 16px; letter-spacing: 8px; color: #c8a15e; }
+        
         .plans-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 28px;
             margin-bottom: 40px;
         }
-
         .plan-card {
             padding: 32px 24px;
             text-align: center;
@@ -166,22 +109,9 @@
             transition: all 0.3s;
             position: relative;
         }
-
-        .plan-card:hover {
-            transform: translateY(-8px);
-            background: rgba(255,255,255,0.1);
-        }
-
-        .plan-card.selected {
-            background: rgba(200,161,94,0.15);
-            border: 1px solid rgba(200,161,94,0.5);
-        }
-
-        .plan-card.popular {
-            border: 1px solid rgba(200,161,94,0.5);
-            position: relative;
-        }
-
+        .plan-card:hover { transform: translateY(-8px); background: rgba(255,255,255,0.1); }
+        .plan-card.selected { background: rgba(200,161,94,0.15); border: 1px solid rgba(200,161,94,0.5); }
+        .plan-card.popular { border: 1px solid rgba(200,161,94,0.5); }
         .popular-badge {
             position: absolute;
             top: -12px;
@@ -194,52 +124,20 @@
             font-size: 11px;
             font-weight: 600;
         }
-
         .plan-icon {
-            width: 74px;
-            height: 74px;
+            width: 74px; height: 74px;
             background: rgba(200,161,94,0.15);
             border-radius: 50%;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             font-size: 34px;
-            margin: 0 auto 20px;
-            transition: all 0.3s;
+            margin-bottom: 20px;
         }
-
-        .plan-card:hover .plan-icon {
-            background: rgba(200,161,94,0.3);
-            transform: scale(1.05);
-        }
-
-        .plan-card h3 {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 26px;
-            font-weight: 600;
-            color: #eef5ff;
-            margin-bottom: 8px;
-        }
-
-        .plan-card p {
-            font-size: 13px;
-            color: rgba(255,255,255,0.5);
-            margin-bottom: 16px;
-        }
-
-        .price {
-            font-size: 36px;
-            font-family: 'Cormorant Garamond', serif;
-            font-weight: 700;
-            color: #c8a15e;
-            margin: 16px 0;
-        }
-
-        .price small {
-            font-size: 14px;
-            font-weight: 400;
-        }
-
+        .plan-card h3 { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; color: #eef5ff; margin-bottom: 8px; }
+        .plan-card p { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+        .price { font-size: 36px; font-family: 'Cormorant Garamond', serif; font-weight: 700; color: #c8a15e; margin: 16px 0 4px; }
+        .price-detail { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 16px; }
         .btn-select {
             background: rgba(200,161,94,0.15);
             border: 1px solid rgba(200,161,94,0.3);
@@ -248,16 +146,10 @@
             color: #c8a15e;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
             width: 100%;
             font-size: 14px;
         }
-
-        .btn-select:hover {
-            background: rgba(200,161,94,0.3);
-        }
-
-        /* 促銷橫幅 */
+        .btn-select:hover { background: rgba(200,161,94,0.3); }
         .promo-banner {
             background: linear-gradient(135deg, rgba(200,161,94,0.1), rgba(200,161,94,0.05));
             border: 1px solid rgba(200,161,94,0.3);
@@ -266,26 +158,21 @@
             text-align: center;
             margin-bottom: 40px;
         }
-
-        .promo-banner h3 {
+        .promo-banner h3 { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: #c8a15e; margin-bottom: 12px; }
+        .promo-banner p { color: rgba(255,255,255,0.7); font-size: 16px; }
+        .footer {
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            text-align: center;
+            padding: 24px;
             font-family: 'Cormorant Garamond', serif;
-            font-size: 28px;
+            font-size: 20px;
             color: #c8a15e;
-            margin-bottom: 12px;
+            border-radius: 32px;
         }
-
-        .promo-banner p {
-            color: rgba(255,255,255,0.7);
-            font-size: 16px;
-        }
-
-        /* 加載動畫 */
         .loading-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.7);
             backdrop-filter: blur(10px);
             display: flex;
@@ -296,39 +183,15 @@
             opacity: 0;
             transition: all 0.3s;
         }
-
-        .loading-overlay.active {
-            visibility: visible;
-            opacity: 1;
-        }
-
+        .loading-overlay.active { visibility: visible; opacity: 1; }
         .spinner {
-            width: 50px;
-            height: 50px;
+            width: 50px; height: 50px;
             border: 3px solid rgba(200,161,94,0.3);
             border-top-color: #c8a15e;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* 底部 */
-        .footer {
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(10px);
-            text-align: center;
-            padding: 24px;
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 20px;
-            color: #c8a15e;
-            border-radius: 32px;
-            margin-top: 20px;
-        }
-
-        /* 裝飾葉子 */
+        @keyframes spin { to { transform: rotate(360deg); } }
         .leaf {
             position: absolute;
             font-size: 100px;
@@ -341,8 +204,6 @@
         .leaf-2 { bottom: 20px; right: 20px; }
         .leaf-3 { top: 30%; left: 5px; }
         .leaf-4 { bottom: 30%; right: 5px; }
-
-        /* 響應式 */
         @media (max-width: 900px) {
             body { padding: 20px; }
             .hero-section h2 { font-size: 32px; }
@@ -359,9 +220,7 @@
 
     <div class="container">
         <div class="top-section glass">
-            <div class="logo">
-                <h1>HEALTHY BOWL</h1>
-            </div>
+            <div class="logo"><h1>HEALTHY BOWL</h1></div>
             <div class="language-switch">
                 <button onclick="document.documentElement.lang='en'">EN</button>
                 <button onclick="document.documentElement.lang='zh'">中文</button>
@@ -383,48 +242,52 @@
 
         <div class="plans-grid" id="plansGrid">
             <!-- Single Purchase -->
-            <div class="plan-card" data-plan="single" data-days="1" data-price="12">
+            <div class="plan-card" data-plan="single" data-days="1" data-price="15.90">
                 <div class="plan-icon">🛒</div>
                 <h3>Single Purchase</h3>
                 <p>單次購買 / One delicious meal</p>
-                <div class="price">RM 12</div>
+                <div class="price">RM 15.90</div>
                 <button class="btn-select select-plan">Select Plan</button>
             </div>
 
             <!-- Weekly -->
-            <div class="plan-card" data-plan="weekly" data-days="7" data-price="75">
+            <div class="plan-card" data-plan="weekly" data-days="7" data-price="111.30">
                 <div class="plan-icon">📅</div>
                 <h3>Weekly Plan</h3>
-                <p>週方案 / 7 meals • Save 10%</p>
-                <div class="price">RM 75</div>
+                <p>週方案 / 7 meals</p>
+                <div class="price">RM 111.30</div>
+                <div class="price-detail">(RM 15.90/meal)</div>
                 <button class="btn-select select-plan">Select Plan</button>
             </div>
 
             <!-- 1 Month -->
-            <div class="plan-card popular" data-plan="1month" data-days="30" data-price="280">
+            <div class="plan-card popular" data-plan="1month" data-days="30" data-price="447">
                 <div class="popular-badge">MOST POPULAR</div>
                 <div class="plan-icon">🌟</div>
                 <h3>1 Month Plan</h3>
-                <p>月方案 / 30 meals • Save 22%</p>
-                <div class="price">RM 280</div>
+                <p>月方案 / 30 meals • Save 6%</p>
+                <div class="price">RM 447</div>
+                <div class="price-detail">(RM 14.90/meal)</div>
                 <button class="btn-select select-plan">Select Plan</button>
             </div>
 
             <!-- 2 Months -->
-            <div class="plan-card" data-plan="2months" data-days="60" data-price="530">
+            <div class="plan-card" data-plan="2months" data-days="60" data-price="834">
                 <div class="plan-icon">🚀</div>
                 <h3>2 Months Plan</h3>
-                <p>2個月方案 / 60 meals • Save 26%</p>
-                <div class="price">RM 530</div>
+                <p>2個月方案 / 60 meals • Save 13%</p>
+                <div class="price">RM 834</div>
+                <div class="price-detail">(RM 13.90/meal)</div>
                 <button class="btn-select select-plan">Select Plan</button>
             </div>
 
             <!-- 3 Months -->
-            <div class="plan-card" data-plan="3months" data-days="90" data-price="750">
+            <div class="plan-card" data-plan="3months" data-days="90" data-price="1161">
                 <div class="plan-icon">💪</div>
                 <h3>3 Months Plan</h3>
-                <p>3個月方案 / 90 meals • Save 30%</p>
-                <div class="price">RM 750</div>
+                <p>3個月方案 / 90 meals • Save 19%</p>
+                <div class="price">RM 1,161</div>
+                <div class="price-detail">(RM 12.90/meal)</div>
                 <button class="btn-select select-plan">Select Plan</button>
             </div>
         </div>
@@ -435,71 +298,39 @@
             <p style="font-size: 14px; margin-top: 8px;">3个月计划专属福利：每个星期享有2天汤品</p>
         </div>
 
-        <div class="footer">
-            EAT WELL. LIVE WELL.
-        </div>
+        <div class="footer">EAT WELL. LIVE WELL.</div>
     </div>
 
-    <!-- 加載動畫 -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-    </div>
+    <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
 
-        <script src="js/supabase.js"></script>
+    <script src="js/supabase.js"></script>
     <script>
-        // ============================================
-        // Onboarding - 使用 localStorage
-        // ============================================
-
-        // 獲取當前用戶
         function getCurrentUser() {
             const userStr = localStorage.getItem('currentUser');
             if (!userStr) return null;
-            try {
-                return JSON.parse(userStr);
-            } catch {
-                return null;
-            }
+            try { return JSON.parse(userStr); } catch { return null; }
         }
 
-        // 顯示加載動畫
-        function showLoading() {
-            document.getElementById('loadingOverlay').classList.add('active');
-        }
+        function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
+        function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
 
-        function hideLoading() {
-            document.getElementById('loadingOverlay').classList.remove('active');
-        }
-
-        // 加載用戶信息
         function loadUserInfo() {
             const user = getCurrentUser();
-            if (!user) {
-                location.href = 'login.html';
-                return;
-            }
-            
+            if (!user) { location.href = 'login.html'; return; }
             const displayName = user.full_name || user.email?.split('@')[0] || 'Member';
             document.getElementById('userName').innerText = displayName;
             document.getElementById('userAvatar').innerHTML = displayName.charAt(0).toUpperCase();
         }
 
-        // 確認方案
         async function confirmPlan(plan, days, price) {
             const user = getCurrentUser();
-            
-            if (!user) {
-                location.href = 'login.html';
-                return;
-            }
-            
+            if (!user) { location.href = 'login.html'; return; }
             showLoading();
             
             const startDate = new Date();
             let endDate = new Date();
             endDate.setDate(endDate.getDate() + days);
             
-            // 檢查是否已有訂閱
             const { data: existingSubscription } = await supabaseClient
                 .from('subscriptions')
                 .select('*')
@@ -514,7 +345,6 @@
                 return;
             }
             
-            // 創建訂閱
             const { data: subscription, error: subError } = await supabaseClient
                 .from('subscriptions')
                 .insert({
@@ -533,13 +363,11 @@
                 .single();
             
             if (subError) {
-                console.error('Subscription error:', subError);
                 alert('Failed to create subscription: ' + subError.message);
                 hideLoading();
                 return;
             }
             
-            // 創建配送日程
             const deliveries = [];
             for (let i = 0; i < days; i++) {
                 const deliveryDate = new Date();
@@ -552,7 +380,6 @@
                     meal_number: i + 1
                 });
             }
-            
             await supabaseClient.from('deliveries').insert(deliveries);
             
             hideLoading();
@@ -560,39 +387,25 @@
             location.href = 'dashboard.html';
         }
 
-        // 綁定卡片點擊事件
         document.querySelectorAll('.plan-card').forEach(card => {
             const selectBtn = card.querySelector('.select-plan');
-            
             const handleSelect = () => {
-                const plan = card.dataset.plan;
-                const days = parseInt(card.dataset.days);
-                const price = parseInt(card.dataset.price);
+                const plan = card.dataset.plan, days = parseInt(card.dataset.days), price = parseFloat(card.dataset.price);
                 if (plan) confirmPlan(plan, days, price);
             };
-            
-            if (selectBtn) {
-                selectBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    handleSelect();
-                });
-            }
-            
+            if (selectBtn) selectBtn.addEventListener('click', (e) => { e.stopPropagation(); handleSelect(); });
             card.addEventListener('click', handleSelect);
         });
 
-        // 語言切換更新文字
         function updateLanguage() {
             const isZh = document.documentElement.lang === 'zh';
             document.getElementById('heroTitle').innerText = isZh ? '選擇您的健康之路' : 'Choose Your Path to Wellness';
             document.getElementById('heroSubtitle').innerText = isZh ? '選擇最適合您生活方式的餐盒方案' : 'Select the perfect meal plan that fits your lifestyle';
         }
 
-        // 監聽語言變化
         const observer = new MutationObserver(updateLanguage);
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
         
-        // 初始化
         loadUserInfo();
         updateLanguage();
     </script>

@@ -62,7 +62,13 @@ async function loadUsersPage() {
             });
         }
         
-        const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
+        const planNames = { 
+    single: '單次', 
+    weekly: '週方案', 
+    '1month': '1個月', 
+    '2months': '2個月', 
+    '3months': '3個月' 
+};
         
         container.innerHTML = `
             <div class="table-container">

@@ -1,28 +1,18 @@
 // ============================================
 // 方案選擇（使用 localStorage）
+// 更新價格：15.90, 111.30, 447, 834, 1161
 // ============================================
 
-// 獲取當前用戶
 function getCurrentUser() {
     const userStr = localStorage.getItem('currentUser');
     if (!userStr) return null;
-    try {
-        return JSON.parse(userStr);
-    } catch {
-        return null;
-    }
+    try { return JSON.parse(userStr); } catch { return null; }
 }
 
-// 確認方案
 async function confirmPlan(plan, days, price) {
     const user = getCurrentUser();
+    if (!user) { location.href = 'login.html'; return; }
     
-    if (!user) {
-        location.href = 'login.html';
-        return;
-    }
-    
-    // 檢查是否已有訂閱
     const { data: existingSubscription } = await supabaseClient
         .from('subscriptions')
         .select('*')
@@ -40,7 +30,6 @@ async function confirmPlan(plan, days, price) {
     let endDate = new Date();
     endDate.setDate(endDate.getDate() + days);
     
-    // 創建訂閱
     const { data: subscription, error: subError } = await supabaseClient
         .from('subscriptions')
         .insert({
@@ -63,7 +52,6 @@ async function confirmPlan(plan, days, price) {
         return;
     }
     
-    // 創建配送日程
     const deliveries = [];
     for (let i = 0; i < days; i++) {
         const deliveryDate = new Date();
@@ -88,10 +76,9 @@ document.querySelectorAll('.plan-card').forEach(card => {
     const handleSelect = () => {
         const plan = card.dataset.plan;
         const days = parseInt(card.dataset.days);
-        const price = parseInt(card.dataset.price);
+        const price = parseFloat(card.dataset.price);
         if (plan) confirmPlan(plan, days, price);
     };
-    
     card.addEventListener('click', handleSelect);
     const btn = card.querySelector('.select-plan');
     if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); handleSelect(); });
