@@ -13,12 +13,18 @@ function generateInvitationCode() {
     return code;
 }
 
-// 生成簡短用戶ID
-function generateUserId(name) {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 6);
-    const cleanName = name.replace(/\s/g, '').toLowerCase().substring(0, 6);
-    return `${cleanName}_${timestamp}_${random}`;
+// 生成 UUID（使用 crypto.randomUUID）
+function generateUUID() {
+    // 使用瀏覽器原生 API 生成 UUID
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    // 備用方案：手動生成
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
 }
 
 // 驗證邀請碼（檢查是否存在且未被使用）
@@ -166,11 +172,13 @@ async function register() {
             referrerId = validation.data.created_by;
         }
         
-        // 3. 生成用戶ID和邀請碼
-        const userId = generateUserId(fullName);
+        // 3. 生成 UUID（標準格式）
+        const userId = generateUUID();
+        
+        // 4. 生成用戶的邀請碼
         const userInvitationCode = await generateUniqueInvitationCode(userId);
         
-        // 4. 儲存用戶到 Supabase
+        // 5. 儲存用戶到 Supabase（使用 UUID）
         const { error: insertError } = await supabaseClient
             .from('users')
             .insert({
@@ -189,10 +197,10 @@ async function register() {
             return;
         }
         
-        // 5. 儲存邀請碼到 invitation_codes 表
+        // 6. 儲存邀請碼到 invitation_codes 表
         await saveUserInvitationCode(userId, userInvitationCode);
         
-        // 6. 如果有使用邀請碼，標記為已使用
+        // 7. 如果有使用邀請碼，標記為已使用
         if (invitationCode && invitationCode.trim() !== '') {
             await useInvitationCode(invitationCode, userId, fullName);
         }
