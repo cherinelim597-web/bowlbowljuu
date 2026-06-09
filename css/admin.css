@@ -510,3 +510,101 @@ td {
     outline: none;
     border-color: var(--gold);
 }
+
+/* 表格專業風樣式 */
+.status-active {
+    background: rgba(46, 209, 90, 0.15);
+    color: #2ed15a;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    display: inline-block;
+}
+
+.badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    display: inline-block;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    color: #8a9abb;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: rgba(200, 161, 94, 0.2);
+    color: #c8a15e;
+}
+
+.input-group {
+    margin-bottom: 16px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #8a9abb;
+}
+
+.input-group input,
+.input-group select,
+.input-group textarea {
+    width: 100%;
+    padding: 12px;
+    background: #0f172a;
+    border: 1px solid #1e2a3a;
+    border-radius: 12px;
+    color: #eef5ff;
+    font-size: 14px;
+}
+
+.input-group textarea {
+    resize: vertical;
+    font-family: inherit;
+}
+
+.input-group small {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #8a9abb;
+}
+
+.btn-save {
+    background: #c8a15e;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    color: #0a0f1a;
+    font-weight: 600;
+    cursor: pointer;
+    flex: 1;
+}
+
+.btn-cancel {
+    background: transparent;
+    border: 1px solid #1e2a3a;
+    padding: 12px 20px;
+    border-radius: 12px;
+    color: #eef5ff;
+    cursor: pointer;
+    flex: 1;
+}
+
+.btn-small {
+    padding: 8px 16px;
+    background: #4a7cff;
+    border: none;
+    border-radius: 20px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+}
