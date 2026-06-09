@@ -626,10 +626,28 @@ td {
 }
 
 /* ============================================
-   收據管理頁面樣式
+   訂單號與收據管理頁面樣式
 ============================================ */
 
-/* 統計卡片區域 */
+/* 訂單號標籤 */
+.order-no-badge {
+    background: rgba(200, 161, 94, 0.15);
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-family: monospace;
+    color: #c8a15e;
+    display: inline-block;
+}
+
+.receipt-order-no {
+    font-size: 12px;
+    color: #c8a15e;
+    font-family: monospace;
+    margin: 4px 0;
+}
+
+/* 收據統計卡片 */
 .receipts-container {
     display: flex;
     flex-direction: column;
@@ -742,7 +760,7 @@ td {
     padding: 8px 16px;
     color: #eef5ff;
     font-size: 13px;
-    width: 200px;
+    width: 220px;
 }
 
 .receipt-search:focus {
@@ -795,7 +813,7 @@ td {
     display: flex;
     align-items: center;
     gap: 14px;
-    min-width: 200px;
+    min-width: 240px;
 }
 
 .receipt-avatar {
@@ -813,7 +831,7 @@ td {
 .receipt-user-name {
     font-weight: 600;
     color: #eef5ff;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .receipt-user-contact {

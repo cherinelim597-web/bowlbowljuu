@@ -59,7 +59,7 @@ async function loadReceiptsPage() {
                     <div class="receipt-list-header">
                         <h3><i class="fas fa-history"></i> 收據記錄</h3>
                         <div class="receipt-list-actions">
-                            <input type="text" id="receiptSearchInput" placeholder="🔍 搜尋用戶..." class="receipt-search">
+                            <input type="text" id="receiptSearchInput" placeholder="🔍 搜尋訂單號或用戶..." class="receipt-search">
                             <button class="btn-refresh" onclick="loadReceiptsPage()"><i class="fas fa-sync-alt"></i></button>
                         </div>
                     </div>
@@ -95,13 +95,16 @@ function renderReceiptList(receipts) {
     }
     
     return receipts.map(receipt => `
-        <div class="receipt-card" data-user-name="${(receipt.users?.full_name || '').toLowerCase()}">
+        <div class="receipt-card" data-order-no="${(receipt.order_no || '').toLowerCase()}" data-user-name="${(receipt.users?.full_name || '').toLowerCase()}">
             <div class="receipt-card-left">
                 <div class="receipt-avatar">
                     <i class="fas fa-user-circle"></i>
                 </div>
                 <div class="receipt-info">
                     <div class="receipt-user-name">${escapeHtml(receipt.users?.full_name || 'N/A')}</div>
+                    <div class="receipt-order-no">
+                        <i class="fas fa-hashtag"></i> ${escapeHtml(receipt.order_no || '無訂單號')}
+                    </div>
                     <div class="receipt-user-contact">
                         <span><i class="fas fa-envelope"></i> ${escapeHtml(receipt.users?.email || '未設置')}</span>
                         <span><i class="fas fa-phone"></i> ${escapeHtml(receipt.users?.phone || '未設置')}</span>
@@ -149,11 +152,12 @@ function filterReceipts(allReceipts, searchTerm) {
         return;
     }
     
+    const term = searchTerm.toLowerCase();
     const filtered = allReceipts.filter(receipt => {
+        const orderNo = (receipt.order_no || '').toLowerCase();
         const userName = (receipt.users?.full_name || '').toLowerCase();
         const userEmail = (receipt.users?.email || '').toLowerCase();
-        const term = searchTerm.toLowerCase();
-        return userName.includes(term) || userEmail.includes(term);
+        return orderNo.includes(term) || userName.includes(term) || userEmail.includes(term);
     });
     
     container.innerHTML = renderReceiptList(filtered);
@@ -184,44 +188,53 @@ function formatReceiptDate(dateStr) {
 
 // 顯示上傳收據彈窗
 async function showUploadReceiptModal() {
-    const { data: users } = await supabaseClient
-        .from('users')
-        .select('id, full_name, email')
-        .not('email', 'eq', ADMIN_EMAIL)
-        .order('full_name', { ascending: true });
+    // 獲取有訂閱的用戶及其訂單號
+    const { data: subscriptions } = await supabaseClient
+        .from('subscriptions')
+        .select(`
+            id,
+            order_no,
+            total_price,
+            plan_type,
+            users (id, full_name, email)
+        `)
+        .not('users.email', 'eq', ADMIN_EMAIL)
+        .order('created_at', { ascending: false });
     
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.id = 'uploadReceiptModal';
     modal.style.display = 'flex';
     modal.innerHTML = `
-        <div class="modal-card" style="max-width: 550px; width: 90%;">
+        <div class="modal-card" style="max-width: 600px; width: 90%;">
             <div class="modal-header">
                 <h3><i class="fas fa-upload" style="color: #c8a15e;"></i> 上傳收據</h3>
                 <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label><i class="fas fa-user"></i> 選擇用戶 <span class="required">*</span></label>
-                    <select id="receiptUserIdSelect" class="form-select">
-                        <option value="">-- 請選擇用戶 --</option>
-                        ${users?.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)} (${u.email})</option>`).join('')}
+                    <label><i class="fas fa-ticket-alt"></i> 選擇訂單 <span class="required">*</span></label>
+                    <select id="receiptOrderSelect" class="form-select">
+                        <option value="">-- 請選擇訂單 --</option>
+                        ${subscriptions?.map(sub => `
+                            <option value="${sub.id}" data-order-no="${sub.order_no}" data-amount="${sub.total_price}" data-user-id="${sub.users.id}" data-user-name="${escapeHtml(sub.users?.full_name)}">
+                                ${sub.order_no} - ${escapeHtml(sub.users?.full_name)} - RM ${sub.total_price}
+                            </option>
+                        `).join('')}
                     </select>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label><i class="fas fa-dollar-sign"></i> 金額 (RM) <span class="required">*</span></label>
-                        <input type="number" id="receiptAmountInput" class="form-input" placeholder="0.00" step="0.01">
-                    </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-credit-card"></i> 付款方式</label>
-                        <select id="receiptPaymentMethodSelect" class="form-select">
-                            <option value="credit_card">💳 信用卡</option>
-                            <option value="bank_transfer">🏦 銀行轉帳</option>
-                            <option value="cash">💵 貨到付款</option>
-                            <option value="touchngo">📱 Touch n Go</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label><i class="fas fa-dollar-sign"></i> 金額 (RM) <span class="required">*</span></label>
+                    <input type="number" id="receiptAmountInput" class="form-input" placeholder="0.00" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-credit-card"></i> 付款方式</label>
+                    <select id="receiptPaymentMethodSelect" class="form-select">
+                        <option value="credit_card">💳 信用卡</option>
+                        <option value="bank_transfer">🏦 銀行轉帳</option>
+                        <option value="cash">💵 貨到付款</option>
+                        <option value="touchngo">📱 Touch n Go</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label><i class="fas fa-image"></i> 收據圖片 <span class="required">*</span></label>
@@ -245,6 +258,20 @@ async function showUploadReceiptModal() {
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // 綁定訂單選擇事件，自動填充金額
+    const orderSelect = document.getElementById('receiptOrderSelect');
+    const amountInput = document.getElementById('receiptAmountInput');
+    
+    if (orderSelect && amountInput) {
+        orderSelect.onchange = () => {
+            const selectedOption = orderSelect.options[orderSelect.selectedIndex];
+            const amount = selectedOption?.dataset.amount;
+            if (amount && amount !== 'undefined') {
+                amountInput.value = amount;
+            }
+        };
+    }
     
     // 文件上傳區域事件
     const uploadArea = document.getElementById('fileUploadArea');
@@ -302,18 +329,21 @@ function clearFileSelection() {
 
 // 執行上傳
 async function uploadReceipt() {
-    const userIdSelect = document.getElementById('receiptUserIdSelect');
+    const orderSelect = document.getElementById('receiptOrderSelect');
     const amountInput = document.getElementById('receiptAmountInput');
     const paymentMethodSelect = document.getElementById('receiptPaymentMethodSelect');
     const fileInput = document.getElementById('receiptFileInput');
     
-    const userId = userIdSelect?.value;
+    const selectedOption = orderSelect?.options[orderSelect.selectedIndex];
+    const subscriptionId = orderSelect?.value;
+    const userId = selectedOption?.dataset.userId;
+    const orderNo = selectedOption?.dataset.orderNo;
     const amount = parseFloat(amountInput?.value) || 0;
     const paymentMethod = paymentMethodSelect?.value;
     const file = fileInput?.files[0];
     
-    if (!userId) {
-        showToast('請選擇用戶', 'error');
+    if (!subscriptionId) {
+        showToast('請選擇訂單', 'error');
         return;
     }
     
@@ -331,13 +361,6 @@ async function uploadReceipt() {
     if (modal) modal.remove();
     
     try {
-        const { data: subscription } = await supabaseClient
-            .from('subscriptions')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .maybeSingle();
-        
         const fileExt = file.name.split('.').pop();
         const fileName = `receipt_${userId}_${Date.now()}.${fileExt}`;
         
@@ -356,7 +379,8 @@ async function uploadReceipt() {
             .from('receipts')
             .insert({
                 user_id: userId,
-                subscription_id: subscription?.id || null,
+                subscription_id: subscriptionId,
+                order_no: orderNo,
                 amount: amount,
                 receipt_url: urlData.publicUrl,
                 payment_method: paymentMethod,
@@ -366,6 +390,12 @@ async function uploadReceipt() {
         if (insertError) {
             showToast('保存失敗: ' + insertError.message, 'error');
         } else {
+            // 更新訂閱的支付狀態
+            await supabaseClient
+                .from('subscriptions')
+                .update({ payment_status: 'paid' })
+                .eq('id', subscriptionId);
+            
             showToast('收據上傳成功！');
             loadReceiptsPage();
             if (document.getElementById('page_users')?.classList.contains('active') && typeof loadUsersPage === 'function') {
@@ -400,114 +430,4 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-}
-
-// 為用戶上傳收據（從用戶管理頁面調用）
-async function uploadReceiptForUser(userId) {
-    const { data: user } = await supabaseClient
-        .from('users')
-        .select('full_name, email')
-        .eq('id', userId)
-        .single();
-    
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal-card" style="max-width: 500px; width: 90%;">
-            <div class="modal-header">
-                <h3><i class="fas fa-upload"></i> 為 ${escapeHtml(user?.full_name)} 上傳收據</h3>
-                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>金額 (RM) <span class="required">*</span></label>
-                    <input type="number" id="receiptAmountUserInput" class="form-input" placeholder="0.00" step="0.01">
-                </div>
-                <div class="form-group">
-                    <label>付款方式</label>
-                    <select id="receiptPaymentMethodUserSelect" class="form-select">
-                        <option value="credit_card">💳 信用卡</option>
-                        <option value="bank_transfer">🏦 銀行轉帳</option>
-                        <option value="cash">💵 貨到付款</option>
-                        <option value="touchngo">📱 Touch n Go</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>收據圖片 <span class="required">*</span></label>
-                    <input type="file" id="receiptFileUserInput" accept="image/*,.pdf" class="form-input-file">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
-                <button class="btn-submit" id="uploadReceiptUserBtn">上傳</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    
-    const uploadBtn = document.getElementById('uploadReceiptUserBtn');
-    if (uploadBtn) uploadBtn.onclick = () => uploadReceiptForUserConfirm(userId);
-}
-
-async function uploadReceiptForUserConfirm(userId) {
-    const amountInput = document.getElementById('receiptAmountUserInput');
-    const paymentMethodSelect = document.getElementById('receiptPaymentMethodUserSelect');
-    const fileInput = document.getElementById('receiptFileUserInput');
-    
-    const amount = parseFloat(amountInput?.value) || 0;
-    const paymentMethod = paymentMethodSelect?.value;
-    const file = fileInput?.files[0];
-    
-    if (amount <= 0) {
-        showToast('請輸入有效的金額', 'error');
-        return;
-    }
-    
-    if (!file) {
-        showToast('請選擇收據文件', 'error');
-        return;
-    }
-    
-    const modal = document.querySelector('.modal-overlay');
-    if (modal) modal.remove();
-    
-    try {
-        const { data: subscription } = await supabaseClient
-            .from('subscriptions')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .maybeSingle();
-        
-        const fileExt = file.name.split('.').pop();
-        const fileName = `receipt_${userId}_${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabaseClient.storage
-            .from('receipts')
-            .upload(fileName, file);
-        
-        if (uploadError) {
-            showToast('上傳失敗: ' + uploadError.message, 'error');
-            return;
-        }
-        
-        const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
-        
-        await supabaseClient.from('receipts').insert({
-            user_id: userId,
-            subscription_id: subscription?.id || null,
-            amount: amount,
-            receipt_url: urlData.publicUrl,
-            payment_method: paymentMethod,
-            created_at: new Date()
-        });
-        
-        showToast('收據上傳成功！');
-        if (document.getElementById('page_receipts')?.classList.contains('active')) loadReceiptsPage();
-        if (document.getElementById('page_users')?.classList.contains('active') && typeof loadUsersPage === 'function') loadUsersPage();
-        
-    } catch (err) {
-        console.error('Upload error:', err);
-        showToast('上傳失敗: ' + err.message, 'error');
-    }
 }

@@ -30,13 +30,6 @@ const SUBSCRIPTION_STATUS = [
     'paused'
 ];
 
-// 支付狀態選項
-const PAYMENT_STATUS = [
-    { value: 'paid', label: '✅ 已支付', class: 'badge-active' },
-    { value: 'unpaid', label: '⏳ 未支付', class: 'badge-pending' },
-    { value: 'partial', label: '💰 部分支付', class: 'badge-warning' }
-];
-
 // 獲取方案名稱
 function getPlanName(planType) {
     return PLAN_CONFIG[planType]?.name || planType;
@@ -170,7 +163,6 @@ async function confirmAddUser() {
         return;
     }
     
-    // 檢查姓名是否已存在
     const { data: existingUser } = await supabaseClient
         .from('users')
         .select('id')
@@ -336,8 +328,9 @@ async function loadUsersPage() {
             
             <!-- 工具欄 -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-                <div style="display: flex; gap: 12px;">
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                     <input type="text" id="searchInput" placeholder="🔍 搜索用戶名或郵箱..." style="background: #0f172a; border: 1px solid #1e2a3a; border-radius: 40px; padding: 10px 20px; color: #eef5ff; width: 260px;">
+                    <input type="text" id="searchOrderNo" placeholder="🔍 訂單號搜索..." style="background: #0f172a; border: 1px solid #1e2a3a; border-radius: 40px; padding: 10px 20px; color: #eef5ff; width: 220px;">
                     <select id="planFilter" style="background: #0f172a; border: 1px solid #1e2a3a; border-radius: 40px; padding: 10px 16px; color: #eef5ff;">
                         <option value="all">全部方案</option>
                         <option value="single">單次</option>
@@ -381,6 +374,7 @@ async function loadUsersPage() {
         
         // 綁定搜索和過濾事件
         document.getElementById('searchInput')?.addEventListener('keyup', () => filterUsers(userData));
+        document.getElementById('searchOrderNo')?.addEventListener('keyup', () => filterUsers(userData));
         document.getElementById('planFilter')?.addEventListener('change', () => filterUsers(userData));
         
     } catch (err) {
@@ -436,33 +430,36 @@ function renderUserTable(userData) {
                     <div style="font-weight: 600; color: #eef5ff;">${escapeHtml(user.full_name || 'N/A')}</div>
                     <div style="font-size: 11px; color: #6b7a8a; margin-top: 4px;">ID: ${user.id.substring(0, 12)}...</div>
                     <div style="font-size: 11px; color: #6b7a8a; margin-top: 2px;">📅 ${formatDate(user.created_at)}</div>
-                 </td>
+                  </td
                 <td style="padding: 16px 20px;">
                     <div style="font-size: 13px;"><i class="fas fa-envelope" style="width: 20px; color: #c8a15e;"></i> ${escapeHtml(user.email || '未設置')}</div>
                     <div style="font-size: 13px; margin-top: 6px;"><i class="fas fa-phone" style="width: 20px; color: #c8a15e;"></i> ${escapeHtml(user.phone || '未設置')}</div>
                     <div style="font-size: 13px; margin-top: 6px;"><i class="fas fa-map-marker-alt" style="width: 20px; color: #c8a15e;"></i> ${escapeHtml(user.address || '未設置')}</div>
-                 </td>
+                  </td
                 <td style="padding: 16px 20px;">
                     <div><span class="badge badge-active" style="background: rgba(200,161,94,0.15); color: #c8a15e;">${planName}</span></div>
                     <div style="font-size: 13px; margin-top: 6px;">💰 ${planPrice}</div>
                     <div style="font-size: 12px; margin-top: 4px; color: #8a9abb;">${sub ? sub.payment_method || '未設置' : '—'}</div>
                     ${paymentStatusHtml}
-                 </td>
+                  </td
                 <td style="padding: 16px 20px;">
                     ${sub ? `
+                        <div style="font-size: 12px; color: #c8a15e; margin-bottom: 4px;">
+                            <i class="fas fa-hashtag"></i> ${sub.order_no || '無訂單號'}
+                        </div>
                         <div style="font-size: 13px;">📅 ${startDate} → ${endDate}</div>
                         <div style="font-size: 12px; margin-top: 4px;">
                             <span class="badge ${statusClass}" style="background: ${statusText === 'Active' ? 'rgba(46,209,90,0.15)' : 'rgba(255,90,90,0.15)'}; color: ${statusText === 'Active' ? '#2ed15a' : '#ff5a5a'};">${statusText}</span>
                         </div>
                     ` : '<span style="color: #8a9abb;">無訂閱</span>'}
-                 </td>
+                  </td
                 <td style="padding: 16px 20px;">
                     ${progressBar}
-                 </td>
+                  </td
                 <td style="padding: 16px 20px;">
                     <div style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</div>
                     <div style="font-size: 11px; color: #6b7a8a; margin-top: 2px;">總消費</div>
-                 </td>
+                  </td
                 <td style="padding: 16px 20px; text-align: center;">
                     <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯" style="background: transparent; border: none; color: #8a9abb; cursor: pointer; padding: 6px 10px;">
                         <i class="fas fa-edit"></i>
@@ -473,7 +470,7 @@ function renderUserTable(userData) {
                     <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情" style="background: transparent; border: none; color: #8a9abb; cursor: pointer; padding: 6px 10px;">
                         <i class="fas fa-eye"></i>
                     </button>
-                 </td>
+                  </td
               </tr>
         `;
     }).join('');
@@ -482,6 +479,7 @@ function renderUserTable(userData) {
 // 過濾用戶
 function filterUsers(allUsers) {
     const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
+    const orderNoSearch = document.getElementById('searchOrderNo')?.value.toLowerCase() || '';
     const planFilter = document.getElementById('planFilter')?.value || 'all';
     
     const filtered = allUsers.filter(user => {
@@ -489,12 +487,17 @@ function filterUsers(allUsers) {
             user.full_name?.toLowerCase().includes(searchTerm) ||
             user.email?.toLowerCase().includes(searchTerm);
         
+        let matchesOrderNo = true;
+        if (orderNoSearch !== '') {
+            matchesOrderNo = user.subscription?.order_no?.toLowerCase().includes(orderNoSearch) || false;
+        }
+        
         let matchesPlan = true;
         if (planFilter !== 'all') {
             matchesPlan = user.subscription?.plan_type === planFilter;
         }
         
-        return matchesSearch && matchesPlan;
+        return matchesSearch && matchesOrderNo && matchesPlan;
     });
     
     renderUserTable(filtered);
@@ -550,6 +553,10 @@ async function editUser(userId) {
             
             <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 15px; margin: 15px 0;">
                 <h4 style="color: #c8a15e; margin-bottom: 15px;"><i class="fas fa-calendar-alt"></i> 訂閱信息</h4>
+                <div class="input-group">
+                    <label>訂單號</label>
+                    <input type="text" id="editOrderNo" value="${subscription?.order_no || ''}" readonly style="background: rgba(0,0,0,0.3);">
+                </div>
                 <div class="input-group">
                     <label>訂閱狀態</label>
                     <select id="editSubscriptionStatus">${SUBSCRIPTION_STATUS.map(s => `<option value="${s}" ${subscription?.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
@@ -760,6 +767,7 @@ async function viewUserDetail(userId) {
             <hr style="margin: 15px 0; border-color: #1e2a3a;">
             <h4>📋 訂閱信息</h4>
             ${subscription ? `
+                <div><strong>訂單號：</strong> <span class="order-no-badge">${escapeHtml(subscription.order_no || '無')}</span></div>
                 <div><strong>方案：</strong> ${getPlanName(subscription.plan_type)}</div>
                 <div><strong>期間：</strong> ${formatDate(subscription.start_date)} - ${formatDate(subscription.end_date)}</div>
                 <div><strong>總餐數：</strong> ${subscription.total_days} 餐</div>
@@ -784,7 +792,7 @@ async function viewUserDetail(userId) {
 async function uploadReceiptForUser(userId) {
     const { data: subscription } = await supabaseClient
         .from('subscriptions')
-        .select('id')
+        .select('id, order_no, total_price')
         .eq('user_id', userId)
         .eq('status', 'active')
         .maybeSingle();
@@ -794,17 +802,134 @@ async function uploadReceiptForUser(userId) {
         return;
     }
     
-    document.getElementById('receiptUserId').value = userId;
-    document.getElementById('receiptAmount').value = '';
-    document.getElementById('receiptFile').value = '';
-    document.getElementById('receiptModal').style.display = 'flex';
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 500px; width: 90%;">
+            <div class="modal-header">
+                <h3><i class="fas fa-upload"></i> 上傳收據</h3>
+                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>訂單號</label>
+                    <input type="text" class="form-input" value="${subscription.order_no || '無訂單號'}" readonly style="background: rgba(0,0,0,0.3);">
+                </div>
+                <div class="form-group">
+                    <label>金額 (RM) <span class="required">*</span></label>
+                    <input type="number" id="receiptAmountUserInput" class="form-input" value="${subscription.total_price}" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>付款方式</label>
+                    <select id="receiptPaymentMethodUserSelect" class="form-select">
+                        <option value="credit_card">💳 信用卡</option>
+                        <option value="bank_transfer">🏦 銀行轉帳</option>
+                        <option value="cash">💵 貨到付款</option>
+                        <option value="touchngo">📱 Touch n Go</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>收據圖片 <span class="required">*</span></label>
+                    <input type="file" id="receiptFileUserInput" accept="image/*,.pdf" class="form-input-file">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
+                <button class="btn-submit" id="uploadReceiptUserBtn">上傳</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    const uploadBtn = document.getElementById('uploadReceiptUserBtn');
+    if (uploadBtn) uploadBtn.onclick = () => uploadReceiptForUserConfirm(userId, subscription.id, subscription.order_no);
+}
+
+async function uploadReceiptForUserConfirm(userId, subscriptionId, orderNo) {
+    const amountInput = document.getElementById('receiptAmountUserInput');
+    const paymentMethodSelect = document.getElementById('receiptPaymentMethodUserSelect');
+    const fileInput = document.getElementById('receiptFileUserInput');
+    
+    const amount = parseFloat(amountInput?.value) || 0;
+    const paymentMethod = paymentMethodSelect?.value;
+    const file = fileInput?.files[0];
+    
+    if (amount <= 0) {
+        showToast('請輸入有效的金額', 'error');
+        return;
+    }
+    
+    if (!file) {
+        showToast('請選擇收據文件', 'error');
+        return;
+    }
+    
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) modal.remove();
+    
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `receipt_${userId}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabaseClient.storage
+            .from('receipts')
+            .upload(fileName, file);
+        
+        if (uploadError) {
+            showToast('上傳失敗: ' + uploadError.message, 'error');
+            return;
+        }
+        
+        const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
+        
+        await supabaseClient.from('receipts').insert({
+            user_id: userId,
+            subscription_id: subscriptionId,
+            order_no: orderNo,
+            amount: amount,
+            receipt_url: urlData.publicUrl,
+            payment_method: paymentMethod,
+            created_at: new Date()
+        });
+        
+        // 更新訂閱的支付狀態
+        await supabaseClient
+            .from('subscriptions')
+            .update({ payment_status: 'paid' })
+            .eq('id', subscriptionId);
+        
+        showToast('收據上傳成功！');
+        if (document.getElementById('page_receipts')?.classList.contains('active')) {
+            if (typeof loadReceiptsPage === 'function') loadReceiptsPage();
+        }
+        if (document.getElementById('page_users')?.classList.contains('active')) {
+            loadUsersPage();
+        }
+        
+    } catch (err) {
+        console.error('Upload error:', err);
+        showToast('上傳失敗: ' + err.message, 'error');
+    }
 }
 
 // 導出用戶數據
 async function exportUsersData() {
-    const { data: users } = await supabaseClient.from('users').select('*').not('email', 'eq', ADMIN_EMAIL);
-    const csv = [['姓名', '郵箱', '電話', '地址', '付款方式', '註冊時間']];
-    users.forEach(u => csv.push([u.full_name, u.email, u.phone, u.address, u.payment_method, u.created_at]));
+    const { data: users } = await supabaseClient.from('users').select('*, subscriptions(order_no, plan_type, total_price, payment_status)').not('email', 'eq', ADMIN_EMAIL);
+    const csv = [['姓名', '郵箱', '電話', '地址', '訂單號', '方案', '金額', '支付狀態', '註冊時間']];
+    users.forEach(u => {
+        const sub = u.subscriptions;
+        csv.push([
+            u.full_name,
+            u.email,
+            u.phone,
+            u.address,
+            sub?.order_no || '',
+            sub?.plan_type || '',
+            sub?.total_price || '',
+            sub?.payment_status || '',
+            u.created_at
+        ]);
+    });
     const blob = new Blob([csv.map(row => row.join(',')).join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

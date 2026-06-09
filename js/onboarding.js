@@ -2,6 +2,16 @@
 // 方案選擇（使用 localStorage）
 // ============================================
 
+// 生成訂單號
+function generateOrderNo() {
+    const now = getMalaysiaDate();
+    const dateStr = now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0');
+    const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+    return `ORD${dateStr}${randomNum}`;
+}
+
 function getCurrentUser() {
     const userStr = localStorage.getItem('currentUser');
     if (!userStr) return null;
@@ -34,6 +44,22 @@ async function confirmPlan(plan, days, price) {
         return;
     }
     
+    // 生成唯一訂單號
+    let orderNo = generateOrderNo();
+    let isUnique = false;
+    while (!isUnique) {
+        const { data: existing } = await supabaseClient
+            .from('subscriptions')
+            .select('order_no')
+            .eq('order_no', orderNo)
+            .maybeSingle();
+        if (!existing) {
+            isUnique = true;
+        } else {
+            orderNo = generateOrderNo();
+        }
+    }
+    
     // 使用馬來西亞時間
     const startDate = getMalaysiaDate();
     let endDate = getMalaysiaDate();
@@ -52,6 +78,8 @@ async function confirmPlan(plan, days, price) {
             status: 'active',
             total_price: price,
             payment_method: 'pending',
+            payment_status: 'unpaid',
+            order_no: orderNo,
             created_at: new Date()
         })
         .select()
@@ -78,7 +106,7 @@ async function confirmPlan(plan, days, price) {
     
     await supabaseClient.from('deliveries').insert(deliveries);
     
-    alert('Subscription successful! Welcome to Healthy Bowl!');
+    alert(`Subscription successful!\n訂單號：${orderNo}\nWelcome to Healthy Bowl!`);
     location.href = 'dashboard.html';
 }
 

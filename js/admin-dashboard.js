@@ -28,6 +28,13 @@ async function loadDashboard() {
         
         const activeSubscriptions = subscriptions?.length || 0;
         
+        // 總訂單數
+        const { data: totalOrders } = await supabaseClient
+            .from('subscriptions')
+            .select('id')
+            .not('users.email', 'eq', ADMIN_EMAIL);
+        const totalOrdersCount = totalOrders?.length || 0;
+        
         // 獲取未支付的訂閱（active 但未支付）
         const { data: unpaidSubscriptions } = await supabaseClient
             .from('subscriptions')
@@ -105,9 +112,9 @@ async function loadDashboard() {
                     <div class="stat-label">活躍訂閱</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-truck"></i></div>
-                    <div class="stat-value">${todayPending}</div>
-                    <div class="stat-label">今日待配送</div>
+                    <div class="stat-icon"><i class="fas fa-ticket-alt"></i></div>
+                    <div class="stat-value">${totalOrdersCount}</div>
+                    <div class="stat-label">總訂單數</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
@@ -207,7 +214,7 @@ async function loadDashboard() {
                 </tr>
             `).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="5">暫無用戶</td>';
+            tbody.innerHTML = '<tr><td colspan="5">暫無用戶<\/td><\/tr>';
         }
         
     } catch (err) {
@@ -238,6 +245,7 @@ async function showUnpaidModal() {
                 <table style="width: 100%; min-width: 600px;">
                     <thead>
                         <tr style="background: rgba(200,161,94,0.1);">
+                            <th style="padding: 10px;">訂單號</th>
                             <th style="padding: 10px;">用戶</th>
                             <th style="padding: 10px;">方案</th>
                             <th style="padding: 10px;">金額</th>
@@ -248,6 +256,9 @@ async function showUnpaidModal() {
                     <tbody>
                         ${unpaidSubscriptions?.map(sub => `
                             <tr style="border-bottom: 1px solid #1e2a3a;">
+                                <td style="padding: 12px 8px;">
+                                    <span class="order-no-badge">${escapeHtml(sub.order_no || '無')}</span>
+                                 </td>
                                 <td style="padding: 12px 8px;">
                                     <strong>${escapeHtml(sub.users?.full_name || 'N/A')}</strong><br>
                                     <small>📧 ${escapeHtml(sub.users?.email || 'N/A')}</small><br>
@@ -293,7 +304,7 @@ async function markAsPaid(subscriptionId, userId) {
         document.querySelector('.modal-overlay')?.remove();
         loadDashboard();
         if (document.getElementById('page_users')?.classList.contains('active')) {
-            loadUsersPage();
+            if (typeof loadUsersPage === 'function') loadUsersPage();
         }
     }
 }
