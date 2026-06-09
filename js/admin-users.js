@@ -1,5 +1,5 @@
 // ============================================
-// 用戶管理模組
+// 用戶管理模組 - 包含編輯訂閱週期
 // ============================================
 
 // ADMIN_EMAIL 已在 admin-common.js 中定義
@@ -11,7 +11,6 @@ async function loadUsersPage() {
     container.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
-        // 獲取所有用戶（排除管理員）
         const { data: users, error } = await supabaseClient
             .from('users')
             .select('*')
@@ -25,10 +24,8 @@ async function loadUsersPage() {
             return;
         }
         
-        // 獲取每個用戶的訂閱和配送統計
         const userData = [];
         for (const user of users) {
-            // 訂閱信息
             const { data: subscription } = await supabaseClient
                 .from('subscriptions')
                 .select('*')
@@ -36,7 +33,6 @@ async function loadUsersPage() {
                 .eq('status', 'active')
                 .maybeSingle();
             
-            // 配送統計
             const { data: deliveries } = await supabaseClient
                 .from('deliveries')
                 .select('status')
@@ -45,7 +41,6 @@ async function loadUsersPage() {
             const totalDeliveries = deliveries?.length || 0;
             const deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
             
-            // 收據統計
             const { data: receipts } = await supabaseClient
                 .from('receipts')
                 .select('amount')
@@ -53,22 +48,10 @@ async function loadUsersPage() {
             
             const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
             
-            userData.push({
-                ...user,
-                subscription,
-                totalDeliveries,
-                deliveredCount,
-                totalPaid
-            });
+            userData.push({ ...user, subscription, totalDeliveries, deliveredCount, totalPaid });
         }
         
-        const planNames = { 
-    single: '單次', 
-    weekly: '週方案', 
-    '1month': '1個月', 
-    '2months': '2個月', 
-    '3months': '3個月' 
-};
+        const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
         
         container.innerHTML = `
             <div class="table-container">
@@ -77,10 +60,10 @@ async function loadUsersPage() {
                     <button class="btn-small" onclick="exportUsersData()" style="background: #2d6a4f;"><i class="fas fa-download"></i> 導出數據</button>
                 </div>
                 <div style="overflow-x: auto;">
-                    <table style="width: 100%; min-width: 800px;">
+                    <table style="width: 100%; min-width: 1000px;">
                         <thead>
                             <tr>
-                                <th>用戶信息</th><th>聯繫方式</th><th>當前方案</th><th>配送進度</th><th>消費金額</th><th>操作</th>
+                                <th>用戶信息</th><th>聯繫方式</th><th>當前方案</th><th>週期</th><th>配送進度</th><th>消費金額</th><th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="usersTableBody"></tbody>
@@ -93,6 +76,8 @@ async function loadUsersPage() {
         tbody.innerHTML = userData.map(user => {
             const sub = user.subscription;
             const progressPercent = sub ? (user.deliveredCount / sub.total_days) * 100 : 0;
+            const startDate = sub ? new Date(sub.start_date).toLocaleDateString() : 'N/A';
+            const endDate = sub ? new Date(sub.end_date).toLocaleDateString() : 'N/A';
             
             return `
                 <tr>
@@ -107,11 +92,17 @@ async function loadUsersPage() {
                         📍 ${escapeHtml(user.address || 'N/A')}
                     </td>
                     <td>
+                        ${sub ? `<span class="badge badge-active">${planNames[sub.plan_type]}</span><br>
+                        <small>💰 RM ${sub.total_price}</small>` : '<span class="badge badge-expired">無訂閱</span>'}
+                    </td>
+                    <td>
                         ${sub ? `
-                            <span class="badge badge-active">${planNames[sub.plan_type]}</span><br>
-                            <small>${formatDate(sub.start_date)} - ${formatDate(sub.end_date)}</small><br>
-                            <small>💰 RM ${sub.total_price}</small>
-                        ` : '<span class="badge badge-expired">無訂閱</span>'}
+                            <small>📅 開始: ${startDate}</small><br>
+                            <small>📅 結束: ${endDate}</small><br>
+                            <button class="btn-small" style="margin-top: 8px; background: #4a7cff;" onclick="editSubscriptionPeriod('${user.id}', '${sub.id}')">
+                                <i class="fas fa-calendar-alt"></i> 調整週期
+                            </button>
+                        ` : '—'}
                     </td>
                     <td>
                         ${sub ? `
@@ -122,10 +113,7 @@ async function loadUsersPage() {
                             <small>📦 剩餘 ${sub.total_days - user.deliveredCount} 天</small>
                         ` : '—'}
                     </td>
-                    <td>
-                        RM ${user.totalPaid.toLocaleString()}<br>
-                        <small>💰 總消費</small>
-                    </td>
+                    <td>RM ${user.totalPaid.toLocaleString()}<br><small>💰 總消費</small></td>
                     <td>
                         <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯"><i class="fas fa-edit"></i></button>
                         <button class="btn-icon" onclick="uploadReceiptForUser('${user.id}')" title="上傳收據"><i class="fas fa-receipt"></i></button>
@@ -139,6 +127,118 @@ async function loadUsersPage() {
         console.error('Users page error:', err);
         container.innerHTML = '<div class="table-container"><p>加載失敗</p></div>';
     }
+}
+
+// 編輯訂閱週期
+async function editSubscriptionPeriod(userId, subscriptionId) {
+    // 獲取當前訂閱信息
+    const { data: subscription, error } = await supabaseClient
+        .from('subscriptions')
+        .select('*')
+        .eq('id', subscriptionId)
+        .single();
+    
+    if (error) {
+        showToast('獲取訂閱信息失敗', 'error');
+        return;
+    }
+    
+    const startDate = new Date(subscription.start_date).toISOString().split('T')[0];
+    const endDate = new Date(subscription.end_date).toISOString().split('T')[0];
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-card" style="width: 500px;">
+            <h3><i class="fas fa-calendar-alt"></i> 調整訂閱週期</h3>
+            <div class="input-group" style="margin-top: 20px;">
+                <label>用戶名稱</label>
+                <input type="text" value="${escapeHtml(subscription.user_id)}" disabled style="opacity:0.7;">
+            </div>
+            <div class="input-group">
+                <label>當前方案</label>
+                <input type="text" value="${subscription.plan_type}" disabled style="opacity:0.7;">
+            </div>
+            <div class="input-group">
+                <label>開始日期</label>
+                <input type="date" id="editStartDate" value="${startDate}">
+            </div>
+            <div class="input-group">
+                <label>結束日期</label>
+                <input type="date" id="editEndDate" value="${endDate}">
+            </div>
+            <div class="input-group">
+                <label>調整說明</label>
+                <textarea id="editReason" placeholder="請填寫調整原因（如：用戶要求延期、暫停等）" style="width:100%; padding:12px; background:#0f172a; border:1px solid #1e2a3a; border-radius:12px; color:#fff; resize:vertical;"></textarea>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="btn-save" onclick="saveSubscriptionPeriod('${subscriptionId}', '${userId}')">保存修改</button>
+                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// 保存訂閱週期修改
+async function saveSubscriptionPeriod(subscriptionId, userId) {
+    const newStartDate = document.getElementById('editStartDate').value;
+    const newEndDate = document.getElementById('editEndDate').value;
+    const reason = document.getElementById('editReason').value;
+    
+    if (!newStartDate || !newEndDate) {
+        showToast('請填寫開始和結束日期', 'error');
+        return;
+    }
+    
+    const start = new Date(newStartDate);
+    const end = new Date(newEndDate);
+    
+    if (end <= start) {
+        showToast('結束日期必須晚於開始日期', 'error');
+        return;
+    }
+    
+    // 計算新的總天數
+    const diffTime = Math.abs(end - start);
+    const newTotalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    
+    // 獲取當前訂閱信息
+    const { data: subscription } = await supabaseClient
+        .from('subscriptions')
+        .select('*')
+        .eq('id', subscriptionId)
+        .single();
+    
+    if (!subscription) {
+        showToast('找不到訂閱信息', 'error');
+        return;
+    }
+    
+    // 更新訂閱
+    const { error: updateError } = await supabaseClient
+        .from('subscriptions')
+        .update({
+            start_date: newStartDate,
+            end_date: newEndDate,
+            total_days: newTotalDays
+        })
+        .eq('id', subscriptionId);
+    
+    if (updateError) {
+        showToast('更新失敗: ' + updateError.message, 'error');
+        return;
+    }
+    
+    // 記錄調整日誌（可選：創建一個 subscription_logs 表）
+    console.log(`訂閱週期已調整: 用戶 ${userId}, 新週期 ${newStartDate} 至 ${newEndDate}, 原因: ${reason}`);
+    
+    // 關閉彈窗
+    document.querySelector('.modal-overlay')?.remove();
+    
+    showToast('訂閱週期已更新！');
+    loadUsersPage(); // 刷新頁面
 }
 
 // 查看用戶詳情
@@ -187,6 +287,120 @@ async function viewUserDetail(userId) {
         </div>
     `;
     document.body.appendChild(modal);
+}
+
+// 編輯用戶信息
+async function editUser(userId) {
+    const { data: user } = await supabaseClient
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+    
+    if (!user) return;
+    
+    document.getElementById('editUserId').value = userId;
+    document.getElementById('editFullName').value = user.full_name || '';
+    document.getElementById('editPhone').value = user.phone || '';
+    document.getElementById('editAddress').value = user.address || '';
+    document.getElementById('userModal').style.display = 'flex';
+}
+
+async function saveUserEdit() {
+    const userId = document.getElementById('editUserId').value;
+    const fullName = document.getElementById('editFullName').value;
+    const phone = document.getElementById('editPhone').value;
+    const address = document.getElementById('editAddress').value;
+    
+    const { error } = await supabaseClient
+        .from('users')
+        .update({ full_name: fullName, phone, address })
+        .eq('id', userId);
+    
+    if (error) {
+        showToast('Update failed: ' + error.message, 'error');
+    } else {
+        showToast('User updated successfully');
+        closeUserModal();
+        loadUsersPage();
+    }
+}
+
+function closeUserModal() {
+    document.getElementById('userModal').style.display = 'none';
+}
+
+function closeReceiptModal() {
+    document.getElementById('receiptModal').style.display = 'none';
+}
+
+// 上傳收據
+async function uploadReceiptForUser(userId) {
+    const { data: subscription } = await supabaseClient
+        .from('subscriptions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .maybeSingle();
+    
+    if (!subscription) {
+        showToast('User has no active subscription. Please ask them to subscribe first.', 'error');
+        return;
+    }
+    
+    document.getElementById('receiptUserId').value = userId;
+    document.getElementById('receiptAmount').value = '';
+    document.getElementById('receiptFile').value = '';
+    document.getElementById('receiptModal').style.display = 'flex';
+}
+
+async function uploadReceipt() {
+    const userId = document.getElementById('receiptUserId').value;
+    const amount = parseInt(document.getElementById('receiptAmount').value) || 0;
+    const file = document.getElementById('receiptFile').files[0];
+    
+    if (!file) {
+        showToast('Please select a file', 'error');
+        return;
+    }
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}_receipt_${Date.now()}.${fileExt}`;
+    
+    const { error: uploadError } = await supabaseClient.storage
+        .from('receipts')
+        .upload(fileName, file);
+    
+    if (uploadError) {
+        showToast('Upload failed: ' + uploadError.message, 'error');
+        return;
+    }
+    
+    const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
+    
+    const { data: subscription } = await supabaseClient
+        .from('subscriptions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .maybeSingle();
+    
+    if (subscription) {
+        await supabaseClient.from('receipts').insert({
+            user_id: userId,
+            subscription_id: subscription.id,
+            amount: amount,
+            receipt_url: urlData.publicUrl,
+            payment_method: 'admin_upload',
+            created_at: new Date()
+        });
+    }
+    
+    showToast(`Receipt uploaded successfully! Amount: RM ${amount}`);
+    closeReceiptModal();
+    if (document.getElementById('page_receipts')?.classList.contains('active')) {
+        loadReceiptsPage();
+    }
 }
 
 // 導出用戶數據

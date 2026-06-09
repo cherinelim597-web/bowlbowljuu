@@ -418,3 +418,20 @@ td {
 .page.active {
     display: block !important;
 }
+
+/* 在 admin.css 中添加 */
+.btn-small {
+    padding: 6px 12px;
+    background: var(--primary);
+    border: none;
+    border-radius: 20px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s;
+}
+
+.btn-small:hover {
+    opacity: 0.8;
+    transform: translateY(-1px);
+}
