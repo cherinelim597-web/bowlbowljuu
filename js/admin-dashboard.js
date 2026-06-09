@@ -15,7 +15,7 @@ async function loadDashboard() {
         const { data: allUsers } = await supabaseClient
             .from('users')
             .select('*')
-            .not('email', 'eq', ADMIN_EMAIL);
+            .neq('email', ADMIN_EMAIL);
         
         const totalUsers = allUsers?.length || 0;
         
@@ -24,15 +24,15 @@ async function loadDashboard() {
             .from('subscriptions')
             .select('*, users!inner(email)')
             .eq('status', 'active')
-            .not('users.email', 'eq', ADMIN_EMAIL);
+            .neq('users.email', ADMIN_EMAIL);
         
         const activeSubscriptions = subscriptions?.length || 0;
         
         // 總訂單數
         const { data: totalOrders } = await supabaseClient
             .from('subscriptions')
-            .select('id')
-            .not('users.email', 'eq', ADMIN_EMAIL);
+            .select('id, users!inner(email)')
+            .neq('users.email', ADMIN_EMAIL);
         const totalOrdersCount = totalOrders?.length || 0;
         
         // 獲取未支付的訂閱（active 但未支付）
@@ -41,7 +41,7 @@ async function loadDashboard() {
             .select('*, users!inner(full_name, email, phone)')
             .eq('status', 'active')
             .eq('payment_status', 'unpaid')
-            .not('users.email', 'eq', ADMIN_EMAIL);
+            .neq('users.email', ADMIN_EMAIL);
         
         const unpaidCount = unpaidSubscriptions?.length || 0;
         const unpaidTotalAmount = unpaidSubscriptions?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
@@ -53,7 +53,7 @@ async function loadDashboard() {
             .select('*, users!inner(email)')
             .eq('delivery_date', today)
             .eq('status', 'pending')
-            .not('users.email', 'eq', ADMIN_EMAIL);
+            .neq('users.email', ADMIN_EMAIL);
         
         const todayPending = todayDeliveries?.length || 0;
         
@@ -61,7 +61,7 @@ async function loadDashboard() {
         const { data: receipts } = await supabaseClient
             .from('receipts')
             .select('amount, created_at, users!inner(email)')
-            .not('users.email', 'eq', ADMIN_EMAIL);
+            .neq('users.email', ADMIN_EMAIL);
         
         const totalRevenue = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
         
@@ -93,7 +93,7 @@ async function loadDashboard() {
             .select('delivery_date, users!inner(email)')
             .in('delivery_date', last7Days)
             .eq('status', 'delivered')
-            .not('users.email', 'eq', ADMIN_EMAIL);
+            .neq('users.email', ADMIN_EMAIL);
         
         const deliveryCounts = last7Days.map(date => 
             dailyDeliveries?.filter(d => d.delivery_date === date).length || 0
@@ -230,7 +230,7 @@ async function showUnpaidModal() {
         .select('*, users!inner(full_name, email, phone, address)')
         .eq('status', 'active')
         .eq('payment_status', 'unpaid')
-        .not('users.email', 'eq', ADMIN_EMAIL)
+        .neq('users.email', ADMIN_EMAIL)
         .order('created_at', { ascending: false });
     
     const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };

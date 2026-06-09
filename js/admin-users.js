@@ -223,7 +223,6 @@ async function confirmAddUser() {
 }
 
 // 加載用戶列表
-// 加載用戶列表
 async function loadUsersPage() {
     const container = document.getElementById('page_users');
     if (!container) return;
@@ -231,7 +230,6 @@ async function loadUsersPage() {
     container.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
-        // 修復：使用 neq 代替 not
         const { data: users, error } = await supabaseClient
             .from('users')
             .select('*')
@@ -501,7 +499,7 @@ function filterUsers(allUsers) {
     
     const tbody = document.getElementById('usersTableBody');
     if (tbody && filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td><\/tr>';
     }
 }
 

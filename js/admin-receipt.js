@@ -14,7 +14,7 @@ async function loadReceiptsPage() {
         const { data: receipts, error } = await supabaseClient
             .from('receipts')
             .select('*, users!inner(full_name, email, phone)')
-            .not('users.email', 'eq', ADMIN_EMAIL)
+            .neq('users.email', ADMIN_EMAIL)
             .order('created_at', { ascending: false });
         
         if (error) throw error;
@@ -198,7 +198,7 @@ async function showUploadReceiptModal() {
             plan_type,
             users (id, full_name, email)
         `)
-        .not('users.email', 'eq', ADMIN_EMAIL)
+        .neq('users.email', ADMIN_EMAIL)
         .order('created_at', { ascending: false });
     
     const modal = document.createElement('div');

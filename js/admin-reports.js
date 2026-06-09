@@ -15,22 +15,22 @@ async function loadReportsPage() {
         const { data: users } = await supabaseClient
             .from('users')
             .select('*')
-            .not('email', 'eq', ADMIN_EMAIL);
+            .neq('email', ADMIN_EMAIL);
         
         const { data: subscriptions } = await supabaseClient
             .from('subscriptions')
             .select('*, users!inner(email)')
-            .not('users.email', 'eq', ADMIN_EMAIL);
+            .neq('users.email', ADMIN_EMAIL);
         
         const { data: receipts } = await supabaseClient
             .from('receipts')
             .select('*, users!inner(email)')
-            .not('users.email', 'eq', ADMIN_EMAIL);
+            .neq('users.email', ADMIN_EMAIL);
         
         const { data: deliveries } = await supabaseClient
             .from('deliveries')
             .select('*, users!inner(email)')
-            .not('users.email', 'eq', ADMIN_EMAIL);
+            .neq('users.email', ADMIN_EMAIL);
         
         // 統計數據
         const totalUsers = users?.length || 0;
@@ -213,21 +213,21 @@ async function loadReportsPage() {
                 return `
                     <tr>
                         <td>${escapeHtml(s.users?.full_name || 'N/A')}</td>
-                        <td>${planNames[s.plan_type]}</td>
-                        <td>${formatDate(s.start_date)}</td>
-                        <td>${formatDate(s.end_date)}</td>
+                        <td>${planNames[s.plan_type]}</td
+                        <td>${formatDate(s.start_date)}</td
+                        <td>${formatDate(s.end_date)}</td
                         <td>
                             <div style="width: 80px; background: #1e2a3a; border-radius: 10px; height: 6px;">
                                 <div style="width: ${progress}%; background: #c8a15e; border-radius: 10px; height: 6px;"></div>
                             </div>
                             <small>${s.meals_received}/${s.total_days}</small>
-                        </td>
-                        <td>RM ${s.total_price}</td>
+                        </td
+                        <td>RM ${s.total_price}</td
                     </tr>
                 `;
             }).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="6">暫無訂閱記錄</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6">暫無訂閱記錄</td><\/tr>';
         }
         
     } catch (err) {
