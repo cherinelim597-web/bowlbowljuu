@@ -8,7 +8,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             background: url('https://images.unsplash.com/photo-1505253758473-96b7015fcd40?q=80&w=2070') center/cover fixed;
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -16,6 +21,7 @@
             padding: 40px;
             position: relative;
         }
+
         body::before {
             content: '';
             position: fixed;
@@ -26,12 +32,15 @@
             background: linear-gradient(135deg, rgba(10,20,40,0.85), rgba(5,15,30,0.9));
             z-index: 0;
         }
+
         .container {
             position: relative;
             z-index: 1;
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
         }
+
+        /* 玻璃卡片效果 */
         .glass {
             background: rgba(255,255,255,0.05);
             backdrop-filter: blur(15px);
@@ -39,6 +48,8 @@
             border: 1px solid rgba(255,255,255,0.1);
             box-shadow: 0 20px 40px rgba(0,0,0,0.2);
         }
+
+        /* 頂欄 */
         .top-section {
             display: flex;
             justify-content: space-between;
@@ -46,6 +57,7 @@
             margin-bottom: 32px;
             padding: 20px 32px;
         }
+
         .logo h1 {
             font-family: 'Cormorant Garamond', serif;
             font-size: 32px;
@@ -55,6 +67,7 @@
             background-clip: text;
             color: transparent;
         }
+
         .back-btn {
             background: rgba(200,161,94,0.15);
             border: 1px solid rgba(200,161,94,0.3);
@@ -64,23 +77,58 @@
             cursor: pointer;
             text-decoration: none;
             font-size: 14px;
+            transition: all 0.3s;
+            display: inline-block;
         }
+
         .back-btn:hover {
             background: rgba(200,161,94,0.3);
+            transform: translateY(-1px);
         }
+
+        /* 設置卡片 */
         .settings-card {
             padding: 40px;
         }
+
         .settings-title {
             font-family: 'Cormorant Garamond', serif;
             font-size: 32px;
             color: #c8a15e;
             margin-bottom: 30px;
             text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
         }
+
+        /* 分組標題 */
+        .section-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 30px 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .section-divider i {
+            color: #c8a15e;
+            font-size: 18px;
+        }
+
+        .section-divider h3 {
+            color: #eef5ff;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* 表單 */
         .input-group {
             margin-bottom: 24px;
         }
+
         .input-group label {
             display: block;
             margin-bottom: 8px;
@@ -88,7 +136,13 @@
             font-size: 14px;
             font-weight: 500;
         }
-        .input-group input, .input-group textarea {
+
+        .input-group label i {
+            margin-right: 8px;
+        }
+
+        .input-group input,
+        .input-group textarea {
             width: 100%;
             padding: 14px 18px;
             background: rgba(255,255,255,0.08);
@@ -97,15 +151,109 @@
             font-size: 16px;
             color: #eef5ff;
             font-family: inherit;
+            transition: all 0.3s;
         }
-        .input-group input:focus, .input-group textarea:focus {
+
+        .input-group input:focus,
+        .input-group textarea:focus {
             outline: none;
             border-color: #c8a15e;
+            background: rgba(255,255,255,0.12);
         }
+
+        .input-group input:read-only {
+            background: rgba(0,0,0,0.3);
+            cursor: not-allowed;
+        }
+
         .input-group textarea {
             resize: vertical;
             min-height: 80px;
         }
+
+        .input-group small {
+            display: block;
+            margin-top: 6px;
+            color: #8a9abb;
+            font-size: 12px;
+        }
+
+        /* 邀請碼區域 */
+        .invite-section {
+            background: rgba(200,161,94,0.08);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(200,161,94,0.2);
+        }
+
+        .invite-code-display {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .invite-code-display input {
+            flex: 1;
+            font-family: monospace;
+            letter-spacing: 2px;
+            font-size: 18px;
+            text-align: center;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .copy-btn {
+            background: rgba(200,161,94,0.2);
+            border: 1px solid rgba(200,161,94,0.3);
+            padding: 12px 20px;
+            border-radius: 16px;
+            color: #c8a15e;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .copy-btn:hover {
+            background: rgba(200,161,94,0.4);
+        }
+
+        /* 邀請列表 */
+        .invited-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .invited-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .invited-item:last-child {
+            border-bottom: none;
+        }
+
+        .invited-name {
+            color: #eef5ff;
+            font-size: 14px;
+        }
+
+        .invited-date {
+            color: #8a9abb;
+            font-size: 12px;
+        }
+
+        .empty-invited {
+            text-align: center;
+            padding: 20px;
+            color: #8a9abb;
+            font-size: 13px;
+        }
+
+        /* 按鈕 */
         .btn-save {
             width: 100%;
             padding: 14px;
@@ -116,28 +264,87 @@
             font-weight: 600;
             color: #0a1a2e;
             cursor: pointer;
+            transition: all 0.3s;
             margin-top: 20px;
         }
+
         .btn-save:hover {
             transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(200,161,94,0.3);
         }
+
+        /* 信息文字 */
         .info-text {
             text-align: center;
             margin-top: 20px;
             color: #8a9abb;
             font-size: 13px;
         }
+
+        /* 成功/錯誤提示 */
+        .toast-message {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            color: white;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast-success {
+            background: #2d6a4f;
+        }
+
+        .toast-error {
+            background: #7a2020;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* 底部 */
         .footer {
             margin-top: 30px;
             text-align: center;
             color: #c8a15e;
             font-family: 'Cormorant Garamond', serif;
             font-size: 18px;
+            opacity: 0.7;
         }
+
+        /* 滾動條 */
+        .invited-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .invited-list::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+        }
+
+        .invited-list::-webkit-scrollbar-thumb {
+            background: #c8a15e;
+            border-radius: 4px;
+        }
+
+        /* 響應式 */
         @media (max-width: 600px) {
             body { padding: 20px; }
             .settings-card { padding: 24px; }
             .settings-title { font-size: 24px; }
+            .invite-code-display { flex-direction: column; }
+            .copy-btn { width: 100%; }
+            .top-section { flex-direction: column; gap: 15px; }
         }
     </style>
 </head>
@@ -147,43 +354,112 @@
             <div class="logo">
                 <h1>HEALTHY BOWL</h1>
             </div>
-            <a href="dashboard.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back</a>
+            <a href="dashboard.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         </div>
 
         <div class="glass settings-card">
             <div class="settings-title">
-                <i class="fas fa-user-cog"></i> Account Settings
+                <i class="fas fa-sliders-h"></i> Account Settings
             </div>
-            
+
+            <!-- 基本信息 -->
+            <div class="section-divider">
+                <i class="fas fa-user-circle"></i>
+                <h3>Basic Information</h3>
+            </div>
+
             <div class="input-group">
                 <label><i class="fas fa-user"></i> Full Name</label>
-                <input type="text" id="fullName" placeholder="Your name">
+                <input type="text" id="fullName" placeholder="Your full name">
+                <small>This is how your name will appear</small>
             </div>
-            
+
             <div class="input-group">
                 <label><i class="fas fa-envelope"></i> Email Address</label>
                 <input type="email" id="email" placeholder="your@email.com">
-                <small style="color:#8a9abb; font-size:12px;">Optional - used for verification</small>
+                <small>Optional - Used for account recovery and notifications</small>
             </div>
-            
+
+            <!-- 聯繫信息 -->
+            <div class="section-divider">
+                <i class="fas fa-address-card"></i>
+                <h3>Contact Information</h3>
+            </div>
+
             <div class="input-group">
                 <label><i class="fas fa-phone"></i> Phone Number</label>
                 <input type="tel" id="phone" placeholder="+60 XX XXX XXXX">
+                <small>For delivery updates and important notifications</small>
             </div>
-            
+
             <div class="input-group">
                 <label><i class="fas fa-map-marker-alt"></i> Delivery Address</label>
-                <textarea id="address" placeholder="Your full delivery address"></textarea>
+                <textarea id="address" placeholder="Your full delivery address (street, city, postal code, etc.)"></textarea>
+                <small>Your meals will be delivered to this address</small>
             </div>
-            
+
+            <!-- 邀請碼區域 -->
+            <div class="section-divider">
+                <i class="fas fa-gift"></i>
+                <h3>Invitation Program</h3>
+            </div>
+
+            <div class="invite-section">
+                <label><i class="fas fa-ticket-alt"></i> Your Invitation Code</label>
+                <div class="invite-code-display">
+                    <input type="text" id="invitationCode" readonly placeholder="Loading...">
+                    <button class="copy-btn" onclick="copyInviteCode()">
+                        <i class="fas fa-copy"></i> Copy Code
+                    </button>
+                </div>
+                <small style="display: block; margin-top: 12px;">
+                    <i class="fas fa-share-alt"></i> Share this code with friends. Each code can be used once.
+                </small>
+            </div>
+
+            <!-- 邀請統計 -->
+            <div class="invite-section" style="margin-top: 0;">
+                <label><i class="fas fa-users"></i> Friends Invited</label>
+                <div style="font-size: 32px; font-weight: 700; color: #c8a15e; margin-top: 8px;" id="invitedCount">0</div>
+                <small>People who joined using your code</small>
+            </div>
+
+            <!-- 邀請列表 -->
+            <div class="invite-section" style="margin-top: 0;">
+                <label><i class="fas fa-list"></i> Invited Friends List</label>
+                <div id="invitedListContainer" class="invited-list">
+                    <div class="empty-invited">Loading...</div>
+                </div>
+            </div>
+
+            <!-- 安全設置 -->
+            <div class="section-divider">
+                <i class="fas fa-shield-alt"></i>
+                <h3>Security</h3>
+            </div>
+
+            <div class="input-group">
+                <label><i class="fas fa-qrcode"></i> User ID</label>
+                <input type="text" id="userId" readonly placeholder="Loading...">
+                <small>Your unique identifier</small>
+            </div>
+
+            <div class="input-group">
+                <label><i class="fas fa-calendar-alt"></i> Member Since</label>
+                <input type="text" id="memberSince" readonly placeholder="Loading...">
+            </div>
+
+            <!-- 按鈕區域 -->
             <button class="btn-save" onclick="saveSettings()">
-                <i class="fas fa-save"></i> Save Changes
+                <i class="fas fa-save"></i> Save All Changes
             </button>
+
             <div class="info-text">
-                <i class="fas fa-info-circle"></i> Your information helps us serve you better
+                <i class="fas fa-info-circle"></i> 
+                Your information is secure and will only be used for order processing and delivery.
             </div>
         </div>
-        
+
         <div class="footer">
             EAT WELL. LIVE WELL.
         </div>
@@ -191,6 +467,27 @@
 
     <script src="js/supabase.js"></script>
     <script>
+        // ============================================
+        // 用戶設置頁面
+        // ============================================
+
+        // 顯示通知
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast-message toast-${type}`;
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // HTML 跳脫
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // 獲取當前用戶
         function getCurrentUser() {
             const userStr = localStorage.getItem('currentUser');
@@ -199,6 +496,77 @@
                 return JSON.parse(userStr);
             } catch {
                 return null;
+            }
+        }
+
+        // 複製邀請碼
+        function copyInviteCode() {
+            const codeInput = document.getElementById('invitationCode');
+            const code = codeInput.value;
+            
+            if (code && code !== 'Not available' && code !== 'Loading...') {
+                navigator.clipboard.writeText(code);
+                showToast('Invitation code copied! / 邀請碼已複製！');
+            } else {
+                showToast('No invitation code available', 'error');
+            }
+        }
+
+        // 加載邀請碼
+        async function loadInvitationCode() {
+            const user = getCurrentUser();
+            if (!user) return;
+            
+            const { data: dbUser, error } = await supabaseClient
+                .from('users')
+                .select('invitation_code')
+                .eq('id', user.id)
+                .single();
+            
+            if (error) {
+                console.error('Error loading invitation code:', error);
+                document.getElementById('invitationCode').value = 'Not available';
+                return;
+            }
+            
+            if (dbUser && dbUser.invitation_code) {
+                document.getElementById('invitationCode').value = dbUser.invitation_code;
+            } else {
+                document.getElementById('invitationCode').value = 'Not available';
+            }
+        }
+
+        // 加載邀請統計和列表
+        async function loadInvitedStats() {
+            const user = getCurrentUser();
+            if (!user) return;
+            
+            // 獲取使用該用戶邀請碼註冊的人
+            const { data: invitedUsers, error } = await supabaseClient
+                .from('users')
+                .select('full_name, created_at')
+                .eq('referred_by', user.id)
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error('Error loading invited users:', error);
+                return;
+            }
+            
+            const totalInvited = invitedUsers?.length || 0;
+            document.getElementById('invitedCount').innerText = totalInvited;
+            
+            // 顯示邀請列表
+            const container = document.getElementById('invitedListContainer');
+            if (totalInvited === 0) {
+                container.innerHTML = '<div class="empty-invited"><i class="fas fa-user-plus"></i> No one has used your invitation code yet.</div>';
+            } else {
+                container.innerHTML = invitedUsers.map(invited => `
+                    <div class="invited-item">
+                        <span class="invited-name"><i class="fas fa-user-check"></i> ${escapeHtml(invited.full_name)}</span>
+                        <span class="invited-date">${new Date(invited.created_at).toLocaleDateString()}</span>
+                    </div>
+                `).join('');
             }
         }
 
@@ -211,18 +579,34 @@
             }
             
             // 從數據庫獲取最新信息
-            const { data: dbUser } = await supabaseClient
+            const { data: dbUser, error } = await supabaseClient
                 .from('users')
                 .select('*')
                 .eq('id', user.id)
                 .single();
+            
+            if (error) {
+                console.error('Error loading user:', error);
+                showToast('Failed to load settings', 'error');
+                return;
+            }
             
             if (dbUser) {
                 document.getElementById('fullName').value = dbUser.full_name || '';
                 document.getElementById('email').value = dbUser.email || '';
                 document.getElementById('phone').value = dbUser.phone || '';
                 document.getElementById('address').value = dbUser.address || '';
+                document.getElementById('userId').value = dbUser.id || '';
+                
+                if (dbUser.created_at) {
+                    const date = new Date(dbUser.created_at);
+                    document.getElementById('memberSince').value = date.toLocaleDateString();
+                }
             }
+            
+            // 加載邀請相關信息
+            await loadInvitationCode();
+            await loadInvitedStats();
         }
 
         // 保存設置
@@ -239,7 +623,7 @@
             const address = document.getElementById('address').value;
             
             if (!fullName || fullName.trim() === '') {
-                alert('Name cannot be empty');
+                showToast('Name cannot be empty / 姓名不能為空', 'error');
                 return;
             }
             
@@ -261,7 +645,7 @@
                     .eq('id', user.id);
                 
                 if (error) {
-                    alert('Save failed: ' + error.message);
+                    showToast('Save failed: ' + error.message, 'error');
                     return;
                 }
                 
@@ -275,18 +659,18 @@
                 };
                 localStorage.setItem('currentUser', JSON.stringify(updatedUser));
                 
-                alert('Settings saved successfully!');
+                showToast('Settings saved successfully! / 設置已保存！');
                 
             } catch (err) {
                 console.error('Save error:', err);
-                alert('Save failed, please try again');
+                showToast('Save failed, please try again', 'error');
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }
         }
         
-        // 加載頁面
+        // 頁面加載時加載設置
         loadSettings();
     </script>
 </body>

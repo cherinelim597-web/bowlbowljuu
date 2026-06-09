@@ -1,7 +1,17 @@
 // ============================================
 // 本地認證系統（不使用 Supabase Auth）
-// 只需要姓名，郵箱選填
+// 邀請碼可選填，新用戶自動生成邀請碼
 // ============================================
+
+// 生成唯一邀請碼（6位字母數字混合）
+function generateInvitationCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
 
 // 生成簡短用戶ID
 function generateUserId(name) {
@@ -11,10 +21,117 @@ function generateUserId(name) {
     return `${cleanName}_${timestamp}_${random}`;
 }
 
+// 驗證邀請碼（檢查是否存在且未被使用）
+async function validateInvitationCode(code) {
+    if (!code || code.trim() === '') {
+        return { valid: true, isUsed: false }; // 沒有邀請碼也可以註冊
+    }
+    
+    const { data, error } = await supabaseClient
+        .from('invitation_codes')
+        .select('*')
+        .eq('code', code.toUpperCase())
+        .eq('status', 'active')
+        .maybeSingle();
+    
+    if (error) {
+        console.error('Validation error:', error);
+        return { valid: false, error: error.message };
+    }
+    
+    if (!data) {
+        return { valid: false, error: 'Invalid invitation code' };
+    }
+    
+    return { valid: true, data: data, isUsed: false };
+}
+
+// 使用邀請碼（標記為已使用）
+async function useInvitationCode(code, userId, userName) {
+    if (!code || code.trim() === '') return;
+    
+    const { error } = await supabaseClient
+        .from('invitation_codes')
+        .update({
+            used_by: userId,
+            used_at: new Date(),
+            status: 'used'
+        })
+        .eq('code', code.toUpperCase());
+    
+    if (error) {
+        console.error('Error using invitation code:', error);
+    }
+}
+
+// 為新用戶生成唯一的邀請碼（確保不重複）
+async function generateUniqueInvitationCode(userId) {
+    let code = generateInvitationCode();
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 20;
+    
+    while (!isUnique && attempts < maxAttempts) {
+        // 檢查 users 表中是否已存在該邀請碼
+        const { data: existingUser } = await supabaseClient
+            .from('users')
+            .select('invitation_code')
+            .eq('invitation_code', code)
+            .maybeSingle();
+        
+        // 檢查 invitation_codes 表中是否已存在
+        const { data: existingCode } = await supabaseClient
+            .from('invitation_codes')
+            .select('code')
+            .eq('code', code)
+            .maybeSingle();
+        
+        if (!existingUser && !existingCode) {
+            isUnique = true;
+        } else {
+            code = generateInvitationCode();
+            attempts++;
+        }
+    }
+    
+    return code;
+}
+
+// 儲存新用戶的邀請碼
+async function saveUserInvitationCode(userId, code) {
+    const { error } = await supabaseClient
+        .from('invitation_codes')
+        .insert({
+            code: code,
+            created_by: userId,
+            status: 'active',
+            created_at: new Date()
+        });
+    
+    if (error) {
+        console.error('Error saving invitation code:', error);
+        return false;
+    }
+    
+    // 同時更新 users 表
+    const { error: updateError } = await supabaseClient
+        .from('users')
+        .update({ invitation_code: code })
+        .eq('id', userId);
+    
+    if (updateError) {
+        console.error('Error updating user invitation code:', updateError);
+        return false;
+    }
+    
+    return true;
+}
+
 // 註冊功能
 async function register() {
     const fullName = document.getElementById('fullName').value;
     const email = document.getElementById('email').value;
+    const invitationCode = document.getElementById('invitationCode').value;
     
     if (!fullName || fullName.trim() === '') {
         alert('Please enter your name / 請輸入您的姓名');
@@ -27,22 +144,42 @@ async function register() {
     btn.disabled = true;
     
     try {
-        // 檢查姓名是否已存在（簡單檢查，允許重名但會提示）
+        // 1. 檢查姓名是否已存在
         const { data: existingUsers } = await supabaseClient
             .from('users')
-            .select('full_name, email')
+            .select('full_name')
             .eq('full_name', fullName.trim());
         
-        // 生成唯一 ID
-        const userId = generateUserId(fullName);
+        if (existingUsers && existingUsers.length > 0) {
+            alert('This name is already taken. Please use a different name / 該姓名已被使用');
+            return;
+        }
         
-        // 儲存用戶到 Supabase
+        // 2. 驗證邀請碼（如果有填寫）
+        let referrerId = null;
+        if (invitationCode && invitationCode.trim() !== '') {
+            const validation = await validateInvitationCode(invitationCode);
+            if (!validation.valid) {
+                alert('Invalid invitation code: ' + validation.error);
+                return;
+            }
+            referrerId = validation.data.created_by;
+        }
+        
+        // 3. 生成用戶ID和邀請碼
+        const userId = generateUserId(fullName);
+        const userInvitationCode = await generateUniqueInvitationCode(userId);
+        
+        // 4. 儲存用戶到 Supabase
         const { error: insertError } = await supabaseClient
             .from('users')
             .insert({
                 id: userId,
                 full_name: fullName.trim(),
                 email: email || null,
+                invitation_code: userInvitationCode,
+                used_invitation_code: invitationCode || null,
+                referred_by: referrerId,
                 created_at: new Date()
             });
         
@@ -52,7 +189,16 @@ async function register() {
             return;
         }
         
-        alert('Registration successful! Please login / 註冊成功！請登入');
+        // 5. 儲存邀請碼到 invitation_codes 表
+        await saveUserInvitationCode(userId, userInvitationCode);
+        
+        // 6. 如果有使用邀請碼，標記為已使用
+        if (invitationCode && invitationCode.trim() !== '') {
+            await useInvitationCode(invitationCode, userId, fullName);
+        }
+        
+        const message = `Registration successful!\n\nYour invitation code is: ${userInvitationCode}\n\nShare this code to invite friends!\n\n註冊成功！您的邀請碼是：${userInvitationCode}`;
+        alert(message);
         location.href = "login.html";
         
     } catch (err) {
@@ -64,7 +210,7 @@ async function register() {
     }
 }
 
-// 登入功能（只需要姓名）
+// 登入功能
 async function login() {
     const fullName = document.getElementById('fullName').value;
     const email = document.getElementById('email').value;
@@ -80,13 +226,11 @@ async function login() {
     btn.disabled = true;
     
     try {
-        // 從 Supabase 查找用戶（按姓名，可選郵箱）
         let query = supabaseClient
             .from('users')
             .select('*')
             .eq('full_name', fullName.trim());
         
-        // 如果填了郵箱，也匹配郵箱
         if (email && email.trim() !== '') {
             query = query.eq('email', email.trim());
         }
@@ -105,16 +249,15 @@ async function login() {
         
         const user = users[0];
         
-        // 儲存登入狀態到 localStorage
         localStorage.setItem('currentUser', JSON.stringify({
             id: user.id,
             email: user.email,
             full_name: user.full_name,
             phone: user.phone || '',
-            address: user.address || ''
+            address: user.address || '',
+            invitation_code: user.invitation_code || ''
         }));
         
-        // 檢查是否有訂閱
         const { data: subscription } = await supabaseClient
             .from('subscriptions')
             .select('*')

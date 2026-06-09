@@ -30,13 +30,17 @@
     <div class="content">
         <div class="inner-card card-limited">
             <div class="input-group">
-                <label>Full Name / 全名</label>
+                <label>Full Name / 全名 <span style="color:#c8a15e;">*</span></label>
                 <input id="fullName" placeholder="John Doe">
             </div>
             <div class="input-group">
                 <label>Email (Optional) / 郵箱 (選填)</label>
                 <input id="email" type="email" placeholder="example@email.com">
-                <small style="color:#8a9abb; font-size:12px;">Leave blank to use guest account / 留空將使用訪客帳號</small>
+            </div>
+            <div class="input-group">
+                <label>Invitation Code (Optional) / 邀請碼 (選填)</label>
+                <input id="invitationCode" placeholder="Enter invitation code if you have one">
+                <small style="color:#8a9abb; font-size:12px;">Leave blank to register without invitation</small>
             </div>
             <button class="btn" onclick="register()">Create Account / 註冊</button>
             <div class="link">
