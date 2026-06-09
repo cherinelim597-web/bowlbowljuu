@@ -74,13 +74,57 @@
         .invite-card {
             padding: 40px;
         }
-        .invite-title {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 28px;
-            color: #c8a15e;
+        
+        /* 頁籤樣式 */
+        .tabs {
+            display: flex;
+            gap: 10px;
             margin-bottom: 30px;
-            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
         }
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 12px 20px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #8a9abb;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .tab-btn i {
+            font-size: 18px;
+        }
+        .tab-btn.active {
+            background: rgba(200,161,94,0.15);
+            color: #c8a15e;
+            border: 1px solid rgba(200,161,94,0.3);
+        }
+        .tab-btn:hover:not(.active) {
+            background: rgba(255,255,255,0.05);
+            color: #eef5ff;
+        }
+        
+        /* 頁面內容 */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
         /* 統計卡片 */
         .stats-grid {
             display: grid;
@@ -104,6 +148,7 @@
             color: #8a9abb;
             margin-top: 5px;
         }
+        
         /* 二維碼區域 */
         .qrcode-section {
             background: linear-gradient(135deg, rgba(200,161,94,0.1), rgba(200,161,94,0.05));
@@ -129,9 +174,6 @@
             padding: 15px;
             border-radius: 20px;
             display: inline-block;
-        }
-        #qrcode img {
-            margin: 0 auto;
         }
         .invite-code-display {
             display: flex;
@@ -172,6 +214,97 @@
             font-size: 12px;
             color: #8a9abb;
         }
+        
+        /* 獎勵列表 */
+        .rewards-list {
+            margin: 20px 0;
+        }
+        .reward-item {
+            background: rgba(255,255,255,0.03);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+            flex-wrap: wrap;
+        }
+        .reward-item.achieved {
+            border-left-color: #2ed15a;
+            background: rgba(46,209,90,0.05);
+        }
+        .reward-item.unlocked {
+            border-left-color: #c8a15e;
+            background: rgba(200,161,94,0.08);
+        }
+        .reward-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(200,161,94,0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+        .reward-info {
+            flex: 1;
+        }
+        .reward-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #eef5ff;
+            margin-bottom: 5px;
+        }
+        .reward-desc {
+            font-size: 13px;
+            color: #8a9abb;
+        }
+        .reward-requirement {
+            font-size: 12px;
+            color: #c8a15e;
+            margin-top: 5px;
+        }
+        .reward-status {
+            text-align: right;
+            min-width: 100px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-locked {
+            background: rgba(255,90,90,0.15);
+            color: #ff5a5a;
+        }
+        .status-achieved {
+            background: rgba(46,209,90,0.15);
+            color: #2ed15a;
+        }
+        .status-ready {
+            background: rgba(200,161,94,0.15);
+            color: #c8a15e;
+        }
+        .redeem-btn {
+            background: #c8a15e;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 30px;
+            color: #0a1a2e;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+        .redeem-btn:hover {
+            transform: translateY(-2px);
+        }
+        
         /* 邀請列表 */
         .invited-list {
             margin-top: 30px;
@@ -188,18 +321,16 @@
             padding: 12px 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .invited-name {
-            font-weight: 500;
-            color: #eef5ff;
-        }
-        .invited-date {
-            font-size: 12px;
-            color: #8a9abb;
-        }
         .empty-state {
             text-align: center;
             padding: 40px;
             color: #8a9abb;
+        }
+        
+        /* 特殊獎勵 */
+        .special-reward {
+            background: linear-gradient(135deg, rgba(200,161,94,0.2), rgba(200,161,94,0.05));
+            border: 2px solid #c8a15e;
         }
         .footer {
             margin-top: 30px;
@@ -214,7 +345,9 @@
             .invite-card { padding: 24px; }
             .stats-grid { grid-template-columns: 1fr; }
             .top-section { flex-direction: column; gap: 15px; }
-            .invite-code-input { font-size: 16px; letter-spacing: 2px; }
+            .reward-item { flex-direction: column; text-align: center; }
+            .reward-status { text-align: center; }
+            .tab-btn { font-size: 14px; }
         }
     </style>
 </head>
@@ -228,47 +361,63 @@
         </div>
 
         <div class="glass invite-card">
-            <div class="invite-title">
-                <i class="fas fa-user-friends"></i> Invite Friends
+            <!-- 頁籤 -->
+            <div class="tabs">
+                <button class="tab-btn active" id="tabInviteBtn" onclick="switchTab('invite')">
+                    <i class="fas fa-user-friends"></i> Invite Friends
+                </button>
+                <button class="tab-btn" id="tabRedeemBtn" onclick="switchTab('redeem')">
+                    <i class="fas fa-gift"></i> Redeem
+                </button>
             </div>
             
-            <!-- 統計卡片 -->
-            <div class="stats-grid">
-                <div class="stat-box">
-                    <div class="stat-number" id="totalInvited">0</div>
-                    <div class="stat-label">Friends Invited</div>
+            <!-- Invite Friends 內容 -->
+            <div id="inviteContent" class="tab-content active">
+                <!-- 統計卡片 -->
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-number" id="totalInvited">0</div>
+                        <div class="stat-label">Friends Invited</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="totalEarned">0</div>
+                        <div class="stat-label">Rewards (RM)</div>
+                    </div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-number" id="totalEarned">0</div>
-                    <div class="stat-label">Rewards (RM)</div>
+                
+                <!-- 二維碼區域 -->
+                <div class="qrcode-section">
+                    <div class="qrcode-title">
+                        <i class="fas fa-qrcode"></i> SCAN TO INVITE
+                    </div>
+                    <div class="qrcode-container">
+                        <div id="qrcode"></div>
+                    </div>
+                    <div class="invite-code-display">
+                        <span class="invite-code-input" id="invitationCode">Loading...</span>
+                        <button class="copy-btn" onclick="copyInviteCode()">
+                            <i class="fas fa-copy"></i> Copy Code
+                        </button>
+                    </div>
+                    <div class="share-text">
+                        <i class="fas fa-mobile-alt"></i> Scan QR code with your phone camera to share<br>
+                        Or copy the code above and share with friends
+                    </div>
+                </div>
+                
+                <!-- 邀請列表 -->
+                <div class="invited-list">
+                    <h3><i class="fas fa-users"></i> People You've Invited</h3>
+                    <div id="invitedListContainer">
+                        <div class="empty-state">Loading...</div>
+                    </div>
                 </div>
             </div>
             
-            <!-- 二維碼區域 -->
-            <div class="qrcode-section">
-                <div class="qrcode-title">
-                    <i class="fas fa-qrcode"></i> SCAN TO INVITE
-                </div>
-                <div class="qrcode-container">
-                    <div id="qrcode"></div>
-                </div>
-                <div class="invite-code-display">
-                    <span class="invite-code-input" id="invitationCode">Loading...</span>
-                    <button class="copy-btn" onclick="copyInviteCode()">
-                        <i class="fas fa-copy"></i> Copy Code
-                    </button>
-                </div>
-                <div class="share-text">
-                    <i class="fas fa-mobile-alt"></i> Scan QR code with your phone camera to share<br>
-                    Or copy the code above and share with friends
-                </div>
-            </div>
-            
-            <!-- 邀請列表 -->
-            <div class="invited-list">
-                <h3><i class="fas fa-users"></i> People You've Invited</h3>
-                <div id="invitedListContainer">
-                    <div class="empty-state">Loading...</div>
+            <!-- Redeem 內容 -->
+            <div id="redeemContent" class="tab-content">
+                <div class="rewards-list" id="rewardsList">
+                    <!-- 獎勵列表會動態生成 -->
                 </div>
             </div>
         </div>
@@ -282,6 +431,16 @@
     <script>
         let currentInvitationCode = '';
         let qrcodeInstance = null;
+        let currentInvitedCount = 0;
+        
+        // 獎勵配置
+        const REWARDS = [
+            { invites: 2, type: 'discount', plan: '1month', discount: 20, description: '1 Month Plan 20% OFF', reward: '20% OFF on 1 Month Plan' },
+            { invites: 5, type: 'discount', plan: '1month', discount: 35, description: '1 Month Plan 35% OFF', reward: '35% OFF on 1 Month Plan' },
+            { invites: 8, type: 'discount', plan: '1month', discount: 50, description: '1 Month Plan 50% OFF', reward: '50% OFF on 1 Month Plan' },
+            { invites: 10, type: 'special', plan: '3month', discount: 20, description: '3 Month Plan 20% OFF + Mystery Gift', reward: '20% OFF on 3 Month Plan + 🎁 Mystery Gift' },
+            { invites: 20, type: 'ultimate', description: '入股資格', reward: '💎 Partnership Opportunity - Join as Shareholder!' }
+        ];
 
         function getCurrentUser() {
             const userStr = localStorage.getItem('currentUser');
@@ -293,6 +452,26 @@
             }
         }
 
+        function switchTab(tab) {
+            const inviteContent = document.getElementById('inviteContent');
+            const redeemContent = document.getElementById('redeemContent');
+            const tabInviteBtn = document.getElementById('tabInviteBtn');
+            const tabRedeemBtn = document.getElementById('tabRedeemBtn');
+            
+            if (tab === 'invite') {
+                inviteContent.classList.add('active');
+                redeemContent.classList.remove('active');
+                tabInviteBtn.classList.add('active');
+                tabRedeemBtn.classList.remove('active');
+            } else {
+                inviteContent.classList.remove('active');
+                redeemContent.classList.add('active');
+                tabInviteBtn.classList.remove('active');
+                tabRedeemBtn.classList.add('active');
+                loadRewardsList();
+            }
+        }
+
         function copyInviteCode() {
             const code = document.getElementById('invitationCode').innerText;
             if (code && code !== 'Loading...') {
@@ -301,16 +480,10 @@
             }
         }
 
-        // 生成二維碼
         function generateQRCode(code) {
-            // 生成邀請鏈接
             const inviteLink = `${window.location.origin}/register.html?code=${code}`;
-            
-            // 清除舊的二維碼
             const qrcodeContainer = document.getElementById('qrcode');
             qrcodeContainer.innerHTML = '';
-            
-            // 生成新的二維碼
             try {
                 qrcodeInstance = new QRCode(qrcodeContainer, {
                     text: inviteLink,
@@ -333,7 +506,6 @@
                 return;
             }
             
-            // 獲取用戶自己的邀請碼
             const { data: dbUser, error: userError } = await supabaseClient
                 .from('users')
                 .select('invitation_code, full_name')
@@ -349,13 +521,11 @@
             if (dbUser && dbUser.invitation_code) {
                 currentInvitationCode = dbUser.invitation_code;
                 document.getElementById('invitationCode').innerText = currentInvitationCode;
-                // 生成二維碼
                 generateQRCode(currentInvitationCode);
             } else {
                 document.getElementById('invitationCode').innerText = 'No code';
             }
             
-            // 獲取使用該用戶邀請碼註冊的人
             const { data: invitedUsers, error: invitedError } = await supabaseClient
                 .from('users')
                 .select('full_name, created_at')
@@ -367,28 +537,147 @@
                 return;
             }
             
-            // 更新統計數字
-            const totalInvited = invitedUsers?.length || 0;
-            document.getElementById('totalInvited').innerText = totalInvited;
-            // 每個邀請獎勵 RM 10
-            document.getElementById('totalEarned').innerText = totalInvited * 10;
+            currentInvitedCount = invitedUsers?.length || 0;
+            document.getElementById('totalInvited').innerText = currentInvitedCount;
+            document.getElementById('totalEarned').innerText = currentInvitedCount * 10;
             
-            // 顯示邀請列表
             const container = document.getElementById('invitedListContainer');
-            if (totalInvited === 0) {
+            if (currentInvitedCount === 0) {
                 container.innerHTML = '<div class="empty-state"><i class="fas fa-user-plus"></i> No one has used your invitation code yet.<br>Share your QR code to invite friends!</div>';
             } else {
                 container.innerHTML = invitedUsers.map(invited => `
                     <div class="invited-item">
-                        <div class="invited-name">
-                            <i class="fas fa-user-check"></i> ${escapeHtml(invited.full_name)}
-                        </div>
-                        <div class="invited-date">
-                            ${new Date(invited.created_at).toLocaleDateString()}
-                        </div>
+                        <div class="invited-name"><i class="fas fa-user-check"></i> ${escapeHtml(invited.full_name)}</div>
+                        <div class="invited-date">${new Date(invited.created_at).toLocaleDateString()}</div>
                     </div>
                 `).join('');
             }
+        }
+        
+        function loadRewardsList() {
+            const container = document.getElementById('rewardsList');
+            if (!container) return;
+            
+            const achievedRewards = [];
+            let nextMilestone = null;
+            
+            for (const reward of REWARDS) {
+                const isAchieved = currentInvitedCount >= reward.invites;
+                if (isAchieved) {
+                    achievedRewards.push(reward);
+                } else if (!nextMilestone) {
+                    nextMilestone = reward;
+                }
+            }
+            
+            let html = '';
+            
+            // 顯示進度提示
+            if (nextMilestone) {
+                const remaining = nextMilestone.invites - currentInvitedCount;
+                const progressPercent = (currentInvitedCount / nextMilestone.invites) * 100;
+                html += `
+                    <div style="background: rgba(255,255,255,0.03); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 13px; color: #8a9abb;">Next Milestone: ${nextMilestone.invites} friends</span>
+                            <span style="font-size: 13px; color: #c8a15e;">${currentInvitedCount}/${nextMilestone.invites}</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;">
+                            <div style="background: #c8a15e; width: ${progressPercent}%; height: 100%; border-radius: 10px;"></div>
+                        </div>
+                        <div style="margin-top: 12px; font-size: 12px; color: #c8a15e;">
+                            <i class="fas fa-trophy"></i> Invite ${remaining} more ${remaining === 1 ? 'friend' : 'friends'} to unlock: ${nextMilestone.reward}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 顯示所有獎勵
+            for (const reward of REWARDS) {
+                const isAchieved = currentInvitedCount >= reward.invites;
+                let statusClass = 'status-locked';
+                let statusText = '🔒 Locked';
+                let itemClass = '';
+                
+                if (isAchieved) {
+                    statusClass = 'status-achieved';
+                    statusText = '✅ Achieved';
+                    itemClass = 'achieved';
+                } else if (currentInvitedCount >= reward.invites - 2 && currentInvitedCount < reward.invites) {
+                    statusClass = 'status-ready';
+                    statusText = '🎯 Almost there!';
+                    itemClass = 'unlocked';
+                }
+                
+                const isUltimate = reward.invites === 20;
+                
+                html += `
+                    <div class="reward-item ${itemClass} ${isUltimate ? 'special-reward' : ''}">
+                        <div class="reward-icon">
+                            ${reward.invites >= 20 ? '💎' : (reward.invites >= 10 ? '🎁' : '🏆')}
+                        </div>
+                        <div class="reward-info">
+                            <div class="reward-title">Invite ${reward.invites} ${reward.invites === 1 ? 'Friend' : 'Friends'}</div>
+                            <div class="reward-desc">${reward.reward}</div>
+                            <div class="reward-requirement">
+                                ${reward.invites >= 20 ? '🌟 Elite Partner Status' : `Requires ${reward.invites - currentInvitedCount} more ${(reward.invites - currentInvitedCount) === 1 ? 'friend' : 'friends'}`}
+                            </div>
+                        </div>
+                        <div class="reward-status">
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                            ${isAchieved && reward.invites < 20 ? `<button class="redeem-btn" onclick="redeemReward(${reward.invites}, '${reward.type}', ${reward.discount || 0}, '${reward.plan || ''}')">Redeem</button>` : ''}
+                            ${isAchieved && reward.invites >= 20 ? `<button class="redeem-btn" onclick="redeemPartnership()">Contact Us</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        async function redeemReward(invites, type, discount, plan) {
+            const user = getCurrentUser();
+            if (!user) {
+                location.href = 'login.html';
+                return;
+            }
+            
+            // 檢查是否已經兌換過
+            const { data: existingRedeem } = await supabaseClient
+                .from('reward_redemptions')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('reward_invites', invites)
+                .maybeSingle();
+            
+            if (existingRedeem) {
+                alert('You have already redeemed this reward! / 你已經兌換過這個獎勵了！');
+                return;
+            }
+            
+            const confirmMsg = `🎉 Congratulations!\n\nYou've invited ${invites} friends!\n\nReward: ${type === 'discount' ? `${discount}% OFF on ${plan === '1month' ? '1 Month Plan' : '3 Month Plan'}` : 'Special Reward'}\n\nClick OK to claim your reward. Our team will contact you within 24 hours.`;
+            
+            if (confirm(confirmMsg)) {
+                // 記錄兌換
+                await supabaseClient
+                    .from('reward_redemptions')
+                    .insert({
+                        user_id: user.id,
+                        reward_invites: invites,
+                        reward_type: type,
+                        discount: discount,
+                        plan: plan,
+                        status: 'pending',
+                        created_at: new Date()
+                    });
+                
+                alert('Reward claimed! Our team will contact you soon.\n\n獎勵已兌換！我們的團隊會盡快聯繫你。');
+                loadRewardsList();
+            }
+        }
+        
+        function redeemPartnership() {
+            alert('🎉 Congratulations on reaching 20+ invites!\n\nYou are eligible for partnership opportunity.\nPlease contact our business team at partnership@healthybowl.com\n\n恭喜您獲得入股資格！請聯繫我們的商業團隊。');
         }
         
         function escapeHtml(text) {
@@ -398,6 +687,7 @@
             return div.innerHTML;
         }
         
+        // 初始化
         loadInvitationInfo();
     </script>
 </body>
