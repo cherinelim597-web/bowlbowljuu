@@ -1,5 +1,5 @@
 // ============================================
-// 用戶管理模組 - 表格專業風
+// 用戶管理模組 - 修復版
 // ============================================
 
 // ADMIN_EMAIL 已在 admin-common.js 中定義
@@ -287,51 +287,35 @@ async function loadUsersPage() {
         
         container.innerHTML = `
             <!-- 頂部統計欄 -->
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px;">
-                <div style="background: #111827; border-radius: 16px; padding: 16px 20px; border: 1px solid #1e2a3a;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 28px; font-weight: 700; color: #c8a15e;">${totalUsers}</div>
-                            <div style="font-size: 13px; color: #8a9abb;">總用戶數</div>
-                        </div>
-                        <i class="fas fa-users" style="font-size: 32px; color: #c8a15e; opacity: 0.5;"></i>
-                    </div>
+            <div class="stats-grid" style="margin-bottom: 24px;">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-users"></i></div>
+                    <div class="stat-value">${totalUsers}</div>
+                    <div class="stat-label">總用戶數</div>
                 </div>
-                <div style="background: #111827; border-radius: 16px; padding: 16px 20px; border: 1px solid #1e2a3a;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 28px; font-weight: 700; color: #c8a15e;">${activeSubscriptions}</div>
-                            <div style="font-size: 13px; color: #8a9abb;">活躍訂閱</div>
-                        </div>
-                        <i class="fas fa-calendar-check" style="font-size: 32px; color: #c8a15e; opacity: 0.5;"></i>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+                    <div class="stat-value">${activeSubscriptions}</div>
+                    <div class="stat-label">活躍訂閱</div>
                 </div>
-                <div style="background: #111827; border-radius: 16px; padding: 16px 20px; border: 1px solid #1e2a3a;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 28px; font-weight: 700; color: #c8a15e;">RM ${totalRevenue.toLocaleString()}</div>
-                            <div style="font-size: 13px; color: #8a9abb;">總營收</div>
-                        </div>
-                        <i class="fas fa-dollar-sign" style="font-size: 32px; color: #c8a15e; opacity: 0.5;"></i>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
+                    <div class="stat-value">RM ${totalRevenue.toLocaleString()}</div>
+                    <div class="stat-label">總營收</div>
                 </div>
-                <div style="background: #111827; border-radius: 16px; padding: 16px 20px; border: 1px solid #1e2a3a;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 28px; font-weight: 700; color: #c8a15e;">${totalMealsDelivered}</div>
-                            <div style="font-size: 13px; color: #8a9abb;">總配送餐數</div>
-                        </div>
-                        <i class="fas fa-utensils" style="font-size: 32px; color: #c8a15e; opacity: 0.5;"></i>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-utensils"></i></div>
+                    <div class="stat-value">${totalMealsDelivered}</div>
+                    <div class="stat-label">總配送餐數</div>
                 </div>
             </div>
             
             <!-- 工具欄 -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                    <input type="text" id="searchInput" placeholder="🔍 搜索用戶名或郵箱..." style="background: #0f172a; border: 1px solid #1e2a3a; border-radius: 40px; padding: 10px 20px; color: #eef5ff; width: 260px;">
-                    <input type="text" id="searchOrderNo" placeholder="🔍 訂單號搜索..." style="background: #0f172a; border: 1px solid #1e2a3a; border-radius: 40px; padding: 10px 20px; color: #eef5ff; width: 220px;">
-                    <select id="planFilter" style="background: #0f172a; border: 1px solid #1e2a3a; border-radius: 40px; padding: 10px 16px; color: #eef5ff;">
+                    <input type="text" id="searchInput" placeholder="🔍 搜索用戶名或郵箱..." class="receipt-search" style="width: 260px;">
+                    <input type="text" id="searchOrderNo" placeholder="🔍 訂單號搜索..." class="receipt-search" style="width: 220px;">
+                    <select id="planFilter" class="form-select" style="width: auto;">
                         <option value="all">全部方案</option>
                         <option value="single">單次</option>
                         <option value="weekly">週方案</option>
@@ -344,28 +328,30 @@ async function loadUsersPage() {
                     <button class="btn-small" onclick="showAddUserModal()" style="background: #c8a15e; color: #0a1a2e;">
                         <i class="fas fa-user-plus"></i> 手動新增用戶
                     </button>
-                    <button class="btn-small" onclick="exportUsersData()" style="background: #2d6a4f; padding: 10px 20px;">
+                    <button class="btn-small" onclick="exportUsersData()" style="background: #2d6a4f;">
                         <i class="fas fa-download"></i> 導出數據
                     </button>
                 </div>
             </div>
             
             <!-- 用戶表格 -->
-            <div style="background: #111827; border-radius: 20px; border: 1px solid #1e2a3a; overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background: #0f172a; border-bottom: 1px solid #1e2a3a;">
-                            <th style="padding: 16px 20px; text-align: left; color: #8a9abb; font-weight: 500;">用戶信息</th>
-                            <th style="padding: 16px 20px; text-align: left; color: #8a9abb; font-weight: 500;">聯繫方式</th>
-                            <th style="padding: 16px 20px; text-align: left; color: #8a9abb; font-weight: 500;">當前方案</th>
-                            <th style="padding: 16px 20px; text-align: left; color: #8a9abb; font-weight: 500;">訂閱週期</th>
-                            <th style="padding: 16px 20px; text-align: left; color: #8a9abb; font-weight: 500;">配送進度</th>
-                            <th style="padding: 16px 20px; text-align: left; color: #8a9abb; font-weight: 500;">消費金額</th>
-                            <th style="padding: 16px 20px; text-align: center; color: #8a9abb; font-weight: 500;">操作</th>
-                         </tr>
-                    </thead>
-                    <tbody id="usersTableBody"></tbody>
-                 </table>
+            <div class="table-container">
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; min-width: 1000px;">
+                        <thead>
+                            <tr>
+                                <th>用戶信息</th>
+                                <th>聯繫方式</th>
+                                <th>當前方案</th>
+                                <th>訂單號 / 訂閱週期</th>
+                                <th>配送進度</th>
+                                <th>消費金額</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody"></tbody>
+                    </table>
+                </div>
             </div>
         `;
         
@@ -392,7 +378,6 @@ function renderUserTable(userData) {
         const sub = user.subscription;
         const startDate = sub ? formatDate(sub.start_date) : 'N/A';
         const endDate = sub ? formatDate(sub.end_date) : 'N/A';
-        const statusClass = sub ? 'status-active' : 'status-inactive';
         const statusText = sub ? 'Active' : 'Inactive';
         const planName = sub ? getPlanName(sub.plan_type) : '—';
         const planPrice = sub ? `RM ${sub.total_price}` : '—';
@@ -406,72 +391,61 @@ function renderUserTable(userData) {
                 'partial': { label: '💰 部分支付', class: 'badge-warning' }
             };
             const ps = statusMap[sub.payment_status] || { label: sub.payment_status, class: 'badge-pending' };
-            paymentStatusHtml = `<div style="font-size: 12px; margin-top: 4px;">
-                <span class="badge ${ps.class}" style="background: ${sub.payment_status === 'paid' ? 'rgba(46,209,90,0.15)' : 'rgba(255,184,77,0.15)'}; 
-                       color: ${sub.payment_status === 'paid' ? '#2ed15a' : '#ffb84d'};">
-                    ${ps.label}
-                </span>
-            </div>`;
+            paymentStatusHtml = `<span class="badge ${ps.class}" style="font-size: 10px;">${ps.label}</span>`;
         }
         
         // 進度條
         const progressBar = sub ? `
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
                 <div style="width: 80px; background: #1e2a3a; border-radius: 10px; height: 6px;">
                     <div style="width: ${user.progressPercent}%; background: #c8a15e; border-radius: 10px; height: 6px;"></div>
                 </div>
-                <span style="font-size: 12px; color: #8a9abb;">${user.deliveredCount}/${sub.total_days}</span>
+                <span style="font-size: 11px;">${user.deliveredCount}/${sub.total_days}</span>
             </div>
-        ` : '<span style="color: #8a9abb;">—</span>';
+        ` : '<span>—</span>';
         
         return `
-            <tr style="border-bottom: 1px solid #1e2a3a;" data-user-id="${user.id}">
-                <td style="padding: 16px 20px;">
-                    <div style="font-weight: 600; color: #eef5ff;">${escapeHtml(user.full_name || 'N/A')}</div>
-                    <div style="font-size: 11px; color: #6b7a8a; margin-top: 4px;">ID: ${user.id.substring(0, 12)}...</div>
-                    <div style="font-size: 11px; color: #6b7a8a; margin-top: 2px;">📅 ${formatDate(user.created_at)}</div>
-                  </td
-                <td style="padding: 16px 20px;">
-                    <div style="font-size: 13px;"><i class="fas fa-envelope" style="width: 20px; color: #c8a15e;"></i> ${escapeHtml(user.email || '未設置')}</div>
-                    <div style="font-size: 13px; margin-top: 6px;"><i class="fas fa-phone" style="width: 20px; color: #c8a15e;"></i> ${escapeHtml(user.phone || '未設置')}</div>
-                    <div style="font-size: 13px; margin-top: 6px;"><i class="fas fa-map-marker-alt" style="width: 20px; color: #c8a15e;"></i> ${escapeHtml(user.address || '未設置')}</div>
-                  </td
-                <td style="padding: 16px 20px;">
-                    <div><span class="badge badge-active" style="background: rgba(200,161,94,0.15); color: #c8a15e;">${planName}</span></div>
-                    <div style="font-size: 13px; margin-top: 6px;">💰 ${planPrice}</div>
-                    <div style="font-size: 12px; margin-top: 4px; color: #8a9abb;">${sub ? sub.payment_method || '未設置' : '—'}</div>
-                    ${paymentStatusHtml}
-                  </td
-                <td style="padding: 16px 20px;">
+            <tr style="border-bottom: 1px solid #1e2a3a;">
+                <td style="padding: 12px 16px;">
+                    <div style="font-weight: 600;">${escapeHtml(user.full_name || 'N/A')}</div>
+                    <div style="font-size: 11px; color: #6b7a8a;">ID: ${user.id.substring(0, 12)}...</div>
+                    <div style="font-size: 11px; color: #6b7a8a;">📅 ${formatDate(user.created_at)}</div>
+                </td>
+                <td style="padding: 12px 16px;">
+                    <div style="font-size: 12px;"><i class="fas fa-envelope"></i> ${escapeHtml(user.email || '未設置')}</div>
+                    <div style="font-size: 12px; margin-top: 4px;"><i class="fas fa-phone"></i> ${escapeHtml(user.phone || '未設置')}</div>
+                    <div style="font-size: 12px; margin-top: 4px;"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(user.address || '未設置')}</div>
+                </td>
+                <td style="padding: 12px 16px;">
+                    <div><span class="badge badge-active">${planName}</span></div>
+                    <div style="font-size: 13px; margin-top: 4px;">💰 ${planPrice}</div>
+                    <div style="font-size: 11px; color: #8a9abb;">${sub ? sub.payment_method || '—' : '—'}</div>
+                    <div style="margin-top: 4px;">${paymentStatusHtml}</div>
+                </td>
+                <td style="padding: 12px 16px;">
                     ${sub ? `
                         <div style="font-size: 12px; color: #c8a15e; margin-bottom: 4px;">
-                            <i class="fas fa-hashtag"></i> ${sub.order_no || '無訂單號'}
+                            <i class="fas fa-hashtag"></i> <span class="order-no-badge" style="font-size: 11px;">${sub.order_no || '無訂單號'}</span>
                         </div>
-                        <div style="font-size: 13px;">📅 ${startDate} → ${endDate}</div>
-                        <div style="font-size: 12px; margin-top: 4px;">
-                            <span class="badge ${statusClass}" style="background: ${statusText === 'Active' ? 'rgba(46,209,90,0.15)' : 'rgba(255,90,90,0.15)'}; color: ${statusText === 'Active' ? '#2ed15a' : '#ff5a5a'};">${statusText}</span>
+                        <div style="font-size: 12px;">📅 ${startDate} → ${endDate}</div>
+                        <div style="font-size: 11px; margin-top: 4px;">
+                            <span class="badge ${sub.status === 'active' ? 'badge-active' : 'badge-expired'}">${sub.status}</span>
                         </div>
-                    ` : '<span style="color: #8a9abb;">無訂閱</span>'}
-                  </td
-                <td style="padding: 16px 20px;">
+                    ` : '<span>無訂閱</span>'}
+                </td>
+                <td style="padding: 12px 16px;">
                     ${progressBar}
-                  </td
-                <td style="padding: 16px 20px;">
+                </td>
+                <td style="padding: 12px 16px;">
                     <div style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</div>
-                    <div style="font-size: 11px; color: #6b7a8a; margin-top: 2px;">總消費</div>
-                  </td
-                <td style="padding: 16px 20px; text-align: center;">
-                    <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯" style="background: transparent; border: none; color: #8a9abb; cursor: pointer; padding: 6px 10px;">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon" onclick="uploadReceiptForUser('${user.id}')" title="上傳收據" style="background: transparent; border: none; color: #8a9abb; cursor: pointer; padding: 6px 10px;">
-                        <i class="fas fa-receipt"></i>
-                    </button>
-                    <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情" style="background: transparent; border: none; color: #8a9abb; cursor: pointer; padding: 6px 10px;">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                  </td
-              </tr>
+                    <div style="font-size: 11px; color: #6b7a8a;">總消費</div>
+                </td>
+                <td style="padding: 12px 16px; text-align: center;">
+                    <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯"><i class="fas fa-edit"></i></button>
+                    <button class="btn-icon" onclick="uploadReceiptForUser('${user.id}')" title="上傳收據"><i class="fas fa-receipt"></i></button>
+                    <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情"><i class="fas fa-eye"></i></button>
+                </td>
+            </tr>
         `;
     }).join('');
 }
@@ -504,7 +478,7 @@ function filterUsers(allUsers) {
     
     const tbody = document.getElementById('usersTableBody');
     if (tbody && filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #8a9abb;">沒有找到符合條件的用戶</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td></tr>';
     }
 }
 
@@ -540,11 +514,11 @@ async function editUser(userId) {
             <h3><i class="fas fa-user-edit"></i> 編輯用戶 - ${escapeHtml(user.full_name)}</h3>
             
             <div style="background: rgba(200,161,94,0.1); border-radius: 16px; padding: 15px; margin: 15px 0;">
-                <h4 style="color: #c8a15e; margin-bottom: 15px;"><i class="fas fa-info-circle"></i> 基本信息</h4>
-                <div class="input-group"><label>地址</label><input type="text" id="editAddress" value="${escapeHtml(user.address || '')}" placeholder="送餐地址"></div>
-                <div class="input-group"><label>郵箱</label><input type="email" id="editEmail" value="${escapeHtml(user.email || '')}" placeholder="user@example.com"></div>
-                <div class="input-group"><label>密碼</label><input type="password" id="editPassword" placeholder="留空則不修改"><small style="color:#8a9abb;">留空表示保持原密碼不變</small></div>
-                <div class="input-group"><label>手機號</label><input type="tel" id="editPhone" value="${escapeHtml(user.phone || '')}" placeholder="0123456789"></div>
+                <h4 style="color: #c8a15e; margin-bottom: 15px;">基本信息</h4>
+                <div class="input-group"><label>地址</label><input type="text" id="editAddress" value="${escapeHtml(user.address || '')}"></div>
+                <div class="input-group"><label>郵箱</label><input type="email" id="editEmail" value="${escapeHtml(user.email || '')}"></div>
+                <div class="input-group"><label>密碼</label><input type="password" id="editPassword" placeholder="留空則不修改"><small>留空表示保持原密碼不變</small></div>
+                <div class="input-group"><label>手機號</label><input type="tel" id="editPhone" value="${escapeHtml(user.phone || '')}"></div>
                 <div class="input-group">
                     <label>付款方式</label>
                     <select id="editPaymentMethod">${PAYMENT_METHODS.map(m => `<option value="${m}" ${user.payment_method === m ? 'selected' : ''}>${m}</option>`).join('')}</select>
@@ -552,10 +526,10 @@ async function editUser(userId) {
             </div>
             
             <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 15px; margin: 15px 0;">
-                <h4 style="color: #c8a15e; margin-bottom: 15px;"><i class="fas fa-calendar-alt"></i> 訂閱信息</h4>
+                <h4 style="color: #c8a15e; margin-bottom: 15px;">訂閱信息</h4>
                 <div class="input-group">
                     <label>訂單號</label>
-                    <input type="text" id="editOrderNo" value="${subscription?.order_no || ''}" readonly style="background: rgba(0,0,0,0.3);">
+                    <input type="text" value="${subscription?.order_no || ''}" readonly style="background: rgba(0,0,0,0.3);">
                 </div>
                 <div class="input-group">
                     <label>訂閱狀態</label>
@@ -589,23 +563,11 @@ async function editUser(userId) {
                 </div>
                 <div class="input-group">
                     <label>已送達餐數</label>
-                    <input type="number" id="editMealsReceived" value="${subscription?.meals_received || deliveredCount || 0}" min="0" step="1">
+                    <input type="number" id="editMealsReceived" value="${subscription?.meals_received || deliveredCount || 0}" min="0">
                 </div>
                 <div class="input-group">
                     <label>總價格 (RM)</label>
                     <input type="number" id="editTotalPrice" value="${subscription?.total_price || ''}" step="0.01" readonly style="background: rgba(0,0,0,0.3);">
-                </div>
-            </div>
-            
-            <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 15px; margin: 15px 0;">
-                <h4 style="color: #c8a15e; margin-bottom: 15px;"><i class="fas fa-sticky-note"></i> 備註信息</h4>
-                <div class="input-group">
-                    <label>餐品備註</label>
-                    <textarea id="editMealNotes" rows="2" placeholder="特殊飲食需求、過敏信息等">${escapeHtml(user.meal_notes || '')}</textarea>
-                </div>
-                <div class="input-group">
-                    <label>訂閱備註</label>
-                    <textarea id="editSubscriptionNotes" rows="2" placeholder="訂閱調整原因、特殊情況等">${escapeHtml(subscription?.notes || '')}</textarea>
                 </div>
             </div>
             
@@ -658,8 +620,6 @@ async function saveUserEdit(userId) {
     const endDate = document.getElementById('editEndDate').value;
     const mealsReceived = parseInt(document.getElementById('editMealsReceived').value) || 0;
     const totalPrice = parseFloat(document.getElementById('editTotalPrice').value) || 0;
-    const mealNotes = document.getElementById('editMealNotes').value;
-    const subscriptionNotes = document.getElementById('editSubscriptionNotes').value;
     
     const planDays = PLAN_CONFIG[planType]?.days || 30;
     
@@ -667,8 +627,7 @@ async function saveUserEdit(userId) {
         address: address || null,
         email: email || null,
         phone: phone || null,
-        payment_method: paymentMethod,
-        meal_notes: mealNotes || null
+        payment_method: paymentMethod
     };
     
     if (password && password.trim() !== '') {
@@ -701,7 +660,6 @@ async function saveUserEdit(userId) {
         status: subscriptionStatus,
         payment_status: paymentStatus,
         total_price: totalPrice,
-        notes: subscriptionNotes || null,
         updated_at: new Date()
     };
     
@@ -709,31 +667,6 @@ async function saveUserEdit(userId) {
         await supabaseClient.from('subscriptions').update(subscriptionData).eq('id', existingSubscription.id);
     } else if (subscriptionStatus === 'active') {
         await supabaseClient.from('subscriptions').insert({ user_id: userId, ...subscriptionData, created_at: new Date() });
-    }
-    
-    const { data: subscription } = await supabaseClient
-        .from('subscriptions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .maybeSingle();
-    
-    if (subscription) {
-        await supabaseClient.from('deliveries').delete().eq('user_id', userId).eq('subscription_id', subscription.id);
-        
-        const deliveries = [];
-        for (let i = 0; i < planDays; i++) {
-            const deliveryDate = new Date(startDate);
-            deliveryDate.setDate(deliveryDate.getDate() + i);
-            deliveries.push({
-                user_id: userId,
-                subscription_id: subscription.id,
-                delivery_date: deliveryDate.toISOString().split('T')[0],
-                status: i < mealsReceived ? 'delivered' : (i === mealsReceived ? 'pending' : 'upcoming'),
-                meal_number: i + 1
-            });
-        }
-        if (deliveries.length > 0) await supabaseClient.from('deliveries').insert(deliveries);
     }
     
     showToast('用戶信息已更新！');
@@ -745,43 +678,32 @@ async function saveUserEdit(userId) {
 async function viewUserDetail(userId) {
     const { data: user } = await supabaseClient.from('users').select('*').eq('id', userId).single();
     const { data: subscription } = await supabaseClient.from('subscriptions').select('*').eq('user_id', userId).maybeSingle();
-    const { data: deliveries } = await supabaseClient.from('deliveries').select('*').eq('user_id', userId).order('delivery_date', { ascending: false }).limit(14);
     const { data: receipts } = await supabaseClient.from('receipts').select('*').eq('user_id', userId);
     
     const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
-    const deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
     
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.style.display = 'flex';
     modal.innerHTML = `
-        <div class="modal-card" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
-            <h3><i class="fas fa-user"></i> 用戶詳情 - ${escapeHtml(user.full_name)}</h3>
-            <hr style="margin: 15px 0; border-color: #1e2a3a;">
+        <div class="modal-card" style="max-width: 500px; width: 90%;">
+            <h3>用戶詳情 - ${escapeHtml(user.full_name)}</h3>
+            <hr style="margin: 15px 0;">
             <div><strong>姓名：</strong> ${escapeHtml(user.full_name)}</div>
             <div><strong>郵箱：</strong> ${escapeHtml(user.email || '未設置')}</div>
             <div><strong>電話：</strong> ${escapeHtml(user.phone || '未設置')}</div>
             <div><strong>地址：</strong> ${escapeHtml(user.address || '未設置')}</div>
-            <div><strong>付款方式：</strong> ${escapeHtml(user.payment_method || '未設置')}</div>
-            <div><strong>註冊時間：</strong> ${formatDate(user.created_at)}</div>
-            <hr style="margin: 15px 0; border-color: #1e2a3a;">
-            <h4>📋 訂閱信息</h4>
+            <hr style="margin: 15px 0;">
+            <h4>訂閱信息</h4>
             ${subscription ? `
-                <div><strong>訂單號：</strong> <span class="order-no-badge">${escapeHtml(subscription.order_no || '無')}</span></div>
+                <div><strong>訂單號：</strong> ${subscription.order_no || '無'}</div>
                 <div><strong>方案：</strong> ${getPlanName(subscription.plan_type)}</div>
                 <div><strong>期間：</strong> ${formatDate(subscription.start_date)} - ${formatDate(subscription.end_date)}</div>
-                <div><strong>總餐數：</strong> ${subscription.total_days} 餐</div>
-                <div><strong>已送達：</strong> ${deliveredCount} 餐</div>
                 <div><strong>金額：</strong> RM ${subscription.total_price}</div>
-                <div><strong>支付狀態：</strong> ${subscription.payment_status === 'paid' ? '✅ 已支付' : (subscription.payment_status === 'unpaid' ? '⏳ 未支付' : '💰 部分支付')}</div>
-                <div><strong>狀態：</strong> ${subscription.status}</div>
-                ${subscription.notes ? `<div><strong>備註：</strong> ${escapeHtml(subscription.notes)}</div>` : ''}
+                <div><strong>支付狀態：</strong> ${subscription.payment_status === 'paid' ? '已支付' : '未支付'}</div>
             ` : '<p>無活躍訂閱</p>'}
-            <hr style="margin: 15px 0; border-color: #1e2a3a;">
-            <h4>💰 消費記錄</h4>
+            <hr>
             <div><strong>總消費：</strong> RM ${totalPaid}</div>
-            <div><strong>收據數量：</strong> ${receipts?.length || 0} 張</div>
-            ${user.meal_notes ? `<hr style="margin: 15px 0; border-color: #1e2a3a;"><h4>🍽️ 餐品備註</h4><div>${escapeHtml(user.meal_notes)}</div>` : ''}
             <div style="margin-top: 20px;"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">關閉</button></div>
         </div>
     `;
@@ -805,54 +727,42 @@ async function uploadReceiptForUser(userId) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
-        <div class="modal-card" style="max-width: 500px; width: 90%;">
-            <div class="modal-header">
-                <h3><i class="fas fa-upload"></i> 上傳收據</h3>
-                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+        <div class="modal-card" style="max-width: 450px; width: 90%;">
+            <h3>上傳收據 - ${escapeHtml(user.full_name)}</h3>
+            <div class="input-group">
+                <label>訂單號</label>
+                <input type="text" value="${subscription.order_no || '無訂單號'}" readonly style="background: rgba(0,0,0,0.3);">
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>訂單號</label>
-                    <input type="text" class="form-input" value="${subscription.order_no || '無訂單號'}" readonly style="background: rgba(0,0,0,0.3);">
-                </div>
-                <div class="form-group">
-                    <label>金額 (RM) <span class="required">*</span></label>
-                    <input type="number" id="receiptAmountUserInput" class="form-input" value="${subscription.total_price}" step="0.01">
-                </div>
-                <div class="form-group">
-                    <label>付款方式</label>
-                    <select id="receiptPaymentMethodUserSelect" class="form-select">
-                        <option value="credit_card">💳 信用卡</option>
-                        <option value="bank_transfer">🏦 銀行轉帳</option>
-                        <option value="cash">💵 貨到付款</option>
-                        <option value="touchngo">📱 Touch n Go</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>收據圖片 <span class="required">*</span></label>
-                    <input type="file" id="receiptFileUserInput" accept="image/*,.pdf" class="form-input-file">
-                </div>
+            <div class="input-group">
+                <label>金額 (RM)</label>
+                <input type="number" id="receiptAmount" value="${subscription.total_price}" step="0.01">
             </div>
-            <div class="modal-footer">
+            <div class="input-group">
+                <label>付款方式</label>
+                <select id="receiptPaymentMethod">
+                    <option value="credit_card">信用卡</option>
+                    <option value="bank_transfer">銀行轉帳</option>
+                    <option value="cash">貨到付款</option>
+                    <option value="touchngo">Touch n Go</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>收據圖片</label>
+                <input type="file" id="receiptFile" accept="image/*,.pdf">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-save" onclick="uploadReceiptForUserConfirm('${userId}', '${subscription.id}', '${subscription.order_no}')">上傳</button>
                 <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
-                <button class="btn-submit" id="uploadReceiptUserBtn">上傳</button>
             </div>
         </div>
     `;
     document.body.appendChild(modal);
-    
-    const uploadBtn = document.getElementById('uploadReceiptUserBtn');
-    if (uploadBtn) uploadBtn.onclick = () => uploadReceiptForUserConfirm(userId, subscription.id, subscription.order_no);
 }
 
 async function uploadReceiptForUserConfirm(userId, subscriptionId, orderNo) {
-    const amountInput = document.getElementById('receiptAmountUserInput');
-    const paymentMethodSelect = document.getElementById('receiptPaymentMethodUserSelect');
-    const fileInput = document.getElementById('receiptFileUserInput');
-    
-    const amount = parseFloat(amountInput?.value) || 0;
-    const paymentMethod = paymentMethodSelect?.value;
-    const file = fileInput?.files[0];
+    const amount = parseFloat(document.getElementById('receiptAmount').value) || 0;
+    const paymentMethod = document.getElementById('receiptPaymentMethod').value;
+    const file = document.getElementById('receiptFile').files[0];
     
     if (amount <= 0) {
         showToast('請輸入有效的金額', 'error');
@@ -892,19 +802,16 @@ async function uploadReceiptForUserConfirm(userId, subscriptionId, orderNo) {
             created_at: new Date()
         });
         
-        // 更新訂閱的支付狀態
         await supabaseClient
             .from('subscriptions')
             .update({ payment_status: 'paid' })
             .eq('id', subscriptionId);
         
         showToast('收據上傳成功！');
-        if (document.getElementById('page_receipts')?.classList.contains('active')) {
-            if (typeof loadReceiptsPage === 'function') loadReceiptsPage();
+        if (document.getElementById('page_receipts')?.classList.contains('active') && typeof loadReceiptsPage === 'function') {
+            loadReceiptsPage();
         }
-        if (document.getElementById('page_users')?.classList.contains('active')) {
-            loadUsersPage();
-        }
+        loadUsersPage();
         
     } catch (err) {
         console.error('Upload error:', err);
@@ -914,15 +821,19 @@ async function uploadReceiptForUserConfirm(userId, subscriptionId, orderNo) {
 
 // 導出用戶數據
 async function exportUsersData() {
-    const { data: users } = await supabaseClient.from('users').select('*, subscriptions(order_no, plan_type, total_price, payment_status)').not('email', 'eq', ADMIN_EMAIL);
+    const { data: users } = await supabaseClient
+        .from('users')
+        .select('*, subscriptions(order_no, plan_type, total_price, payment_status)')
+        .not('email', 'eq', ADMIN_EMAIL);
+    
     const csv = [['姓名', '郵箱', '電話', '地址', '訂單號', '方案', '金額', '支付狀態', '註冊時間']];
     users.forEach(u => {
         const sub = u.subscriptions;
         csv.push([
             u.full_name,
-            u.email,
-            u.phone,
-            u.address,
+            u.email || '',
+            u.phone || '',
+            u.address || '',
             sub?.order_no || '',
             sub?.plan_type || '',
             sub?.total_price || '',
@@ -930,6 +841,7 @@ async function exportUsersData() {
             u.created_at
         ]);
     });
+    
     const blob = new Blob([csv.map(row => row.join(',')).join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
