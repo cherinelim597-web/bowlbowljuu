@@ -50,6 +50,14 @@ async function showPage(page) {
                     document.getElementById('page_deliveries').innerHTML = '<div class="table-container"><p>加載失敗：函數未定義</p></div>';
                 }
                 break;
+case 'invitations':
+    if (typeof loadInvitationsPage === 'function') {
+        await loadInvitationsPage();
+    } else {
+        console.error('loadInvitationsPage not defined');
+        document.getElementById('page_invitations').innerHTML = '<div class="table-container"><p>加載失敗：函數未定義</p></div>';
+    }
+    break;
             case 'receipts':
                 if (typeof loadReceiptsPage === 'function') {
                     await loadReceiptsPage();
@@ -82,6 +90,7 @@ async function showPage(page) {
         dashboard: '儀表板', 
         users: '用戶管理', 
         deliveries: '每日配送', 
+        invitations: '邀請記錄',
         receipts: '收據管理', 
         reports: '報表統計' 
     };
