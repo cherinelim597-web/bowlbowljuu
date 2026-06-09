@@ -223,6 +223,7 @@ async function confirmAddUser() {
 }
 
 // 加載用戶列表
+// 加載用戶列表
 async function loadUsersPage() {
     const container = document.getElementById('page_users');
     if (!container) return;
@@ -230,13 +231,18 @@ async function loadUsersPage() {
     container.innerHTML = '<div class="loading-spinner"></div>';
     
     try {
+        // 修復：使用 neq 代替 not
         const { data: users, error } = await supabaseClient
             .from('users')
             .select('*')
-            .not('email', 'eq', ADMIN_EMAIL)
+            .neq('email', ADMIN_EMAIL)
             .order('created_at', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+            console.error('Users query error:', error);
+            container.innerHTML = '<div class="table-container"><p>加載失敗: ' + error.message + '</p></div>';
+            return;
+        }
         
         if (!users || users.length === 0) {
             container.innerHTML = '<div class="table-container"><p>暫無用戶</p></div>';
@@ -246,37 +252,54 @@ async function loadUsersPage() {
         // 獲取每個用戶的訂閱和配送統計
         const userData = [];
         for (const user of users) {
-            const { data: subscription } = await supabaseClient
-                .from('subscriptions')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('status', 'active')
-                .maybeSingle();
-            
-            const { data: deliveries } = await supabaseClient
-                .from('deliveries')
-                .select('status')
-                .eq('user_id', user.id);
-            
-            const deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
-            const totalDeliveries = subscription?.total_days || 0;
-            
-            const { data: receipts } = await supabaseClient
-                .from('receipts')
-                .select('amount')
-                .eq('user_id', user.id);
-            
-            const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
-            const progressPercent = subscription ? (deliveredCount / subscription.total_days) * 100 : 0;
-            
-            userData.push({ 
-                ...user, 
-                subscription, 
-                deliveredCount, 
-                totalDeliveries, 
-                totalPaid,
-                progressPercent
-            });
+            try {
+                const { data: subscription, error: subError } = await supabaseClient
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .eq('status', 'active')
+                    .maybeSingle();
+                
+                if (subError) {
+                    console.error('Subscription error for user', user.id, subError);
+                }
+                
+                const { data: deliveries, error: delError } = await supabaseClient
+                    .from('deliveries')
+                    .select('status')
+                    .eq('user_id', user.id);
+                
+                if (delError) {
+                    console.error('Deliveries error for user', user.id, delError);
+                }
+                
+                const deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
+                const totalDeliveries = subscription?.total_days || 0;
+                
+                const { data: receipts, error: recError } = await supabaseClient
+                    .from('receipts')
+                    .select('amount')
+                    .eq('user_id', user.id);
+                
+                if (recError) {
+                    console.error('Receipts error for user', user.id, recError);
+                }
+                
+                const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+                const progressPercent = subscription ? (deliveredCount / subscription.total_days) * 100 : 0;
+                
+                userData.push({ 
+                    ...user, 
+                    subscription, 
+                    deliveredCount, 
+                    totalDeliveries, 
+                    totalPaid,
+                    progressPercent
+                });
+            } catch (err) {
+                console.error('Error processing user', user.id, err);
+                userData.push({ ...user, subscription: null, deliveredCount: 0, totalDeliveries: 0, totalPaid: 0, progressPercent: 0 });
+            }
         }
         
         // 統計數據
@@ -365,7 +388,7 @@ async function loadUsersPage() {
         
     } catch (err) {
         console.error('Users page error:', err);
-        container.innerHTML = '<div class="table-container"><p>加載失敗</p></div>';
+        container.innerHTML = '<div class="table-container"><p>加載失敗: ' + err.message + '</p></div>';
     }
 }
 
@@ -821,33 +844,43 @@ async function uploadReceiptForUserConfirm(userId, subscriptionId, orderNo) {
 
 // 導出用戶數據
 async function exportUsersData() {
-    const { data: users } = await supabaseClient
-        .from('users')
-        .select('*, subscriptions(order_no, plan_type, total_price, payment_status)')
-        .not('email', 'eq', ADMIN_EMAIL);
-    
-    const csv = [['姓名', '郵箱', '電話', '地址', '訂單號', '方案', '金額', '支付狀態', '註冊時間']];
-    users.forEach(u => {
-        const sub = u.subscriptions;
-        csv.push([
-            u.full_name,
-            u.email || '',
-            u.phone || '',
-            u.address || '',
-            sub?.order_no || '',
-            sub?.plan_type || '',
-            sub?.total_price || '',
-            sub?.payment_status || '',
-            u.created_at
-        ]);
-    });
-    
-    const blob = new Blob([csv.map(row => row.join(',')).join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('導出成功');
+    try {
+        const { data: users, error } = await supabaseClient
+            .from('users')
+            .select('*, subscriptions(order_no, plan_type, total_price, payment_status)')
+            .neq('email', ADMIN_EMAIL);
+        
+        if (error) {
+            showToast('導出失敗: ' + error.message, 'error');
+            return;
+        }
+        
+        const csv = [['姓名', '郵箱', '電話', '地址', '訂單號', '方案', '金額', '支付狀態', '註冊時間']];
+        users.forEach(u => {
+            const sub = u.subscriptions;
+            csv.push([
+                u.full_name,
+                u.email || '',
+                u.phone || '',
+                u.address || '',
+                sub?.order_no || '',
+                sub?.plan_type || '',
+                sub?.total_price || '',
+                sub?.payment_status || '',
+                u.created_at
+            ]);
+        });
+        
+        const blob = new Blob([csv.map(row => row.join(',')).join('\n')], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('導出成功');
+    } catch (err) {
+        console.error('Export error:', err);
+        showToast('導出失敗', 'error');
+    }
 }
