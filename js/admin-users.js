@@ -1,8 +1,26 @@
 // ============================================
-// 用戶管理模組 - 包含編輯訂閱週期
+// 用戶管理模組 - 包含自動計算週期
 // ============================================
 
 // ADMIN_EMAIL 已在 admin-common.js 中定義
+
+// 方案天數對照表
+const PLAN_DAYS = {
+    'single': 1,
+    'weekly': 7,
+    '1month': 30,
+    '2months': 60,
+    '3months': 90
+};
+
+// 方案名稱對照表
+const PLAN_NAMES = {
+    'single': '單次',
+    'weekly': '週方案',
+    '1month': '1個月',
+    '2months': '2個月',
+    '3months': '3個月'
+};
 
 async function loadUsersPage() {
     const container = document.getElementById('page_users');
@@ -51,8 +69,6 @@ async function loadUsersPage() {
             userData.push({ ...user, subscription, totalDeliveries, deliveredCount, totalPaid });
         }
         
-        const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
-        
         container.innerHTML = `
             <div class="table-container">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
@@ -92,14 +108,14 @@ async function loadUsersPage() {
                         📍 ${escapeHtml(user.address || 'N/A')}
                     </td>
                     <td>
-                        ${sub ? `<span class="badge badge-active">${planNames[sub.plan_type]}</span><br>
+                        ${sub ? `<span class="badge badge-active">${PLAN_NAMES[sub.plan_type]}</span><br>
                         <small>💰 RM ${sub.total_price}</small>` : '<span class="badge badge-expired">無訂閱</span>'}
                     </td>
                     <td>
                         ${sub ? `
                             <small>📅 開始: ${startDate}</small><br>
                             <small>📅 結束: ${endDate}</small><br>
-                            <button class="btn-small" style="margin-top: 8px; background: #4a7cff;" onclick="editSubscriptionPeriod('${user.id}', '${sub.id}')">
+                            <button class="btn-small" style="margin-top: 8px; background: #4a7cff;" onclick="editSubscriptionPeriod('${user.id}', '${sub.id}', '${sub.plan_type}')">
                                 <i class="fas fa-calendar-alt"></i> 調整週期
                             </button>
                         ` : '—'}
@@ -129,8 +145,8 @@ async function loadUsersPage() {
     }
 }
 
-// 編輯訂閱週期
-async function editSubscriptionPeriod(userId, subscriptionId) {
+// 編輯訂閱週期（自動計算結束日期）
+async function editSubscriptionPeriod(userId, subscriptionId, planType) {
     // 獲取當前訂閱信息
     const { data: subscription, error } = await supabaseClient
         .from('subscriptions')
@@ -145,6 +161,7 @@ async function editSubscriptionPeriod(userId, subscriptionId) {
     
     const startDate = new Date(subscription.start_date).toISOString().split('T')[0];
     const endDate = new Date(subscription.end_date).toISOString().split('T')[0];
+    const planDays = PLAN_DAYS[planType] || 30;
     
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
@@ -158,15 +175,20 @@ async function editSubscriptionPeriod(userId, subscriptionId) {
             </div>
             <div class="input-group">
                 <label>當前方案</label>
-                <input type="text" value="${subscription.plan_type}" disabled style="opacity:0.7;">
+                <input type="text" value="${PLAN_NAMES[planType]} (${planDays}天)" disabled style="opacity:0.7;">
             </div>
             <div class="input-group">
                 <label>開始日期</label>
                 <input type="date" id="editStartDate" value="${startDate}">
+                <small style="color:#8a9abb;">修改後將自動計算結束日期</small>
             </div>
             <div class="input-group">
-                <label>結束日期</label>
-                <input type="date" id="editEndDate" value="${endDate}">
+                <label>結束日期（自動計算）</label>
+                <input type="date" id="editEndDate" value="${endDate}" readonly style="background: rgba(0,0,0,0.3);">
+            </div>
+            <div class="input-group">
+                <label>方案天數</label>
+                <input type="number" id="planDays" value="${planDays}" readonly style="background: rgba(0,0,0,0.3);">
             </div>
             <div class="input-group">
                 <label>調整說明</label>
@@ -179,6 +201,27 @@ async function editSubscriptionPeriod(userId, subscriptionId) {
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // 綁定開始日期變化事件，自動計算結束日期
+    const startDateInput = document.getElementById('editStartDate');
+    const endDateInput = document.getElementById('editEndDate');
+    const planDaysInput = document.getElementById('planDays');
+    
+    function calculateEndDate() {
+        const startDateValue = startDateInput.value;
+        const days = parseInt(planDaysInput.value);
+        
+        if (startDateValue && days) {
+            const start = new Date(startDateValue);
+            const end = new Date(start);
+            end.setDate(end.getDate() + days - 1); // 減1因為開始當天算第一天
+            const endDateStr = end.toISOString().split('T')[0];
+            endDateInput.value = endDateStr;
+        }
+    }
+    
+    startDateInput.addEventListener('change', calculateEndDate);
+    calculateEndDate(); // 初始化計算
 }
 
 // 保存訂閱週期修改
@@ -186,9 +229,10 @@ async function saveSubscriptionPeriod(subscriptionId, userId) {
     const newStartDate = document.getElementById('editStartDate').value;
     const newEndDate = document.getElementById('editEndDate').value;
     const reason = document.getElementById('editReason').value;
+    const planDays = parseInt(document.getElementById('planDays').value);
     
     if (!newStartDate || !newEndDate) {
-        showToast('請填寫開始和結束日期', 'error');
+        showToast('請填寫開始日期', 'error');
         return;
     }
     
@@ -200,21 +244,9 @@ async function saveSubscriptionPeriod(subscriptionId, userId) {
         return;
     }
     
-    // 計算新的總天數
-    const diffTime = Math.abs(end - start);
-    const newTotalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    // 獲取當前訂閱信息
-    const { data: subscription } = await supabaseClient
-        .from('subscriptions')
-        .select('*')
-        .eq('id', subscriptionId)
-        .single();
-    
-    if (!subscription) {
-        showToast('找不到訂閱信息', 'error');
-        return;
-    }
+    // 確認對話框
+    const confirmMsg = `確認修改訂閱週期？\n\n開始日期: ${newStartDate}\n結束日期: ${newEndDate}\n總天數: ${planDays}天\n調整原因: ${reason || '未填寫'}`;
+    if (!confirm(confirmMsg)) return;
     
     // 更新訂閱
     const { error: updateError } = await supabaseClient
@@ -222,7 +254,7 @@ async function saveSubscriptionPeriod(subscriptionId, userId) {
         .update({
             start_date: newStartDate,
             end_date: newEndDate,
-            total_days: newTotalDays
+            total_days: planDays
         })
         .eq('id', subscriptionId);
     
@@ -231,8 +263,40 @@ async function saveSubscriptionPeriod(subscriptionId, userId) {
         return;
     }
     
-    // 記錄調整日誌（可選：創建一個 subscription_logs 表）
-    console.log(`訂閱週期已調整: 用戶 ${userId}, 新週期 ${newStartDate} 至 ${newEndDate}, 原因: ${reason}`);
+    // 同時更新配送日程（可選：重新生成配送日期）
+    const shouldUpdateDeliveries = confirm('是否同時更新配送日程？這將重新生成從新開始日期到結束日期的所有配送記錄。');
+    
+    if (shouldUpdateDeliveries) {
+        // 刪除舊的配送記錄
+        await supabaseClient
+            .from('deliveries')
+            .delete()
+            .eq('subscription_id', subscriptionId);
+        
+        // 生成新的配送記錄
+        const deliveries = [];
+        for (let i = 0; i < planDays; i++) {
+            const deliveryDate = new Date(newStartDate);
+            deliveryDate.setDate(deliveryDate.getDate() + i);
+            deliveries.push({
+                user_id: userId,
+                subscription_id: subscriptionId,
+                delivery_date: deliveryDate.toISOString().split('T')[0],
+                status: i === 0 ? 'pending' : 'upcoming',
+                meal_number: i + 1
+            });
+        }
+        
+        const { error: deliveryError } = await supabaseClient
+            .from('deliveries')
+            .insert(deliveries);
+        
+        if (deliveryError) {
+            showToast('配送日程更新失敗: ' + deliveryError.message, 'error');
+        } else {
+            showToast('配送日程已更新！');
+        }
+    }
     
     // 關閉彈窗
     document.querySelector('.modal-overlay')?.remove();
@@ -266,7 +330,7 @@ async function viewUserDetail(userId) {
             <hr style="margin: 15px 0; border-color: #1e2a3a;">
             <h4>📋 訂閱信息</h4>
             ${subscription ? `
-                <div><strong>方案：</strong> ${subscription.plan_type}</div>
+                <div><strong>方案：</strong> ${PLAN_NAMES[subscription.plan_type]}</div>
                 <div><strong>期間：</strong> ${formatDate(subscription.start_date)} - ${formatDate(subscription.end_date)}</div>
                 <div><strong>總餐數：</strong> ${subscription.total_days} 餐</div>
                 <div><strong>已送達：</strong> ${deliveredCount} 餐</div>
@@ -289,7 +353,6 @@ async function viewUserDetail(userId) {
     document.body.appendChild(modal);
 }
 
-// 編輯用戶信息
 async function editUser(userId) {
     const { data: user } = await supabaseClient
         .from('users')
@@ -334,7 +397,6 @@ function closeReceiptModal() {
     document.getElementById('receiptModal').style.display = 'none';
 }
 
-// 上傳收據
 async function uploadReceiptForUser(userId) {
     const { data: subscription } = await supabaseClient
         .from('subscriptions')
@@ -344,7 +406,7 @@ async function uploadReceiptForUser(userId) {
         .maybeSingle();
     
     if (!subscription) {
-        showToast('User has no active subscription. Please ask them to subscribe first.', 'error');
+        showToast('User has no active subscription', 'error');
         return;
     }
     
@@ -396,14 +458,13 @@ async function uploadReceipt() {
         });
     }
     
-    showToast(`Receipt uploaded successfully! Amount: RM ${amount}`);
+    showToast(`Receipt uploaded! Amount: RM ${amount}`);
     closeReceiptModal();
     if (document.getElementById('page_receipts')?.classList.contains('active')) {
         loadReceiptsPage();
     }
 }
 
-// 導出用戶數據
 async function exportUsersData() {
     const { data: users } = await supabaseClient.from('users').select('*').not('email', 'eq', ADMIN_EMAIL);
     const csv = [
