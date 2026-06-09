@@ -38,7 +38,7 @@ async function loadReceiptsPage() {
         
         const tbody = document.getElementById('receiptsTableBody');
         if (!receipts || receipts.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6">暫無收據</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6">暫無收據</td>';
             return;
         }
         
@@ -68,7 +68,6 @@ async function loadReceiptsPage() {
 
 // 顯示上傳收據彈窗
 async function showUploadReceiptModal() {
-    // 獲取所有用戶供選擇
     const { data: users } = await supabaseClient
         .from('users')
         .select('id, full_name, email')
@@ -115,7 +114,6 @@ async function showUploadReceiptModal() {
     `;
     document.body.appendChild(modal);
     
-    // 綁定上傳按鈕事件
     const uploadBtn = document.getElementById('uploadReceiptBtn');
     if (uploadBtn) {
         uploadBtn.onclick = uploadReceipt;
@@ -124,7 +122,6 @@ async function showUploadReceiptModal() {
 
 // 執行上傳
 async function uploadReceipt() {
-    // 獲取彈窗中的元素值
     const userIdSelect = document.getElementById('receiptUserIdSelect');
     const amountInput = document.getElementById('receiptAmountInput');
     const paymentMethodSelect = document.getElementById('receiptPaymentMethodSelect');
@@ -152,21 +149,10 @@ async function uploadReceipt() {
         return;
     }
     
-    // 關閉彈窗
     const modal = document.querySelector('.modal-overlay');
     if (modal) modal.remove();
     
     try {
-        // 檢查 bucket 是否存在
-        const { data: buckets } = await supabaseClient.storage.listBuckets();
-        const receiptsBucket = buckets?.find(b => b.id === 'receipts');
-        
-        if (!receiptsBucket) {
-            showToast('Storage 未配置，請聯繫管理員', 'error');
-            console.error('Receipts bucket not found');
-            return;
-        }
-        
         // 獲取用戶的 active 訂閱
         const { data: subscription } = await supabaseClient
             .from('subscriptions')
@@ -175,7 +161,7 @@ async function uploadReceipt() {
             .eq('status', 'active')
             .maybeSingle();
         
-        // 上傳文件
+        // 上傳文件到 receipts bucket
         const fileExt = file.name.split('.').pop();
         const fileName = `receipt_${userId}_${Date.now()}.${fileExt}`;
         
@@ -213,6 +199,10 @@ async function uploadReceipt() {
         } else {
             showToast('收據上傳成功！');
             loadReceiptsPage();
+            // 如果用戶管理頁面也在顯示，刷新它
+            if (document.getElementById('page_users')?.classList.contains('active')) {
+                if (typeof loadUsersPage === 'function') loadUsersPage();
+            }
         }
         
     } catch (err) {
@@ -261,7 +251,6 @@ async function uploadReceiptForUser(userId) {
     `;
     document.body.appendChild(modal);
     
-    // 綁定上傳按鈕事件
     const uploadBtn = document.getElementById('uploadReceiptUserBtn');
     if (uploadBtn) {
         uploadBtn.onclick = () => uploadReceiptForUserConfirm(userId);
@@ -291,15 +280,6 @@ async function uploadReceiptForUserConfirm(userId) {
     if (modal) modal.remove();
     
     try {
-        // 檢查 bucket
-        const { data: buckets } = await supabaseClient.storage.listBuckets();
-        const receiptsBucket = buckets?.find(b => b.id === 'receipts');
-        
-        if (!receiptsBucket) {
-            showToast('Storage 未配置，請聯繫管理員', 'error');
-            return;
-        }
-        
         const { data: subscription } = await supabaseClient
             .from('subscriptions')
             .select('id')
