@@ -30,6 +30,13 @@ const SUBSCRIPTION_STATUS = [
     'paused'
 ];
 
+// 支付狀態選項
+const PAYMENT_STATUS = [
+    { value: 'paid', label: '✅ 已支付', class: 'badge-active' },
+    { value: 'unpaid', label: '⏳ 未支付', class: 'badge-pending' },
+    { value: 'partial', label: '💰 部分支付', class: 'badge-warning' }
+];
+
 // 獲取方案名稱
 function getPlanName(planType) {
     return PLAN_CONFIG[planType]?.name || planType;
@@ -72,6 +79,155 @@ function showToast(message, type = 'success') {
     `;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
+}
+
+// 生成 UUID 備用函數
+function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+// 生成唯一邀請碼（管理員用）
+async function generateUniqueInvitationCodeForAdmin() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    const { data: existing } = await supabaseClient
+        .from('users')
+        .select('invitation_code')
+        .eq('invitation_code', code)
+        .maybeSingle();
+    
+    if (existing) {
+        return generateUniqueInvitationCodeForAdmin();
+    }
+    return code;
+}
+
+// 顯示新增用戶彈窗
+function showAddUserModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 500px; width: 90%;">
+            <h3><i class="fas fa-user-plus"></i> 手動新增用戶</h3>
+            <div class="input-group">
+                <label>姓名 <span style="color:#ff5a5a;">*</span></label>
+                <input type="text" id="addFullName" placeholder="請輸入姓名">
+            </div>
+            <div class="input-group">
+                <label>郵箱</label>
+                <input type="email" id="addEmail" placeholder="user@example.com">
+            </div>
+            <div class="input-group">
+                <label>手機號碼</label>
+                <input type="tel" id="addPhone" placeholder="0123456789">
+            </div>
+            <div class="input-group">
+                <label>送餐地址</label>
+                <textarea id="addAddress" rows="2" placeholder="請輸入完整地址"></textarea>
+            </div>
+            <div class="input-group">
+                <label>付款方式</label>
+                <select id="addPaymentMethod">
+                    ${PAYMENT_METHODS.map(m => `<option value="${m}">${m}</option>`).join('')}
+                </select>
+            </div>
+            <div class="input-group">
+                <label>備註</label>
+                <textarea id="addNotes" rows="2" placeholder="特殊需求、備註等"></textarea>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="btn-save" onclick="confirmAddUser()">新增用戶</button>
+                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// 確認新增用戶
+async function confirmAddUser() {
+    const fullName = document.getElementById('addFullName').value.trim();
+    const email = document.getElementById('addEmail').value.trim();
+    const phone = document.getElementById('addPhone').value.trim();
+    const address = document.getElementById('addAddress').value.trim();
+    const paymentMethod = document.getElementById('addPaymentMethod').value;
+    const notes = document.getElementById('addNotes').value.trim();
+    
+    if (!fullName) {
+        showToast('請輸入姓名', 'error');
+        return;
+    }
+    
+    // 檢查姓名是否已存在
+    const { data: existingUser } = await supabaseClient
+        .from('users')
+        .select('id')
+        .eq('full_name', fullName)
+        .maybeSingle();
+    
+    if (existingUser) {
+        showToast('該姓名已存在，請使用其他姓名', 'error');
+        return;
+    }
+    
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = '處理中...';
+    btn.disabled = true;
+    
+    try {
+        const userId = generateUUID();
+        const invitationCode = await generateUniqueInvitationCodeForAdmin();
+        
+        const { error: insertError } = await supabaseClient
+            .from('users')
+            .insert({
+                id: userId,
+                full_name: fullName,
+                email: email || null,
+                phone: phone || null,
+                address: address || null,
+                payment_method: paymentMethod,
+                invitation_code: invitationCode,
+                meal_notes: notes || null,
+                created_at: new Date()
+            });
+        
+        if (insertError) {
+            showToast('新增失敗: ' + insertError.message, 'error');
+            return;
+        }
+        
+        await supabaseClient.from('invitation_codes').insert({
+            code: invitationCode,
+            created_by: userId,
+            status: 'active',
+            created_at: new Date()
+        });
+        
+        showToast(`用戶 ${fullName} 新增成功！`);
+        document.querySelector('.modal-overlay')?.remove();
+        loadUsersPage();
+        
+    } catch (err) {
+        console.error('Add user error:', err);
+        showToast('新增失敗，請重試', 'error');
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
 }
 
 // 加載用戶列表
@@ -191,9 +347,14 @@ async function loadUsersPage() {
                         <option value="3months">3個月</option>
                     </select>
                 </div>
-                <button class="btn-small" onclick="exportUsersData()" style="background: #2d6a4f; padding: 10px 20px;">
-                    <i class="fas fa-download"></i> 導出數據
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-small" onclick="showAddUserModal()" style="background: #c8a15e; color: #0a1a2e;">
+                        <i class="fas fa-user-plus"></i> 手動新增用戶
+                    </button>
+                    <button class="btn-small" onclick="exportUsersData()" style="background: #2d6a4f; padding: 10px 20px;">
+                        <i class="fas fa-download"></i> 導出數據
+                    </button>
+                </div>
             </div>
             
             <!-- 用戶表格 -->
@@ -208,10 +369,10 @@ async function loadUsersPage() {
                             <th style="padding: 16px 20px; text-align: left; color: #8a9abb; font-weight: 500;">配送進度</th>
                             <th style="padding: 16px 20px; text-align: left; color: #8a9abb; font-weight: 500;">消費金額</th>
                             <th style="padding: 16px 20px; text-align: center; color: #8a9abb; font-weight: 500;">操作</th>
-                        </tr>
+                         </tr>
                     </thead>
                     <tbody id="usersTableBody"></tbody>
-                </table>
+                 </table>
             </div>
         `;
         
@@ -242,6 +403,23 @@ function renderUserTable(userData) {
         const planName = sub ? getPlanName(sub.plan_type) : '—';
         const planPrice = sub ? `RM ${sub.total_price}` : '—';
         
+        // 獲取支付狀態顯示
+        let paymentStatusHtml = '';
+        if (sub && sub.payment_status) {
+            const statusMap = {
+                'paid': { label: '✅ 已支付', class: 'badge-active' },
+                'unpaid': { label: '⏳ 未支付', class: 'badge-pending' },
+                'partial': { label: '💰 部分支付', class: 'badge-warning' }
+            };
+            const ps = statusMap[sub.payment_status] || { label: sub.payment_status, class: 'badge-pending' };
+            paymentStatusHtml = `<div style="font-size: 12px; margin-top: 4px;">
+                <span class="badge ${ps.class}" style="background: ${sub.payment_status === 'paid' ? 'rgba(46,209,90,0.15)' : 'rgba(255,184,77,0.15)'}; 
+                       color: ${sub.payment_status === 'paid' ? '#2ed15a' : '#ffb84d'};">
+                    ${ps.label}
+                </span>
+            </div>`;
+        }
+        
         // 進度條
         const progressBar = sub ? `
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -258,17 +436,18 @@ function renderUserTable(userData) {
                     <div style="font-weight: 600; color: #eef5ff;">${escapeHtml(user.full_name || 'N/A')}</div>
                     <div style="font-size: 11px; color: #6b7a8a; margin-top: 4px;">ID: ${user.id.substring(0, 12)}...</div>
                     <div style="font-size: 11px; color: #6b7a8a; margin-top: 2px;">📅 ${formatDate(user.created_at)}</div>
-                </td>
+                 </td>
                 <td style="padding: 16px 20px;">
                     <div style="font-size: 13px;"><i class="fas fa-envelope" style="width: 20px; color: #c8a15e;"></i> ${escapeHtml(user.email || '未設置')}</div>
                     <div style="font-size: 13px; margin-top: 6px;"><i class="fas fa-phone" style="width: 20px; color: #c8a15e;"></i> ${escapeHtml(user.phone || '未設置')}</div>
                     <div style="font-size: 13px; margin-top: 6px;"><i class="fas fa-map-marker-alt" style="width: 20px; color: #c8a15e;"></i> ${escapeHtml(user.address || '未設置')}</div>
-                </td>
+                 </td>
                 <td style="padding: 16px 20px;">
                     <div><span class="badge badge-active" style="background: rgba(200,161,94,0.15); color: #c8a15e;">${planName}</span></div>
                     <div style="font-size: 13px; margin-top: 6px;">💰 ${planPrice}</div>
                     <div style="font-size: 12px; margin-top: 4px; color: #8a9abb;">${sub ? sub.payment_method || '未設置' : '—'}</div>
-                </td>
+                    ${paymentStatusHtml}
+                 </td>
                 <td style="padding: 16px 20px;">
                     ${sub ? `
                         <div style="font-size: 13px;">📅 ${startDate} → ${endDate}</div>
@@ -276,14 +455,14 @@ function renderUserTable(userData) {
                             <span class="badge ${statusClass}" style="background: ${statusText === 'Active' ? 'rgba(46,209,90,0.15)' : 'rgba(255,90,90,0.15)'}; color: ${statusText === 'Active' ? '#2ed15a' : '#ff5a5a'};">${statusText}</span>
                         </div>
                     ` : '<span style="color: #8a9abb;">無訂閱</span>'}
-                </td>
+                 </td>
                 <td style="padding: 16px 20px;">
                     ${progressBar}
-                </td>
+                 </td>
                 <td style="padding: 16px 20px;">
                     <div style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</div>
                     <div style="font-size: 11px; color: #6b7a8a; margin-top: 2px;">總消費</div>
-                </td>
+                 </td>
                 <td style="padding: 16px 20px; text-align: center;">
                     <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯" style="background: transparent; border: none; color: #8a9abb; cursor: pointer; padding: 6px 10px;">
                         <i class="fas fa-edit"></i>
@@ -294,8 +473,8 @@ function renderUserTable(userData) {
                     <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情" style="background: transparent; border: none; color: #8a9abb; cursor: pointer; padding: 6px 10px;">
                         <i class="fas fa-eye"></i>
                     </button>
-                </td>
-            </tr>
+                 </td>
+              </tr>
         `;
     }).join('');
 }
@@ -306,12 +485,10 @@ function filterUsers(allUsers) {
     const planFilter = document.getElementById('planFilter')?.value || 'all';
     
     const filtered = allUsers.filter(user => {
-        // 搜索過濾
         const matchesSearch = searchTerm === '' || 
             user.full_name?.toLowerCase().includes(searchTerm) ||
             user.email?.toLowerCase().includes(searchTerm);
         
-        // 方案過濾
         let matchesPlan = true;
         if (planFilter !== 'all') {
             matchesPlan = user.subscription?.plan_type === planFilter;
@@ -322,7 +499,6 @@ function filterUsers(allUsers) {
     
     renderUserTable(filtered);
     
-    // 更新顯示數量
     const tbody = document.getElementById('usersTableBody');
     if (tbody && filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #8a9abb;">沒有找到符合條件的用戶</td></tr>';
@@ -331,7 +507,6 @@ function filterUsers(allUsers) {
 
 // 編輯用戶
 async function editUser(userId) {
-    // 獲取用戶信息
     const { data: user } = await supabaseClient
         .from('users')
         .select('*')
@@ -340,7 +515,6 @@ async function editUser(userId) {
     
     if (!user) return;
     
-    // 獲取用戶的訂閱信息
     const { data: subscription } = await supabaseClient
         .from('subscriptions')
         .select('*')
@@ -348,7 +522,6 @@ async function editUser(userId) {
         .eq('status', 'active')
         .maybeSingle();
     
-    // 獲取配送統計
     const { data: deliveries } = await supabaseClient
         .from('deliveries')
         .select('status')
@@ -380,6 +553,14 @@ async function editUser(userId) {
                 <div class="input-group">
                     <label>訂閱狀態</label>
                     <select id="editSubscriptionStatus">${SUBSCRIPTION_STATUS.map(s => `<option value="${s}" ${subscription?.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
+                </div>
+                <div class="input-group">
+                    <label>支付狀態</label>
+                    <select id="editPaymentStatus">
+                        <option value="paid" ${subscription?.payment_status === 'paid' ? 'selected' : ''}>✅ 已支付</option>
+                        <option value="unpaid" ${subscription?.payment_status === 'unpaid' ? 'selected' : ''}>⏳ 未支付</option>
+                        <option value="partial" ${subscription?.payment_status === 'partial' ? 'selected' : ''}>💰 部分支付</option>
+                    </select>
                 </div>
                 <div class="input-group">
                     <label>配套類型</label>
@@ -429,7 +610,6 @@ async function editUser(userId) {
     `;
     document.body.appendChild(modal);
     
-    // 綁定更新函數
     window.updatePlanPrice = function() {
         const planSelect = document.getElementById('editPlanType');
         const selectedOption = planSelect.options[planSelect.selectedIndex];
@@ -465,6 +645,7 @@ async function saveUserEdit(userId) {
     const phone = document.getElementById('editPhone').value;
     const paymentMethod = document.getElementById('editPaymentMethod').value;
     const subscriptionStatus = document.getElementById('editSubscriptionStatus').value;
+    const paymentStatus = document.getElementById('editPaymentStatus').value;
     const planType = document.getElementById('editPlanType').value;
     const startDate = document.getElementById('editStartDate').value;
     const endDate = document.getElementById('editEndDate').value;
@@ -475,7 +656,6 @@ async function saveUserEdit(userId) {
     
     const planDays = PLAN_CONFIG[planType]?.days || 30;
     
-    // 更新用戶基本信息
     const updateUserData = {
         address: address || null,
         email: email || null,
@@ -498,7 +678,6 @@ async function saveUserEdit(userId) {
         return;
     }
     
-    // 檢查現有訂閱
     const { data: existingSubscription } = await supabaseClient
         .from('subscriptions')
         .select('*')
@@ -513,6 +692,7 @@ async function saveUserEdit(userId) {
         start_date: startDate,
         end_date: endDate,
         status: subscriptionStatus,
+        payment_status: paymentStatus,
         total_price: totalPrice,
         notes: subscriptionNotes || null,
         updated_at: new Date()
@@ -524,7 +704,6 @@ async function saveUserEdit(userId) {
         await supabaseClient.from('subscriptions').insert({ user_id: userId, ...subscriptionData, created_at: new Date() });
     }
     
-    // 更新配送記錄
     const { data: subscription } = await supabaseClient
         .from('subscriptions')
         .select('id')
@@ -586,6 +765,7 @@ async function viewUserDetail(userId) {
                 <div><strong>總餐數：</strong> ${subscription.total_days} 餐</div>
                 <div><strong>已送達：</strong> ${deliveredCount} 餐</div>
                 <div><strong>金額：</strong> RM ${subscription.total_price}</div>
+                <div><strong>支付狀態：</strong> ${subscription.payment_status === 'paid' ? '✅ 已支付' : (subscription.payment_status === 'unpaid' ? '⏳ 未支付' : '💰 部分支付')}</div>
                 <div><strong>狀態：</strong> ${subscription.status}</div>
                 ${subscription.notes ? `<div><strong>備註：</strong> ${escapeHtml(subscription.notes)}</div>` : ''}
             ` : '<p>無活躍訂閱</p>'}
@@ -600,7 +780,7 @@ async function viewUserDetail(userId) {
     document.body.appendChild(modal);
 }
 
-// 上傳收據
+// 上傳收據（從用戶管理頁面調用）
 async function uploadReceiptForUser(userId) {
     const { data: subscription } = await supabaseClient
         .from('subscriptions')
@@ -618,53 +798,6 @@ async function uploadReceiptForUser(userId) {
     document.getElementById('receiptAmount').value = '';
     document.getElementById('receiptFile').value = '';
     document.getElementById('receiptModal').style.display = 'flex';
-}
-
-async function uploadReceipt() {
-    const userId = document.getElementById('receiptUserId').value;
-    const amount = parseInt(document.getElementById('receiptAmount').value) || 0;
-    const file = document.getElementById('receiptFile').files[0];
-    
-    if (!file) {
-        showToast('請選擇文件', 'error');
-        return;
-    }
-    
-    const fileExt = file.name.split('.').pop();
-    const fileName = `receipt_${userId}_${Date.now()}.${fileExt}`;
-    
-    const { error: uploadError } = await supabaseClient.storage.from('receipts').upload(fileName, file);
-    if (uploadError) {
-        showToast('上傳失敗: ' + uploadError.message, 'error');
-        return;
-    }
-    
-    const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
-    
-    const { data: subscription } = await supabaseClient
-        .from('subscriptions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .maybeSingle();
-    
-    if (subscription) {
-        await supabaseClient.from('receipts').insert({
-            user_id: userId,
-            subscription_id: subscription.id,
-            amount: amount,
-            receipt_url: urlData.publicUrl,
-            payment_method: 'admin_upload',
-            created_at: new Date()
-        });
-    }
-    
-    showToast(`收據上傳成功！金額: RM ${amount}`);
-    closeReceiptModal();
-}
-
-function closeReceiptModal() {
-    document.getElementById('receiptModal').style.display = 'none';
 }
 
 // 導出用戶數據

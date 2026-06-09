@@ -608,3 +608,19 @@ td {
     cursor: pointer;
     font-size: 13px;
 }
+
+/* 支付狀態警告標籤 */
+.badge-warning {
+    background: rgba(255, 184, 77, 0.15);
+    color: #ffb84d;
+}
+
+/* 彈窗表格滾動條 */
+.modal-card table {
+    border-collapse: collapse;
+}
+
+.modal-card th {
+    background: rgba(200, 161, 94, 0.1);
+    font-weight: 500;
+}

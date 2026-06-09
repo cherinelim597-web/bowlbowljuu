@@ -28,6 +28,17 @@ async function loadDashboard() {
         
         const activeSubscriptions = subscriptions?.length || 0;
         
+        // 獲取未支付的訂閱（active 但未支付）
+        const { data: unpaidSubscriptions } = await supabaseClient
+            .from('subscriptions')
+            .select('*, users!inner(full_name, email, phone)')
+            .eq('status', 'active')
+            .eq('payment_status', 'unpaid')
+            .not('users.email', 'eq', ADMIN_EMAIL);
+        
+        const unpaidCount = unpaidSubscriptions?.length || 0;
+        const unpaidTotalAmount = unpaidSubscriptions?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
+        
         // 今日配送 - 使用馬來西亞時間
         const today = getTodayString();
         const { data: todayDeliveries } = await supabaseClient
@@ -121,10 +132,11 @@ async function loadDashboard() {
                     <div class="stat-value">${subscriptions?.reduce((sum, s) => sum + (s.total_days || 0), 0) || 0}</div>
                     <div class="stat-label">總餐數</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-chart-pie"></i></div>
-                    <div class="stat-value">${Object.keys(planStats).filter(k => planStats[k] > 0).length}</div>
-                    <div class="stat-label">方案類型</div>
+                <div class="stat-card" style="cursor: pointer;" onclick="showUnpaidModal()">
+                    <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-value">${unpaidCount}</div>
+                    <div class="stat-label">未支付訂單</div>
+                    <div style="font-size: 12px; color: #ffb84d; margin-top: 4px;">RM ${unpaidTotalAmount.toLocaleString()}</div>
                 </div>
             </div>
             
@@ -189,7 +201,7 @@ async function loadDashboard() {
                 <tr>
                     <td>${escapeHtml(u.full_name || 'N/A')}</td>
                     <td>${escapeHtml(u.email)}</td
-                    <td>${escapeHtml(u.phone || 'N/A')}</td>
+                    <td>${escapeHtml(u.phone || 'N/A')}</td
                     <td>${formatDisplayDate(u.created_at)}</td
                     <td><span class="badge badge-active">正常</span></td
                 </tr>
@@ -201,6 +213,88 @@ async function loadDashboard() {
     } catch (err) {
         console.error('Dashboard error:', err);
         container.innerHTML = '<p>加載失敗</p>';
+    }
+}
+
+// 顯示未支付訂單明細彈窗
+async function showUnpaidModal() {
+    const { data: unpaidSubscriptions } = await supabaseClient
+        .from('subscriptions')
+        .select('*, users!inner(full_name, email, phone, address)')
+        .eq('status', 'active')
+        .eq('payment_status', 'unpaid')
+        .not('users.email', 'eq', ADMIN_EMAIL)
+        .order('created_at', { ascending: false });
+    
+    const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 900px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3><i class="fas fa-clock"></i> 未支付訂單 (共 ${unpaidSubscriptions?.length || 0} 筆)</h3>
+            <div style="margin-top: 20px; overflow-x: auto;">
+                <table style="width: 100%; min-width: 600px;">
+                    <thead>
+                        <tr style="background: rgba(200,161,94,0.1);">
+                            <th style="padding: 10px;">用戶</th>
+                            <th style="padding: 10px;">方案</th>
+                            <th style="padding: 10px;">金額</th>
+                            <th style="padding: 10px;">訂閱期間</th>
+                            <th style="padding: 10px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${unpaidSubscriptions?.map(sub => `
+                            <tr style="border-bottom: 1px solid #1e2a3a;">
+                                <td style="padding: 12px 8px;">
+                                    <strong>${escapeHtml(sub.users?.full_name || 'N/A')}</strong><br>
+                                    <small>📧 ${escapeHtml(sub.users?.email || 'N/A')}</small><br>
+                                    <small>📱 ${escapeHtml(sub.users?.phone || 'N/A')}</small>
+                                 </td>
+                                <td style="padding: 12px 8px;">${planNames[sub.plan_type] || sub.plan_type}</td>
+                                <td style="padding: 12px 8px; color: #c8a15e;">RM ${sub.total_price}</td>
+                                <td style="padding: 12px 8px; font-size: 12px;">
+                                    ${formatDisplayDate(sub.start_date)}<br>
+                                    → ${formatDisplayDate(sub.end_date)}
+                                 </td>
+                                <td style="padding: 12px 8px;">
+                                    <button class="btn-small" onclick="markAsPaid('${sub.id}', '${sub.user_id}')" style="background: #2ed15a;">
+                                        ✓ 標記已支付
+                                    </button>
+                                 </td>
+                             </tr>
+                        `).join('')}
+                    </tbody>
+                 </table>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">關閉</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// 標記訂單為已支付
+async function markAsPaid(subscriptionId, userId) {
+    if (!confirm('確定將此訂單標記為已支付？')) return;
+    
+    const { error } = await supabaseClient
+        .from('subscriptions')
+        .update({ payment_status: 'paid' })
+        .eq('id', subscriptionId);
+    
+    if (error) {
+        showToast('操作失敗: ' + error.message, 'error');
+    } else {
+        showToast('已標記為已支付！');
+        document.querySelector('.modal-overlay')?.remove();
+        loadDashboard();
+        if (document.getElementById('page_users')?.classList.contains('active')) {
+            loadUsersPage();
+        }
     }
 }
 
