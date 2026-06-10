@@ -1245,3 +1245,95 @@ td {
     color: #c8a15e;
     display: inline-block;
 }
+
+/* 添加訂單彈窗樣式 */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #eef5ff;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: var(--text-muted);
+    cursor: pointer;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #ff5a5a;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border);
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.form-group label .required {
+    color: #ff5a5a;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-input, .form-select {
+    width: 100%;
+    padding: 12px;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: #eef5ff;
+    font-size: 14px;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: #c8a15e;
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, #c8a15e, #a07840);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 30px;
+    color: #0a1a2e;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(200, 161, 94, 0.3);
+}
