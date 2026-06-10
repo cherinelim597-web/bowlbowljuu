@@ -1,5 +1,5 @@
 // ============================================
-// 用戶管理模組 - 修復版
+// 用戶管理模組 - 最終穩定版
 // ============================================
 
 // ADMIN_EMAIL 已在 admin-common.js 中定義
@@ -247,53 +247,36 @@ async function loadUsersPage() {
             return;
         }
         
-        // 獲取每個用戶的訂閱和配送統計
         const userData = [];
         for (const user of users) {
             try {
-                // 獲取 active 訂閱
-                const { data: subscription, error: subError } = await supabaseClient
+                // 獲取 active 訂閱（取第一條）
+                const { data: subscriptionsList } = await supabaseClient
                     .from('subscriptions')
                     .select('*')
                     .eq('user_id', user.id)
                     .eq('status', 'active')
-                    .maybeSingle();
+                    .limit(1);
+                const subscription = subscriptionsList?.[0] || null;
                 
-                if (subError) {
-                    console.error('Subscription error for user', user.id, subError);
-                }
-                
-                // 獲取所有歷史訂閱（用於詳情頁）
-                const { data: allSubscriptions, error: allSubError } = await supabaseClient
+                // 獲取所有歷史訂閱
+                const { data: allSubscriptions } = await supabaseClient
                     .from('subscriptions')
                     .select('*')
                     .eq('user_id', user.id)
                     .order('created_at', { ascending: false });
                 
-                if (allSubError) {
-                    console.error('All subscriptions error for user', user.id, allSubError);
-                }
-                
-                const { data: deliveries, error: delError } = await supabaseClient
+                const { data: deliveries } = await supabaseClient
                     .from('deliveries')
                     .select('status')
                     .eq('user_id', user.id);
                 
-                if (delError) {
-                    console.error('Deliveries error for user', user.id, delError);
-                }
-                
                 const deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
-                const totalDeliveries = subscription?.total_days || 0;
                 
-                const { data: receipts, error: recError } = await supabaseClient
+                const { data: receipts } = await supabaseClient
                     .from('receipts')
                     .select('*')
                     .eq('user_id', user.id);
-                
-                if (recError) {
-                    console.error('Receipts error for user', user.id, recError);
-                }
                 
                 const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
                 const progressPercent = subscription ? (deliveredCount / subscription.total_days) * 100 : 0;
@@ -302,27 +285,23 @@ async function loadUsersPage() {
                     ...user, 
                     subscription, 
                     allSubscriptions,
-                    deliveries,
                     receipts,
                     deliveredCount, 
-                    totalDeliveries, 
                     totalPaid,
                     progressPercent
                 });
             } catch (err) {
                 console.error('Error processing user', user.id, err);
-                userData.push({ ...user, subscription: null, allSubscriptions: [], deliveries: [], receipts: [], deliveredCount: 0, totalDeliveries: 0, totalPaid: 0, progressPercent: 0 });
+                userData.push({ ...user, subscription: null, allSubscriptions: [], receipts: [], deliveredCount: 0, totalPaid: 0, progressPercent: 0 });
             }
         }
         
-        // 統計數據
         const totalUsers = users.length;
         const activeSubscriptions = userData.filter(u => u.subscription).length;
         const totalRevenue = userData.reduce((sum, u) => sum + u.totalPaid, 0);
         const totalMealsDelivered = userData.reduce((sum, u) => sum + (u.deliveredCount || 0), 0);
         
         container.innerHTML = `
-            <!-- 頂部統計欄 -->
             <div class="stats-grid" style="margin-bottom: 24px;">
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-users"></i></div>
@@ -346,7 +325,6 @@ async function loadUsersPage() {
                 </div>
             </div>
             
-            <!-- 工具欄 -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                     <input type="text" id="searchInput" placeholder="🔍 搜索用戶名或郵箱..." class="receipt-search" style="width: 260px;">
@@ -370,21 +348,11 @@ async function loadUsersPage() {
                 </div>
             </div>
             
-            <!-- 用戶表格 -->
             <div class="table-container">
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; min-width: 1200px;">
                         <thead>
-                            <tr>
-                                <th>用戶名</th>
-                                <th>用戶郵箱</th>
-                                <th>當前方案</th>
-                                <th>訂閱週期</th>
-                                <th>配送進度</th>
-                                <th>總消費金額</th>
-                                <th>帳號狀態</th>
-                                <th>操作</th>
-                            </tr>
+                            <tr><th>用戶名</th><th>用戶郵箱</th><th>當前方案</th><th>訂閱週期</th><th>配送進度</th><th>總消費金額</th><th>帳號狀態</th><th>操作</th></tr>
                         </thead>
                         <tbody id="usersTableBody"></tbody>
                     </table>
@@ -392,10 +360,8 @@ async function loadUsersPage() {
             </div>
         `;
         
-        // 渲染表格
         renderUserTable(userData);
         
-        // 綁定搜索和過濾事件
         document.getElementById('searchInput')?.addEventListener('keyup', () => filterUsers(userData));
         document.getElementById('searchOrderNo')?.addEventListener('keyup', () => filterUsers(userData));
         document.getElementById('planFilter')?.addEventListener('change', () => filterUsers(userData));
@@ -418,7 +384,6 @@ function renderUserTable(userData) {
         const planName = sub ? getPlanName(sub.plan_type) : '—';
         const planPrice = sub ? `RM ${sub.total_price}` : '—';
         
-        // 帳號狀態（根據訂閱狀態）
         let accountStatus = 'Inactive';
         let statusClass = 'badge-expired';
         if (sub) {
@@ -437,7 +402,6 @@ function renderUserTable(userData) {
             }
         }
         
-        // 進度條
         const progressBar = sub ? `
             <div style="display: flex; align-items: center; gap: 8px;">
                 <div style="width: 80px; background: #1e2a3a; border-radius: 10px; height: 6px;">
@@ -449,40 +413,16 @@ function renderUserTable(userData) {
         
         return `
             <tr style="border-bottom: 1px solid #1e2a3a;">
-                <td style="padding: 12px 16px;">
-                    <div style="font-weight: 600;">${escapeHtml(user.full_name || 'N/A')}</div>
-                    <div style="font-size: 11px; color: #6b7a8a;">ID: ${user.id.substring(0, 12)}...</div>
-                </td>
-                <td style="padding: 12px 16px;">
-                    <div style="font-size: 12px;">${escapeHtml(user.email || '未設置')}</div>
-                    <div style="font-size: 11px; color: #6b7a8a;">📅 ${formatDate(user.created_at)}</div>
-                </td>
-                <td style="padding: 12px 16px;">
-                    <div><span class="badge badge-active">${planName}</span></div>
-                    <div style="font-size: 12px; margin-top: 4px;">${planPrice}</div>
-                </td>
-                <td style="padding: 12px 16px;">
-                    ${sub ? `
-                        <div style="font-size: 12px; margin-bottom: 2px;">📅 ${startDate} → ${endDate}</div>
-                        <div style="font-size: 10px; color: #c8a15e;">${sub.order_no || '無訂單號'}</div>
-                    ` : '<span>無訂閱</span>'}
-                </td>
-                <td style="padding: 12px 16px;">
-                    ${progressBar}
-                </td>
-                <td style="padding: 12px 16px;">
-                    <div style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</div>
-                </td>
-                <td style="padding: 12px 16px;">
-                    <span class="badge ${statusClass}">${accountStatus}</span>
-                </td>
+                <td style="padding: 12px 16px;"><div style="font-weight: 600;">${escapeHtml(user.full_name || 'N/A')}</div><div style="font-size: 11px; color: #6b7a8a;">ID: ${user.id.substring(0, 12)}...</div></td>
+                <td style="padding: 12px 16px;"><div style="font-size: 12px;">${escapeHtml(user.email || '未設置')}</div><div style="font-size: 11px; color: #6b7a8a;">📅 ${formatDate(user.created_at)}</div></td>
+                <td style="padding: 12px 16px;"><div><span class="badge badge-active">${planName}</span></div><div style="font-size: 12px; margin-top: 4px;">${planPrice}</div></td>
+                <td style="padding: 12px 16px;">${sub ? `<div style="font-size: 12px; margin-bottom: 2px;">📅 ${startDate} → ${endDate}</div><div style="font-size: 10px; color: #c8a15e;">${sub.order_no || '無訂單號'}</div>` : '<span>無訂閱</span>'}</td>
+                <td style="padding: 12px 16px;">${progressBar}</td>
+                <td style="padding: 12px 16px;"><div style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</div></td>
+                <td style="padding: 12px 16px;"><span class="badge ${statusClass}">${accountStatus}</span></td>
                 <td style="padding: 12px 16px; text-align: center;">
-                    <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯">
-                        <i class="fas fa-edit"></i>
-                    </button>
+                    <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情"><i class="fas fa-eye"></i></button>
+                    <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯"><i class="fas fa-edit"></i></button>
                 </td>
             </tr>
         `;
@@ -496,71 +436,38 @@ function filterUsers(allUsers) {
     const planFilter = document.getElementById('planFilter')?.value || 'all';
     
     const filtered = allUsers.filter(user => {
-        const matchesSearch = searchTerm === '' || 
-            user.full_name?.toLowerCase().includes(searchTerm) ||
-            user.email?.toLowerCase().includes(searchTerm);
-        
+        const matchesSearch = searchTerm === '' || user.full_name?.toLowerCase().includes(searchTerm) || user.email?.toLowerCase().includes(searchTerm);
         let matchesOrderNo = true;
         if (orderNoSearch !== '') {
             matchesOrderNo = user.subscription?.order_no?.toLowerCase().includes(orderNoSearch) || false;
         }
-        
         let matchesPlan = true;
         if (planFilter !== 'all') {
             matchesPlan = user.subscription?.plan_type === planFilter;
         }
-        
         return matchesSearch && matchesOrderNo && matchesPlan;
     });
     
     renderUserTable(filtered);
-    
     const tbody = document.getElementById('usersTableBody');
     if (tbody && filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td></tr>';
     }
 }
 
-// 查看用戶詳情（彈窗顯示完整信息）
+// 查看用戶詳情
 async function viewUserDetail(userId) {
-    // 獲取用戶基本信息
-    const { data: user } = await supabaseClient
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
+    const { data: user } = await supabaseClient.from('users').select('*').eq('id', userId).single();
+    const { data: allSubscriptions } = await supabaseClient.from('subscriptions').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    const { data: receipts } = await supabaseClient.from('receipts').select('*').eq('user_id', userId);
     
-    // 獲取所有歷史訂閱（包括已過期、已取消的）
-    const { data: allSubscriptions } = await supabaseClient
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-    
-    // 獲取所有收據
-    const { data: receipts } = await supabaseClient
-        .from('receipts')
-        .select('*')
-        .eq('user_id', userId);
-    
-    // 獲取當前活躍訂閱
     const activeSub = allSubscriptions?.find(s => s.status === 'active');
-    
-    // 計算總消費和未支付金額
     const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
-    const unpaidSubscriptions = allSubscriptions?.filter(s => s.payment_status === 'unpaid') || [];
-    const unpaidAmount = unpaidSubscriptions.reduce((sum, s) => sum + (s.total_price || 0), 0);
+    const unpaidAmount = allSubscriptions?.filter(s => s.payment_status === 'unpaid').reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
     
-    // 計算當前訂閱的配送進度
-    let deliveredCount = 0;
-    let totalDays = 0;
-    let progressPercent = 0;
+    let deliveredCount = 0, totalDays = 0, progressPercent = 0;
     if (activeSub) {
-        const { data: deliveries } = await supabaseClient
-            .from('deliveries')
-            .select('status')
-            .eq('user_id', userId)
-            .eq('subscription_id', activeSub.id);
+        const { data: deliveries } = await supabaseClient.from('deliveries').select('status').eq('user_id', userId).eq('subscription_id', activeSub.id);
         deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
         totalDays = activeSub.total_days || 0;
         progressPercent = totalDays > 0 ? (deliveredCount / totalDays) * 100 : 0;
@@ -570,8 +477,7 @@ async function viewUserDetail(userId) {
     modal.className = 'modal-overlay';
     modal.style.display = 'flex';
     modal.innerHTML = `
-        <div class="modal-card" style="max-width: 1200px; width: 95%; max-height: 85vh; overflow-y: auto;">
-            <!-- 頁面上方：用戶信息卡片 -->
+        <div class="modal-card" style="max-width: 1300px; width: 95%; max-height: 85vh; overflow-y: auto;">
             <div style="background: linear-gradient(135deg, rgba(200,161,94,0.1), rgba(200,161,94,0.05)); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
                     <div>
@@ -583,30 +489,20 @@ async function viewUserDetail(userId) {
                         </div>
                     </div>
                     <div style="display: flex; gap: 10px;">
-                        <button class="btn-save" onclick="showAddOrderModal('${userId}')" style="background: #c8a15e; color: #0a1a2e;">
-                            <i class="fas fa-plus-circle"></i> 添加訂單
-                        </button>
+                        <button class="btn-save" onclick="showAddOrderModal('${userId}')" style="background: #c8a15e; color: #0a1a2e;"><i class="fas fa-plus-circle"></i> 添加訂單</button>
                         <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">關閉</button>
                     </div>
                 </div>
             </div>
             
-            <!-- 統計卡片區域 -->
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
                 <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
                     <div style="font-size: 12px; color: #8a9abb;">訂閱週期</div>
-                    <div style="font-size: 14px; font-weight: 600; margin-top: 5px;">
-                        ${activeSub ? `${formatDate(activeSub.start_date)} - ${formatDate(activeSub.end_date)}` : '無活躍訂閱'}
-                    </div>
+                    <div style="font-size: 14px; font-weight: 600; margin-top: 5px;">${activeSub ? `${formatDate(activeSub.start_date)} - ${formatDate(activeSub.end_date)}` : '無活躍訂閱'}</div>
                 </div>
                 <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
                     <div style="font-size: 12px; color: #8a9abb;">配送進度</div>
-                    <div style="margin-top: 5px;">
-                        <div style="width: 100px; background: #1e2a3a; border-radius: 10px; height: 6px; margin: 0 auto;">
-                            <div style="width: ${progressPercent}%; background: #c8a15e; border-radius: 10px; height: 6px;"></div>
-                        </div>
-                        <div style="font-size: 12px; margin-top: 4px;">${deliveredCount}/${totalDays} 餐</div>
-                    </div>
+                    <div style="margin-top: 5px;"><div style="width: 100px; background: #1e2a3a; border-radius: 10px; height: 6px; margin: 0 auto;"><div style="width: ${progressPercent}%; background: #c8a15e; border-radius: 10px; height: 6px;"></div></div><div style="font-size: 12px; margin-top: 4px;">${deliveredCount}/${totalDays} 餐</div></div>
                 </div>
                 <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
                     <div style="font-size: 12px; color: #8a9abb;">總消費</div>
@@ -618,23 +514,24 @@ async function viewUserDetail(userId) {
                 </div>
             </div>
             
-            <!-- 頁面下方：歷史訂單列表 -->
             <h3 style="margin-bottom: 16px; color: #eef5ff;"><i class="fas fa-history"></i> 歷史訂單</h3>
             <div class="table-container" style="padding: 0; overflow-x: auto;">
-                <table style="width: 100%; min-width: 800px;">
+                <table style="width: 100%; min-width: 1000px; border-collapse: collapse;">
                     <thead>
                         <tr style="background: rgba(0,0,0,0.2);">
-                            <th style="padding: 12px;">訂單號</th>
-                            <th style="padding: 12px;">下單時間</th>
-                            <th style="padding: 12px;">方案</th>
-                            <th style="padding: 12px;">配送進度</th>
-                            <th style="padding: 12px;">訂單金額</th>
-                            <th style="padding: 12px;">支付狀態</th>
-                            <th style="padding: 12px;">對應收據</th>
+                            <th style="padding: 12px; text-align: left;">訂單號</th>
+                            <th style="padding: 12px; text-align: left;">下單時間</th>
+                            <th style="padding: 12px; text-align: left;">方案</th>
+                            <th style="padding: 12px; text-align: left;">訂閱期間</th>
+                            <th style="padding: 12px; text-align: left;">配送進度</th>
+                            <th style="padding: 12px; text-align: left;">訂單金額</th>
+                            <th style="padding: 12px; text-align: left;">支付狀態</th>
+                            <th style="padding: 12px; text-align: left;">對應收據</th>
+                            <th style="padding: 12px; text-align: center;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="orderHistoryBody">
-                        ${renderOrderHistory(allSubscriptions, receipts)}
+                        ${renderOrderHistory(allSubscriptions, receipts, userId)}
                     </tbody>
                 </table>
             </div>
@@ -648,72 +545,60 @@ async function viewUserDetail(userId) {
 }
 
 // 渲染歷史訂單列表
-function renderOrderHistory(subscriptions, receipts) {
+function renderOrderHistory(subscriptions, receipts, currentUserId) {
     if (!subscriptions || subscriptions.length === 0) {
-        return '<tr><td colspan="7" style="text-align: center; padding: 40px;">暫無訂單記錄<\/td><\/tr>';
+        return '<tr><td colspan="9" style="text-align: center; padding: 40px;">暫無訂單記錄</td></tr>';
     }
     
-    const planNames = {
-        single: '單次',
-        weekly: '週方案',
-        '1month': '1個月',
-        '2months': '2個月',
-        '3months': '3個月'
-    };
+    const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
     
     return subscriptions.map(sub => {
-        // 獲取該訂閱的配送完成數量
         const subReceipts = receipts?.filter(r => r.subscription_id === sub.id) || [];
         const hasReceipt = subReceipts.length > 0;
         const receiptUrl = subReceipts[0]?.receipt_url;
         
-        // 支付狀態顯示
         let paymentStatusHtml = '';
-        if (sub.payment_status === 'paid') {
-            paymentStatusHtml = '<span class="badge badge-active">✅ 已支付</span>';
-        } else if (sub.payment_status === 'unpaid') {
-            paymentStatusHtml = '<span class="badge badge-pending">⏳ 未支付</span>';
-        } else if (sub.payment_status === 'partial') {
-            paymentStatusHtml = '<span class="badge badge-warning">💰 部分支付</span>';
-        } else {
-            paymentStatusHtml = '<span class="badge badge-pending">待付款</span>';
-        }
+        if (sub.payment_status === 'paid') paymentStatusHtml = '<span class="badge badge-active">✅ 已支付</span>';
+        else if (sub.payment_status === 'unpaid') paymentStatusHtml = '<span class="badge badge-pending">⏳ 未支付</span>';
+        else if (sub.payment_status === 'partial') paymentStatusHtml = '<span class="badge badge-warning">💰 部分支付</span>';
+        else paymentStatusHtml = '<span class="badge badge-pending">待付款</span>';
         
-        // 配送進度顯示（已完成/總餐數）
         const mealsReceived = sub.meals_received || 0;
         const totalDays = sub.total_days || 0;
         
         return `
             <tr style="border-bottom: 1px solid #1e2a3a;">
-                <td style="padding: 12px;">
-                    <span class="order-no-badge" style="font-size: 11px;">${sub.order_no || '無訂單號'}</span>
-                 </td
-                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.created_at)}</td
-                <td style="padding: 12px;">${planNames[sub.plan_type] || sub.plan_type}</td
-                <td style="padding: 12px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="width: 60px; background: #1e2a3a; border-radius: 10px; height: 4px;">
-                            <div style="width: ${totalDays > 0 ? (mealsReceived / totalDays) * 100 : 0}%; background: #2ed15a; border-radius: 10px; height: 4px;"></div>
-                        </div>
-                        <span style="font-size: 11px;">${mealsReceived}/${totalDays}</span>
-                    </div>
-                 </td
-                <td style="padding: 12px; color: #c8a15e;">RM ${sub.total_price}</td
-                <td style="padding: 12px;">${paymentStatusHtml}</td
-                <td style="padding: 12px;">
-                    ${hasReceipt ? `
-                        <a href="${receiptUrl}" target="_blank" class="btn-small" style="background: #c8a15e; color: #0a1a2e; padding: 4px 8px; font-size: 10px;">
-                            <i class="fas fa-receipt"></i> 查看
-                        </a>
-                    ` : `
-                        <button class="btn-small" onclick="uploadReceiptForUserFromDetail('${sub.user_id}', '${sub.id}', '${sub.order_no}')" style="background: #4a7cff; padding: 4px 8px; font-size: 10px;">
-                            <i class="fas fa-upload"></i> 上傳
-                        </button>
-                    `}
-                 </td
-             </table>
+                <td style="padding: 12px;"><span class="order-no-badge" style="font-size: 11px;">${sub.order_no || '無訂單號'}</span></td>
+                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.created_at)}</td>
+                <td style="padding: 12px;">${planNames[sub.plan_type] || sub.plan_type}</td>
+                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.start_date)} → ${formatDate(sub.end_date)}</td>
+                <td style="padding: 12px;"><div style="display: flex; align-items: center; gap: 8px;"><div style="width: 60px; background: #1e2a3a; border-radius: 10px; height: 4px;"><div style="width: ${totalDays > 0 ? (mealsReceived / totalDays) * 100 : 0}%; background: #2ed15a; border-radius: 10px; height: 4px;"></div></div><span style="font-size: 11px;">${mealsReceived}/${totalDays}</span></div></td>
+                <td style="padding: 12px; color: #c8a15e;">RM ${sub.total_price}</td>
+                <td style="padding: 12px;">${paymentStatusHtml}</td>
+                <td style="padding: 12px;">${hasReceipt ? `<a href="${receiptUrl}" target="_blank" class="btn-small" style="background: #c8a15e; color: #0a1a2e; padding: 4px 8px; font-size: 10px;"><i class="fas fa-receipt"></i> 查看</a>` : `<button class="btn-small" onclick="uploadReceiptForUserFromDetail('${sub.user_id}', '${sub.id}', '${sub.order_no}')" style="background: #4a7cff; padding: 4px 8px; font-size: 10px;"><i class="fas fa-upload"></i> 上傳</button>`}</td>
+                <td style="padding: 12px; text-align: center;"><button class="btn-icon" onclick="deleteOrder('${sub.id}', '${currentUserId}')" title="刪除訂單" style="color: #ff5a5a;"><i class="fas fa-trash-alt"></i></button></td>
+            </tr>
         `;
     }).join('');
+}
+
+// 刪除訂單
+async function deleteOrder(subscriptionId, userId) {
+    if (!confirm('確定要刪除此訂單嗎？\n\n注意：刪除訂單會同時刪除相關的配送記錄！')) return;
+    
+    try {
+        await supabaseClient.from('deliveries').delete().eq('subscription_id', subscriptionId);
+        const { error } = await supabaseClient.from('subscriptions').delete().eq('id', subscriptionId);
+        if (error) throw error;
+        showToast('訂單已刪除！');
+        const modal = document.querySelector('.modal-overlay');
+        if (modal) modal.remove();
+        viewUserDetail(userId);
+        loadUsersPage();
+    } catch (err) {
+        console.error('Delete order error:', err);
+        showToast('刪除失敗: ' + err.message, 'error');
+    }
 }
 
 // 從詳情頁上傳收據
@@ -723,31 +608,11 @@ async function uploadReceiptForUserFromDetail(userId, subscriptionId, orderNo) {
     modal.innerHTML = `
         <div class="modal-card" style="max-width: 450px; width: 90%;">
             <h3>上傳收據</h3>
-            <div class="input-group">
-                <label>訂單號</label>
-                <input type="text" value="${orderNo || '無訂單號'}" readonly style="background: rgba(0,0,0,0.3);">
-            </div>
-            <div class="input-group">
-                <label>金額 (RM)</label>
-                <input type="number" id="receiptAmountDetail" step="0.01" placeholder="輸入金額">
-            </div>
-            <div class="input-group">
-                <label>付款方式</label>
-                <select id="receiptPaymentMethodDetail">
-                    <option value="credit_card">信用卡</option>
-                    <option value="bank_transfer">銀行轉帳</option>
-                    <option value="cash">貨到付款</option>
-                    <option value="touchngo">Touch n Go</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label>收據圖片</label>
-                <input type="file" id="receiptFileDetail" accept="image/*,.pdf">
-            </div>
-            <div class="modal-buttons">
-                <button class="btn-save" onclick="confirmUploadReceiptFromDetail('${userId}', '${subscriptionId}', '${orderNo}')">上傳</button>
-                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
-            </div>
+            <div class="input-group"><label>訂單號</label><input type="text" value="${orderNo || '無訂單號'}" readonly style="background: rgba(0,0,0,0.3);"></div>
+            <div class="input-group"><label>金額 (RM)</label><input type="number" id="receiptAmountDetail" step="0.01" placeholder="輸入金額"></div>
+            <div class="input-group"><label>付款方式</label><select id="receiptPaymentMethodDetail"><option value="credit_card">信用卡</option><option value="bank_transfer">銀行轉帳</option><option value="cash">貨到付款</option><option value="touchngo">Touch n Go</option></select></div>
+            <div class="input-group"><label>收據圖片</label><input type="file" id="receiptFileDetail" accept="image/*,.pdf"></div>
+            <div class="modal-buttons"><button class="btn-save" onclick="confirmUploadReceiptFromDetail('${userId}', '${subscriptionId}', '${orderNo}')">上傳</button><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button></div>
         </div>
     `;
     document.body.appendChild(modal);
@@ -758,15 +623,8 @@ async function confirmUploadReceiptFromDetail(userId, subscriptionId, orderNo) {
     const paymentMethod = document.getElementById('receiptPaymentMethodDetail').value;
     const file = document.getElementById('receiptFileDetail').files[0];
     
-    if (amount <= 0) {
-        showToast('請輸入有效的金額', 'error');
-        return;
-    }
-    
-    if (!file) {
-        showToast('請選擇收據文件', 'error');
-        return;
-    }
+    if (amount <= 0) { showToast('請輸入有效的金額', 'error'); return; }
+    if (!file) { showToast('請選擇收據文件', 'error'); return; }
     
     const modal = document.querySelector('.modal-overlay');
     if (modal) modal.remove();
@@ -774,37 +632,14 @@ async function confirmUploadReceiptFromDetail(userId, subscriptionId, orderNo) {
     try {
         const fileExt = file.name.split('.').pop();
         const fileName = `receipt_${userId}_${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabaseClient.storage
-            .from('receipts')
-            .upload(fileName, file);
-        
-        if (uploadError) {
-            showToast('上傳失敗: ' + uploadError.message, 'error');
-            return;
-        }
-        
+        const { error: uploadError } = await supabaseClient.storage.from('receipts').upload(fileName, file);
+        if (uploadError) throw uploadError;
         const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
-        
-        await supabaseClient.from('receipts').insert({
-            user_id: userId,
-            subscription_id: subscriptionId,
-            order_no: orderNo,
-            amount: amount,
-            receipt_url: urlData.publicUrl,
-            payment_method: paymentMethod,
-            created_at: new Date()
-        });
-        
-        await supabaseClient
-            .from('subscriptions')
-            .update({ payment_status: 'paid' })
-            .eq('id', subscriptionId);
-        
+        await supabaseClient.from('receipts').insert({ user_id: userId, subscription_id: subscriptionId, order_no: orderNo, amount: amount, receipt_url: urlData.publicUrl, payment_method: paymentMethod, created_at: new Date() });
+        await supabaseClient.from('subscriptions').update({ payment_status: 'paid' }).eq('id', subscriptionId);
         showToast('收據上傳成功！');
         viewUserDetail(userId);
         loadUsersPage();
-        
     } catch (err) {
         console.error('Upload error:', err);
         showToast('上傳失敗: ' + err.message, 'error');
@@ -813,26 +648,10 @@ async function confirmUploadReceiptFromDetail(userId, subscriptionId, orderNo) {
 
 // 編輯用戶
 async function editUser(userId) {
-    const { data: user } = await supabaseClient
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-    
-    if (!user) return;
-    
-    const { data: subscription } = await supabaseClient
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .maybeSingle();
-    
-    const { data: deliveries } = await supabaseClient
-        .from('deliveries')
-        .select('status')
-        .eq('user_id', userId);
-    
+    const { data: user } = await supabaseClient.from('users').select('*').eq('id', userId).single();
+    const { data: subscriptionsList } = await supabaseClient.from('subscriptions').select('*').eq('user_id', userId).eq('status', 'active').limit(1);
+    const subscription = subscriptionsList?.[0] || null;
+    const { data: deliveries } = await supabaseClient.from('deliveries').select('status').eq('user_id', userId);
     const deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
     
     const modal = document.createElement('div');
@@ -841,87 +660,37 @@ async function editUser(userId) {
     modal.innerHTML = `
         <div class="modal-card" style="max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto;">
             <h3><i class="fas fa-user-edit"></i> 編輯用戶 - ${escapeHtml(user.full_name)}</h3>
-            
             <div style="background: rgba(200,161,94,0.1); border-radius: 16px; padding: 15px; margin: 15px 0;">
-                <h4 style="color: #c8a15e; margin-bottom: 15px;">基本信息</h4>
+                <h4 style="color: #c8a15e;">基本信息</h4>
                 <div class="input-group"><label>地址</label><input type="text" id="editAddress" value="${escapeHtml(user.address || '')}"></div>
                 <div class="input-group"><label>郵箱</label><input type="email" id="editEmail" value="${escapeHtml(user.email || '')}"></div>
                 <div class="input-group"><label>密碼</label><input type="password" id="editPassword" placeholder="留空則不修改"><small>留空表示保持原密碼不變</small></div>
                 <div class="input-group"><label>手機號</label><input type="tel" id="editPhone" value="${escapeHtml(user.phone || '')}"></div>
-                <div class="input-group">
-                    <label>付款方式</label>
-                    <select id="editPaymentMethod">${PAYMENT_METHODS.map(m => `<option value="${m}" ${user.payment_method === m ? 'selected' : ''}>${m}</option>`).join('')}</select>
-                </div>
+                <div class="input-group"><label>付款方式</label><select id="editPaymentMethod">${PAYMENT_METHODS.map(m => `<option value="${m}" ${user.payment_method === m ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
             </div>
-            
             <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 15px; margin: 15px 0;">
-                <h4 style="color: #c8a15e; margin-bottom: 15px;">訂閱信息</h4>
-                <div class="input-group">
-                    <label>訂單號</label>
-                    <input type="text" value="${subscription?.order_no || ''}" readonly style="background: rgba(0,0,0,0.3);">
-                </div>
-                <div class="input-group">
-                    <label>訂閱狀態</label>
-                    <select id="editSubscriptionStatus">${SUBSCRIPTION_STATUS.map(s => `<option value="${s}" ${subscription?.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
-                </div>
-                <div class="input-group">
-                    <label>支付狀態</label>
-                    <select id="editPaymentStatus">
-                        <option value="paid" ${subscription?.payment_status === 'paid' ? 'selected' : ''}>✅ 已支付</option>
-                        <option value="unpaid" ${subscription?.payment_status === 'unpaid' ? 'selected' : ''}>⏳ 未支付</option>
-                        <option value="partial" ${subscription?.payment_status === 'partial' ? 'selected' : ''}>💰 部分支付</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>配套類型</label>
-                    <select id="editPlanType" onchange="updatePlanPrice()">
-                        ${Object.entries(PLAN_CONFIG).map(([key, config]) => `
-                            <option value="${key}" ${subscription?.plan_type === key ? 'selected' : ''} data-days="${config.days}" data-price="${config.price}">
-                                ${config.name} (${config.days}天 - RM ${config.price})
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>開始日期</label>
-                    <input type="date" id="editStartDate" value="${subscription?.start_date?.split('T')[0] || ''}" onchange="updateEndDate()">
-                </div>
-                <div class="input-group">
-                    <label>結束日期</label>
-                    <input type="date" id="editEndDate" readonly style="background: rgba(0,0,0,0.3);">
-                </div>
-                <div class="input-group">
-                    <label>已送達餐數</label>
-                    <input type="number" id="editMealsReceived" value="${subscription?.meals_received || deliveredCount || 0}" min="0">
-                </div>
-                <div class="input-group">
-                    <label>總價格 (RM)</label>
-                    <input type="number" id="editTotalPrice" value="${subscription?.total_price || ''}" step="0.01" readonly style="background: rgba(0,0,0,0.3);">
-                </div>
+                <h4 style="color: #c8a15e;">訂閱信息</h4>
+                <div class="input-group"><label>訂單號</label><input type="text" value="${subscription?.order_no || ''}" readonly style="background: rgba(0,0,0,0.3);"></div>
+                <div class="input-group"><label>訂閱狀態</label><select id="editSubscriptionStatus">${SUBSCRIPTION_STATUS.map(s => `<option value="${s}" ${subscription?.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+                <div class="input-group"><label>支付狀態</label><select id="editPaymentStatus"><option value="paid" ${subscription?.payment_status === 'paid' ? 'selected' : ''}>✅ 已支付</option><option value="unpaid" ${subscription?.payment_status === 'unpaid' ? 'selected' : ''}>⏳ 未支付</option><option value="partial" ${subscription?.payment_status === 'partial' ? 'selected' : ''}>💰 部分支付</option></select></div>
+                <div class="input-group"><label>配套類型</label><select id="editPlanType" onchange="updatePlanPrice()">${Object.entries(PLAN_CONFIG).map(([key, config]) => `<option value="${key}" ${subscription?.plan_type === key ? 'selected' : ''} data-days="${config.days}" data-price="${config.price}">${config.name} (${config.days}天 - RM ${config.price})</option>`).join('')}</select></div>
+                <div class="input-group"><label>開始日期</label><input type="date" id="editStartDate" value="${subscription?.start_date?.split('T')[0] || ''}" onchange="updateEndDate()"></div>
+                <div class="input-group"><label>結束日期</label><input type="date" id="editEndDate" readonly style="background: rgba(0,0,0,0.3);"></div>
+                <div class="input-group"><label>已送達餐數</label><input type="number" id="editMealsReceived" value="${subscription?.meals_received || deliveredCount || 0}" min="0"></div>
+                <div class="input-group"><label>總價格 (RM)</label><input type="number" id="editTotalPrice" value="${subscription?.total_price || ''}" step="0.01" readonly style="background: rgba(0,0,0,0.3);"></div>
             </div>
-            
-            <div style="display: flex; gap: 12px; margin-top: 20px;">
-                <button class="btn-save" onclick="saveUserEdit('${userId}')">保存修改</button>
-                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
-            </div>
+            <div style="display: flex; gap: 12px; margin-top: 20px;"><button class="btn-save" onclick="saveUserEdit('${userId}')">保存修改</button><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button></div>
         </div>
     `;
     document.body.appendChild(modal);
     
     window.updatePlanPrice = function() {
         const planSelect = document.getElementById('editPlanType');
-        const selectedOption = planSelect.options[planSelect.selectedIndex];
-        const price = selectedOption.dataset.price;
+        const price = planSelect.options[planSelect.selectedIndex]?.dataset.price;
         const priceInput = document.getElementById('editTotalPrice');
         if (priceInput && price) priceInput.value = price;
-        updateEndDate();
-    };
-    
-    window.updateEndDate = function() {
         const startDateInput = document.getElementById('editStartDate');
-        const planSelect = document.getElementById('editPlanType');
-        const selectedOption = planSelect.options[planSelect.selectedIndex];
-        const days = parseInt(selectedOption.dataset.days);
+        const days = parseInt(planSelect.options[planSelect.selectedIndex]?.dataset.days);
         const endDateInput = document.getElementById('editEndDate');
         if (startDateInput.value && days) {
             const start = new Date(startDateInput.value);
@@ -930,9 +699,19 @@ async function editUser(userId) {
             endDateInput.value = end.toISOString().split('T')[0];
         }
     };
-    
+    window.updateEndDate = function() {
+        const startDateInput = document.getElementById('editStartDate');
+        const planSelect = document.getElementById('editPlanType');
+        const days = parseInt(planSelect.options[planSelect.selectedIndex]?.dataset.days);
+        const endDateInput = document.getElementById('editEndDate');
+        if (startDateInput.value && days) {
+            const start = new Date(startDateInput.value);
+            const end = new Date(start);
+            end.setDate(end.getDate() + days - 1);
+            endDateInput.value = end.toISOString().split('T')[0];
+        }
+    };
     updatePlanPrice();
-    updateEndDate();
 }
 
 // 保存用戶編輯
@@ -949,48 +728,17 @@ async function saveUserEdit(userId) {
     const endDate = document.getElementById('editEndDate').value;
     const mealsReceived = parseInt(document.getElementById('editMealsReceived').value) || 0;
     const totalPrice = parseFloat(document.getElementById('editTotalPrice').value) || 0;
-    
     const planDays = PLAN_CONFIG[planType]?.days || 30;
     
-    const updateUserData = {
-        address: address || null,
-        email: email || null,
-        phone: phone || null,
-        payment_method: paymentMethod
-    };
+    const updateUserData = { address: address || null, email: email || null, phone: phone || null, payment_method: paymentMethod };
+    if (password && password.trim() !== '') updateUserData.password = btoa(password);
     
-    if (password && password.trim() !== '') {
-        updateUserData.password = btoa(password);
-    }
+    const { error: userError } = await supabaseClient.from('users').update(updateUserData).eq('id', userId);
+    if (userError) { showToast('更新失敗: ' + userError.message, 'error'); return; }
     
-    const { error: userError } = await supabaseClient
-        .from('users')
-        .update(updateUserData)
-        .eq('id', userId);
-    
-    if (userError) {
-        showToast('更新失敗: ' + userError.message, 'error');
-        return;
-    }
-    
-    const { data: existingSubscription } = await supabaseClient
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .maybeSingle();
-    
-    const subscriptionData = {
-        plan_type: planType,
-        total_days: planDays,
-        meals_received: mealsReceived,
-        start_date: startDate,
-        end_date: endDate,
-        status: subscriptionStatus,
-        payment_status: paymentStatus,
-        total_price: totalPrice,
-        updated_at: new Date()
-    };
+    const { data: existingSubscriptions } = await supabaseClient.from('subscriptions').select('*').eq('user_id', userId).eq('status', 'active').limit(1);
+    const existingSubscription = existingSubscriptions?.[0] || null;
+    const subscriptionData = { plan_type: planType, total_days: planDays, meals_received: mealsReceived, start_date: startDate, end_date: endDate, status: subscriptionStatus, payment_status: paymentStatus, total_price: totalPrice, updated_at: new Date() };
     
     if (existingSubscription) {
         await supabaseClient.from('subscriptions').update(subscriptionData).eq('id', existingSubscription.id);
@@ -1006,32 +754,10 @@ async function saveUserEdit(userId) {
 // 導出用戶數據
 async function exportUsersData() {
     try {
-        const { data: users, error } = await supabaseClient
-            .from('users')
-            .select('*, subscriptions(order_no, plan_type, total_price, payment_status)')
-            .neq('email', ADMIN_EMAIL);
-        
-        if (error) {
-            showToast('導出失敗: ' + error.message, 'error');
-            return;
-        }
-        
+        const { data: users, error } = await supabaseClient.from('users').select('*, subscriptions(order_no, plan_type, total_price, payment_status)').neq('email', ADMIN_EMAIL);
+        if (error) throw error;
         const csv = [['姓名', '郵箱', '電話', '地址', '訂單號', '方案', '金額', '支付狀態', '註冊時間']];
-        users.forEach(u => {
-            const sub = u.subscriptions;
-            csv.push([
-                u.full_name,
-                u.email || '',
-                u.phone || '',
-                u.address || '',
-                sub?.order_no || '',
-                sub?.plan_type || '',
-                sub?.total_price || '',
-                sub?.payment_status || '',
-                u.created_at
-            ]);
-        });
-        
+        users.forEach(u => { const sub = u.subscriptions; csv.push([u.full_name, u.email || '', u.phone || '', u.address || '', sub?.order_no || '', sub?.plan_type || '', sub?.total_price || '', sub?.payment_status || '', u.created_at]); });
         const blob = new Blob([csv.map(row => row.join(',')).join('\n')], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1040,124 +766,44 @@ async function exportUsersData() {
         a.click();
         URL.revokeObjectURL(url);
         showToast('導出成功');
-    } catch (err) {
-        console.error('Export error:', err);
-        showToast('導出失敗', 'error');
-    }
+    } catch (err) { console.error('Export error:', err); showToast('導出失敗', 'error'); }
 }
 
 // 生成訂單號
 function generateOrderNo() {
     const now = new Date();
-    const dateStr = now.getFullYear() +
-        String(now.getMonth() + 1).padStart(2, '0') +
-        String(now.getDate()).padStart(2, '0');
+    const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
     const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
     return `ORD${dateStr}${randomNum}`;
 }
 
 // 顯示添加訂單彈窗
 async function showAddOrderModal(userId) {
-    // 獲取用戶信息
-    const { data: user } = await supabaseClient
-        .from('users')
-        .select('full_name')
-        .eq('id', userId)
-        .single();
-    
+    const { data: user } = await supabaseClient.from('users').select('full_name').eq('id', userId).single();
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.style.display = 'flex';
     modal.innerHTML = `
         <div class="modal-card" style="max-width: 550px; width: 90%; max-height: 85vh; overflow-y: auto;">
-            <div class="modal-header">
-                <h3><i class="fas fa-shopping-cart"></i> 添加訂單 - ${escapeHtml(user?.full_name)}</h3>
-                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-            </div>
+            <div class="modal-header"><h3><i class="fas fa-shopping-cart"></i> 添加訂單 - ${escapeHtml(user?.full_name)}</h3><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button></div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label><i class="fas fa-tag"></i> 訂單號</label>
-                    <input type="text" id="newOrderNo" class="form-input" readonly style="background: rgba(0,0,0,0.3);">
-                    <small>系統自動生成，無需填寫</small>
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-box"></i> 配套類型 <span class="required">*</span></label>
-                    <select id="newPlanType" class="form-select">
-                        <option value="single">單次 (1天 - RM 15.90)</option>
-                        <option value="weekly">週方案 (7天 - RM 111.30)</option>
-                        <option value="1month">1個月 (30天 - RM 447)</option>
-                        <option value="2months">2個月 (60天 - RM 834)</option>
-                        <option value="3months">3個月 (90天 - RM 1161)</option>
-                    </select>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label><i class="fas fa-calendar-alt"></i> 開始日期 <span class="required">*</span></label>
-                        <input type="date" id="newStartDate" class="form-input" value="${getTodayString()}">
-                    </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-calendar-check"></i> 結束日期</label>
-                        <input type="date" id="newEndDate" class="form-input" readonly style="background: rgba(0,0,0,0.3);">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-dollar-sign"></i> 訂單金額 (RM)</label>
-                    <input type="number" id="newTotalPrice" class="form-input" readonly style="background: rgba(0,0,0,0.3);">
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-credit-card"></i> 付款方式</label>
-                    <select id="newPaymentMethod" class="form-select">
-                        <option value="credit_card">💳 信用卡</option>
-                        <option value="bank_transfer">🏦 銀行轉帳</option>
-                        <option value="cash">💵 貨到付款</option>
-                        <option value="touchngo">📱 Touch n Go</option>
-                        <option value="pending">⏳ 待付款</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-chart-line"></i> 訂閱狀態</label>
-                    <select id="newSubscriptionStatus" class="form-select">
-                        <option value="active">🟢 活躍中</option>
-                        <option value="expired">🔴 已過期</option>
-                        <option value="cancelled">⚫ 已取消</option>
-                        <option value="paused">🟡 暫停</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-money-bill"></i> 支付狀態</label>
-                    <select id="newPaymentStatus" class="form-select">
-                        <option value="paid">✅ 已支付</option>
-                        <option value="unpaid">⏳ 未支付</option>
-                        <option value="partial">💰 部分支付</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-sticky-note"></i> 備註</label>
-                    <textarea id="newOrderNotes" class="form-input" rows="2" placeholder="特殊備註、調整原因等"></textarea>
-                </div>
+                <div class="form-group"><label><i class="fas fa-tag"></i> 訂單號</label><input type="text" id="newOrderNo" class="form-input" readonly style="background: rgba(0,0,0,0.3);"><small>系統自動生成</small></div>
+                <div class="form-group"><label><i class="fas fa-box"></i> 配套類型 <span class="required">*</span></label><select id="newPlanType" class="form-select"><option value="single">單次 (1天 - RM 15.90)</option><option value="weekly">週方案 (7天 - RM 111.30)</option><option value="1month">1個月 (30天 - RM 447)</option><option value="2months">2個月 (60天 - RM 834)</option><option value="3months">3個月 (90天 - RM 1161)</option></select></div>
+                <div class="form-row"><div class="form-group"><label><i class="fas fa-calendar-alt"></i> 開始日期 <span class="required">*</span></label><input type="date" id="newStartDate" class="form-input" value="${getTodayString()}"></div><div class="form-group"><label><i class="fas fa-calendar-check"></i> 結束日期</label><input type="date" id="newEndDate" class="form-input" readonly style="background: rgba(0,0,0,0.3);"></div></div>
+                <div class="form-group"><label><i class="fas fa-dollar-sign"></i> 訂單金額 (RM)</label><input type="number" id="newTotalPrice" class="form-input" readonly style="background: rgba(0,0,0,0.3);"></div>
+                <div class="form-group"><label><i class="fas fa-credit-card"></i> 付款方式</label><select id="newPaymentMethod" class="form-select"><option value="credit_card">💳 信用卡</option><option value="bank_transfer">🏦 銀行轉帳</option><option value="cash">💵 貨到付款</option><option value="touchngo">📱 Touch n Go</option><option value="pending">⏳ 待付款</option></select></div>
+                <div class="form-group"><label><i class="fas fa-chart-line"></i> 訂閱狀態</label><select id="newSubscriptionStatus" class="form-select"><option value="active">🟢 活躍中</option><option value="expired">🔴 已過期</option><option value="cancelled">⚫ 已取消</option><option value="paused">🟡 暫停</option></select></div>
+                <div class="form-group"><label><i class="fas fa-money-bill"></i> 支付狀態</label><select id="newPaymentStatus" class="form-select"><option value="paid">✅ 已支付</option><option value="unpaid">⏳ 未支付</option><option value="partial">💰 部分支付</option></select></div>
+                <div class="form-group"><label><i class="fas fa-sticky-note"></i> 備註</label><textarea id="newOrderNotes" class="form-input" rows="2" placeholder="特殊備註、調整原因等"></textarea></div>
             </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
-                <button class="btn-submit" id="confirmAddOrderBtn">確認添加訂單</button>
-            </div>
+            <div class="modal-footer"><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn-submit" id="confirmAddOrderBtn">確認添加訂單</button></div>
         </div>
     `;
     document.body.appendChild(modal);
     
-    // 生成訂單號
     const orderNoInput = document.getElementById('newOrderNo');
-    if (orderNoInput) {
-        orderNoInput.value = generateOrderNo();
-    }
+    if (orderNoInput) orderNoInput.value = generateOrderNo();
     
-    // 綁定方案選擇事件
     const planSelect = document.getElementById('newPlanType');
     const startDateInput = document.getElementById('newStartDate');
     const endDateInput = document.getElementById('newEndDate');
@@ -1168,32 +814,23 @@ async function showAddOrderModal(userId) {
         const planConfig = PLAN_CONFIG[selectedPlan];
         if (planConfig) {
             totalPriceInput.value = planConfig.price;
-            
-            const startDate = new Date(startDateInput.value);
-            if (startDateInput.value && !isNaN(startDate.getTime())) {
-                const endDate = new Date(startDate);
-                endDate.setDate(endDate.getDate() + planConfig.days - 1);
-                endDateInput.value = endDate.toISOString().split('T')[0];
+            if (startDateInput.value) {
+                const start = new Date(startDateInput.value);
+                const end = new Date(start);
+                end.setDate(end.getDate() + planConfig.days - 1);
+                endDateInput.value = end.toISOString().split('T')[0];
             }
         }
     }
-    
     planSelect.onchange = updatePlanInfo;
     startDateInput.onchange = updatePlanInfo;
-    
-    // 初始化
     updatePlanInfo();
     
-    // 綁定確認按鈕
     const confirmBtn = document.getElementById('confirmAddOrderBtn');
-    if (confirmBtn) {
-        confirmBtn.onclick = function() {
-            confirmAddOrder(userId);
-        };
-    }
+    if (confirmBtn) confirmBtn.onclick = () => confirmAddOrder(userId);
 }
 
-// 確認添加訂單（修復版）
+// 確認添加訂單
 async function confirmAddOrder(userId) {
     const planType = document.getElementById('newPlanType').value;
     const startDate = document.getElementById('newStartDate').value;
@@ -1202,133 +839,50 @@ async function confirmAddOrder(userId) {
     const subscriptionStatus = document.getElementById('newSubscriptionStatus').value;
     const paymentStatus = document.getElementById('newPaymentStatus').value;
     const notes = document.getElementById('newOrderNotes').value;
-    const orderNo = document.getElementById('newOrderNo').value;
+    let orderNo = document.getElementById('newOrderNo').value;
     
-    if (!startDate) {
-        showToast('請選擇開始日期', 'error');
-        return;
-    }
+    if (!startDate) { showToast('請選擇開始日期', 'error'); return; }
     
     const planConfig = PLAN_CONFIG[planType];
     const totalDays = planConfig.days;
-    
-    // 計算結束日期
     const startDateObj = new Date(startDate);
     const endDateObj = new Date(startDateObj);
     endDateObj.setDate(endDateObj.getDate() + totalDays - 1);
     const endDate = endDateObj.toISOString().split('T')[0];
     
-    // 檢查訂單號是否重複
-    const { data: existingOrder } = await supabaseClient
-        .from('subscriptions')
-        .select('id')
-        .eq('order_no', orderNo)
-        .maybeSingle();
+    const { data: existingOrder } = await supabaseClient.from('subscriptions').select('id').eq('order_no', orderNo).maybeSingle();
+    if (existingOrder) orderNo = generateOrderNo();
     
-    let finalOrderNo = orderNo;
-    if (existingOrder) {
-        finalOrderNo = generateOrderNo();
-        // 更新顯示的訂單號
-        const orderNoInput = document.getElementById('newOrderNo');
-        if (orderNoInput) orderNoInput.value = finalOrderNo;
-    }
-    
-    // 獲取按鈕並顯示加載狀態
     const confirmBtn = document.getElementById('confirmAddOrderBtn');
-    const originalText = confirmBtn ? confirmBtn.innerText : '確認添加訂單';
-    if (confirmBtn) {
-        confirmBtn.innerText = '處理中...';
-        confirmBtn.disabled = true;
-    }
+    const originalText = confirmBtn?.innerText || '確認添加訂單';
+    if (confirmBtn) { confirmBtn.innerText = '處理中...'; confirmBtn.disabled = true; }
     
     try {
-        // 只插入必要的欄位
-        const insertData = {
-            user_id: userId,
-            plan_type: planType,
-            total_days: totalDays,
-            meals_received: 0,
-            start_date: startDate,
-            end_date: endDate,
-            status: subscriptionStatus,
-            total_price: totalPrice,
-            payment_method: paymentMethod,
-            created_at: new Date()
-        };
+        const { data: subscription, error: subError } = await supabaseClient.from('subscriptions').insert({
+            user_id: userId, plan_type: planType, total_days: totalDays, meals_received: 0,
+            start_date: startDate, end_date: endDate, status: subscriptionStatus, total_price: totalPrice,
+            payment_method: paymentMethod, payment_status: paymentStatus, order_no: orderNo, notes: notes || null, created_at: new Date()
+        }).select().single();
+        if (subError) throw subError;
         
-        // 如果有 order_no 欄位才添加
-        if (finalOrderNo) {
-            insertData.order_no = finalOrderNo;
-        }
-        
-        // 如果有 payment_status 欄位才添加
-        if (paymentStatus) {
-            insertData.payment_status = paymentStatus;
-        }
-        
-        // 如果有 notes 欄位才添加
-        if (notes) {
-            insertData.notes = notes;
-        }
-        
-        console.log('Inserting subscription:', insertData);
-        
-        const { data: subscription, error: subError } = await supabaseClient
-            .from('subscriptions')
-            .insert(insertData)
-            .select()
-            .single();
-        
-        if (subError) {
-            console.error('Insert error:', subError);
-            showToast('添加訂單失敗: ' + subError.message, 'error');
-            return;
-        }
-        
-        // 如果是活躍訂閱，創建配送日程
         if (subscriptionStatus === 'active' && subscription) {
             const deliveries = [];
             for (let i = 0; i < totalDays; i++) {
                 const deliveryDate = new Date(startDate);
                 deliveryDate.setDate(deliveryDate.getDate() + i);
-                deliveries.push({
-                    user_id: userId,
-                    subscription_id: subscription.id,
-                    delivery_date: deliveryDate.toISOString().split('T')[0],
-                    status: i === 0 ? 'pending' : 'upcoming',
-                    meal_number: i + 1
-                });
+                deliveries.push({ user_id: userId, subscription_id: subscription.id, delivery_date: deliveryDate.toISOString().split('T')[0], status: i === 0 ? 'pending' : 'upcoming', meal_number: i + 1 });
             }
-            
-            if (deliveries.length > 0) {
-                const { error: delError } = await supabaseClient
-                    .from('deliveries')
-                    .insert(deliveries);
-                
-                if (delError) {
-                    console.error('Delivery creation error:', delError);
-                    // 不中斷，只記錄錯誤
-                }
-            }
+            if (deliveries.length > 0) await supabaseClient.from('deliveries').insert(deliveries);
         }
         
-        showToast(`訂單 ${finalOrderNo} 添加成功！`);
-        
-        // 關閉當前彈窗
-        const modal = document.querySelector('.modal-overlay');
-        if (modal) modal.remove();
-        
-        // 重新打開用戶詳情彈窗
+        showToast(`訂單 ${orderNo} 添加成功！`);
+        document.querySelector('.modal-overlay')?.remove();
         viewUserDetail(userId);
         loadUsersPage();
-        
     } catch (err) {
         console.error('Add order error:', err);
         showToast('添加訂單失敗: ' + err.message, 'error');
     } finally {
-        if (confirmBtn) {
-            confirmBtn.innerText = originalText;
-            confirmBtn.disabled = false;
-        }
+        if (confirmBtn) { confirmBtn.innerText = originalText; confirmBtn.disabled = false; }
     }
 }
