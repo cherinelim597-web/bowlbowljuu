@@ -1193,7 +1193,7 @@ async function showAddOrderModal(userId) {
     }
 }
 
-// 確認添加訂單（只有一個！）
+// 確認添加訂單（修復版）
 async function confirmAddOrder(userId) {
     const planType = document.getElementById('newPlanType').value;
     const startDate = document.getElementById('newStartDate').value;
@@ -1228,6 +1228,9 @@ async function confirmAddOrder(userId) {
     let finalOrderNo = orderNo;
     if (existingOrder) {
         finalOrderNo = generateOrderNo();
+        // 更新顯示的訂單號
+        const orderNoInput = document.getElementById('newOrderNo');
+        if (orderNoInput) orderNoInput.value = finalOrderNo;
     }
     
     // 獲取按鈕並顯示加載狀態
@@ -1239,34 +1242,51 @@ async function confirmAddOrder(userId) {
     }
     
     try {
-        // 創建訂閱記錄
+        // 只插入必要的欄位
+        const insertData = {
+            user_id: userId,
+            plan_type: planType,
+            total_days: totalDays,
+            meals_received: 0,
+            start_date: startDate,
+            end_date: endDate,
+            status: subscriptionStatus,
+            total_price: totalPrice,
+            payment_method: paymentMethod,
+            created_at: new Date()
+        };
+        
+        // 如果有 order_no 欄位才添加
+        if (finalOrderNo) {
+            insertData.order_no = finalOrderNo;
+        }
+        
+        // 如果有 payment_status 欄位才添加
+        if (paymentStatus) {
+            insertData.payment_status = paymentStatus;
+        }
+        
+        // 如果有 notes 欄位才添加
+        if (notes) {
+            insertData.notes = notes;
+        }
+        
+        console.log('Inserting subscription:', insertData);
+        
         const { data: subscription, error: subError } = await supabaseClient
             .from('subscriptions')
-            .insert({
-                user_id: userId,
-                plan_type: planType,
-                total_days: totalDays,
-                meals_received: 0,
-                start_date: startDate,
-                end_date: endDate,
-                status: subscriptionStatus,
-                total_price: totalPrice,
-                payment_method: paymentMethod,
-                payment_status: paymentStatus,
-                order_no: finalOrderNo,
-                notes: notes || null,
-                created_at: new Date()
-            })
+            .insert(insertData)
             .select()
             .single();
         
         if (subError) {
+            console.error('Insert error:', subError);
             showToast('添加訂單失敗: ' + subError.message, 'error');
             return;
         }
         
         // 如果是活躍訂閱，創建配送日程
-        if (subscriptionStatus === 'active') {
+        if (subscriptionStatus === 'active' && subscription) {
             const deliveries = [];
             for (let i = 0; i < totalDays; i++) {
                 const deliveryDate = new Date(startDate);
@@ -1281,9 +1301,14 @@ async function confirmAddOrder(userId) {
             }
             
             if (deliveries.length > 0) {
-                await supabaseClient
+                const { error: delError } = await supabaseClient
                     .from('deliveries')
                     .insert(deliveries);
+                
+                if (delError) {
+                    console.error('Delivery creation error:', delError);
+                    // 不中斷，只記錄錯誤
+                }
             }
         }
         
