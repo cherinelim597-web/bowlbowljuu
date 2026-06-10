@@ -785,9 +785,10 @@ async function showAddOrderModal(userId) {
     modal.style.display = 'flex';
     modal.innerHTML = `
         <div class="modal-card" style="max-width: 550px; width: 90%; max-height: 85vh; overflow-y: auto;">
-            <div class="modal-header"><h3><i class="fas fa-shopping-cart"></i> 添加訂單 - ${escapeHtml(user?.full_name)}</h3><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button></div>
+            <div class="modal-header"><h3><i class="fas fa-shopping-cart"></i> 添加歷史訂單 - ${escapeHtml(user?.full_name)}</h3><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button></div>
             <div class="modal-body">
                 <div class="form-group"><label><i class="fas fa-tag"></i> 訂單號</label><input type="text" id="newOrderNo" class="form-input" readonly style="background: rgba(0,0,0,0.3);"><small>系統自動生成</small></div>
+                
                 <div class="form-group"><label><i class="fas fa-box"></i> 配套類型 <span class="required">*</span></label>
                     <select id="newPlanType" class="form-select">
                         <option value="single">單次 (1天 - RM 15.90)</option>
@@ -798,14 +799,25 @@ async function showAddOrderModal(userId) {
                         <option value="custom">自訂金額</option>
                     </select>
                 </div>
+                
                 <div class="form-row">
                     <div class="form-group"><label><i class="fas fa-calendar-alt"></i> 開始日期 <span class="required">*</span></label><input type="date" id="newStartDate" class="form-input" value="${getTodayString()}"></div>
                     <div class="form-group"><label><i class="fas fa-calendar-check"></i> 結束日期</label><input type="date" id="newEndDate" class="form-input" readonly style="background: rgba(0,0,0,0.3);"></div>
                 </div>
+                
                 <div class="form-group"><label><i class="fas fa-dollar-sign"></i> 訂單金額 (RM) <span class="required">*</span></label>
                     <input type="number" id="newTotalPrice" class="form-input" step="0.01" placeholder="0.00">
                     <small>選擇配套會自動填充金額，也可手動修改</small>
                 </div>
+                
+                <div class="form-group"><label><i class="fas fa-truck"></i> 訂單完成狀態 <span class="required">*</span></label>
+                    <select id="newOrderCompleteStatus" class="form-select">
+                        <option value="completed">✅ 已完成（歷史訂單）</option>
+                        <option value="pending">🚚 待配送（進行中）</option>
+                    </select>
+                    <small>歷史訂單請選擇「已完成」</small>
+                </div>
+                
                 <div class="form-group"><label><i class="fas fa-credit-card"></i> 付款方式</label>
                     <select id="newPaymentMethod" class="form-select">
                         <option value="credit_card">💳 信用卡</option>
@@ -815,6 +827,7 @@ async function showAddOrderModal(userId) {
                         <option value="pending">⏳ 待付款</option>
                     </select>
                 </div>
+                
                 <div class="form-group"><label><i class="fas fa-chart-line"></i> 訂閱狀態</label>
                     <select id="newSubscriptionStatus" class="form-select">
                         <option value="active">🟢 活躍中</option>
@@ -823,6 +836,7 @@ async function showAddOrderModal(userId) {
                         <option value="paused">🟡 暫停</option>
                     </select>
                 </div>
+                
                 <div class="form-group"><label><i class="fas fa-money-bill"></i> 支付狀態</label>
                     <select id="newPaymentStatus" class="form-select">
                         <option value="paid">✅ 已支付</option>
@@ -830,6 +844,7 @@ async function showAddOrderModal(userId) {
                         <option value="partial">💰 部分支付</option>
                     </select>
                 </div>
+                
                 <div class="form-group"><label><i class="fas fa-sticky-note"></i> 備註</label>
                     <textarea id="newOrderNotes" class="form-input" rows="2" placeholder="特殊備註、調整原因等"></textarea>
                 </div>
@@ -852,12 +867,11 @@ async function showAddOrderModal(userId) {
     const endDateInput = document.getElementById('newEndDate');
     const totalPriceInput = document.getElementById('newTotalPrice');
     
-    // 更新方案信息（自動填充價格和結束日期）
+    // 更新方案信息
     function updatePlanInfo() {
         const selectedPlan = planSelect.value;
         
         if (selectedPlan === 'custom') {
-            // 自訂金額：不清空價格，讓用戶手動輸入，但結束日期仍然根據天數計算
             totalPriceInput.placeholder = '請手動輸入金額';
             totalPriceInput.value = '';
         } else {
@@ -871,7 +885,6 @@ async function showAddOrderModal(userId) {
         if (startDateInput.value) {
             let days = 0;
             if (selectedPlan === 'custom') {
-                // 自訂方案：默認30天，用戶可以後續修改（暫不支持天數修改，可後續添加）
                 days = 30;
             } else {
                 const planConfig = PLAN_CONFIG[selectedPlan];
@@ -884,14 +897,10 @@ async function showAddOrderModal(userId) {
         }
     }
     
-    // 綁定事件
     planSelect.onchange = updatePlanInfo;
     startDateInput.onchange = updatePlanInfo;
-    
-    // 初始化
     updatePlanInfo();
     
-    // 綁定確認按鈕
     const confirmBtn = document.getElementById('confirmAddOrderBtn');
     if (confirmBtn) confirmBtn.onclick = () => confirmAddOrder(userId);
 }
@@ -904,6 +913,7 @@ async function confirmAddOrder(userId) {
     const paymentMethod = document.getElementById('newPaymentMethod').value;
     const subscriptionStatus = document.getElementById('newSubscriptionStatus').value;
     const paymentStatus = document.getElementById('newPaymentStatus').value;
+    const orderCompleteStatus = document.getElementById('newOrderCompleteStatus').value;  // 新增
     const notes = document.getElementById('newOrderNotes').value;
     let orderNo = document.getElementById('newOrderNo').value;
     
@@ -911,12 +921,9 @@ async function confirmAddOrder(userId) {
     if (totalPrice <= 0) { showToast('請輸入有效的訂單金額', 'error'); return; }
     
     // 計算天數和結束日期
-    let totalDays = 30; // 默認
+    let totalDays = 30;
     if (planType !== 'custom' && PLAN_CONFIG[planType]) {
         totalDays = PLAN_CONFIG[planType].days;
-    } else {
-        // 如果是自訂方案，讓用戶輸入天數或默認30天
-        totalDays = 30;
     }
     
     const startDateObj = new Date(startDate);
@@ -933,7 +940,7 @@ async function confirmAddOrder(userId) {
     if (confirmBtn) { confirmBtn.innerText = '處理中...'; confirmBtn.disabled = true; }
     
     try {
-        // 插入數據 - 使用手動輸入或自動計算的金額
+        // 創建訂閱記錄
         const { data: subscription, error: subError } = await supabaseClient.from('subscriptions').insert({
             user_id: userId,
             plan_type: planType === 'custom' ? 'custom' : planType,
@@ -942,7 +949,7 @@ async function confirmAddOrder(userId) {
             start_date: startDate,
             end_date: endDate,
             status: subscriptionStatus,
-            total_price: totalPrice,  // 使用手動輸入或自動填充的金額
+            total_price: totalPrice,
             payment_method: paymentMethod,
             payment_status: paymentStatus,
             order_no: orderNo,
@@ -952,22 +959,37 @@ async function confirmAddOrder(userId) {
         
         if (subError) throw subError;
         
-        // 如果是活躍訂閱，創建配送日程
-        if (subscriptionStatus === 'active' && subscription) {
-            const deliveries = [];
-            for (let i = 0; i < totalDays; i++) {
-                const deliveryDate = new Date(startDate);
-                deliveryDate.setDate(deliveryDate.getDate() + i);
-                deliveries.push({
-                    user_id: userId,
-                    subscription_id: subscription.id,
-                    delivery_date: deliveryDate.toISOString().split('T')[0],
-                    status: i === 0 ? 'pending' : 'upcoming',
-                    meal_number: i + 1
-                });
+        // 創建配送日程
+        const deliveries = [];
+        for (let i = 0; i < totalDays; i++) {
+            const deliveryDate = new Date(startDate);
+            deliveryDate.setDate(deliveryDate.getDate() + i);
+            
+            let deliveryStatus = 'upcoming';
+            
+            if (orderCompleteStatus === 'completed') {
+                // 歷史訂單：全部標記為「已送達」
+                deliveryStatus = 'delivered';
+            } else if (orderCompleteStatus === 'pending') {
+                // 進行中的訂單：第一天待配送，其餘 upcoming
+                deliveryStatus = i === 0 ? 'pending' : 'upcoming';
             }
-            if (deliveries.length > 0) {
-                await supabaseClient.from('deliveries').insert(deliveries);
+            
+            deliveries.push({
+                user_id: userId,
+                subscription_id: subscription.id,
+                delivery_date: deliveryDate.toISOString().split('T')[0],
+                status: deliveryStatus,
+                meal_number: i + 1
+            });
+        }
+        
+        if (deliveries.length > 0) {
+            await supabaseClient.from('deliveries').insert(deliveries);
+            
+            // 如果選擇「已完成」，更新已送達餐數
+            if (orderCompleteStatus === 'completed') {
+                await supabaseClient.from('subscriptions').update({ meals_received: totalDays }).eq('id', subscription.id);
             }
         }
         
