@@ -787,7 +787,15 @@ async function showAddOrderModal(userId) {
         <div class="modal-card" style="max-width: 550px; width: 90%; max-height: 85vh; overflow-y: auto;">
             <div class="modal-header"><h3><i class="fas fa-shopping-cart"></i> 添加歷史訂單 - ${escapeHtml(user?.full_name)}</h3><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button></div>
             <div class="modal-body">
-                <div class="form-group"><label><i class="fas fa-tag"></i> 訂單號</label><input type="text" id="newOrderNo" class="form-input" readonly style="background: rgba(0,0,0,0.3);"><small>系統自動生成</small></div>
+                <div class="form-group"><label><i class="fas fa-calendar-alt"></i> 下單日期 <span class="required">*</span></label>
+                    <input type="date" id="newOrderDate" class="form-input" value="${getTodayString()}">
+                    <small>訂單號會根據此日期生成</small>
+                </div>
+                
+                <div class="form-group"><label><i class="fas fa-tag"></i> 訂單號</label>
+                    <input type="text" id="newOrderNo" class="form-input" readonly style="background: rgba(0,0,0,0.3);">
+                    <small>根據下單日期自動生成</small>
+                </div>
                 
                 <div class="form-group"><label><i class="fas fa-box"></i> 配套類型 <span class="required">*</span></label>
                     <select id="newPlanType" class="form-select">
@@ -801,8 +809,12 @@ async function showAddOrderModal(userId) {
                 </div>
                 
                 <div class="form-row">
-                    <div class="form-group"><label><i class="fas fa-calendar-alt"></i> 開始日期 <span class="required">*</span></label><input type="date" id="newStartDate" class="form-input" value="${getTodayString()}"></div>
-                    <div class="form-group"><label><i class="fas fa-calendar-check"></i> 結束日期</label><input type="date" id="newEndDate" class="form-input" readonly style="background: rgba(0,0,0,0.3);"></div>
+                    <div class="form-group"><label><i class="fas fa-calendar-alt"></i> 訂閱開始日期 <span class="required">*</span></label>
+                        <input type="date" id="newStartDate" class="form-input" value="${getTodayString()}">
+                    </div>
+                    <div class="form-group"><label><i class="fas fa-calendar-check"></i> 訂閱結束日期</label>
+                        <input type="date" id="newEndDate" class="form-input" readonly style="background: rgba(0,0,0,0.3);">
+                    </div>
                 </div>
                 
                 <div class="form-group"><label><i class="fas fa-dollar-sign"></i> 訂單金額 (RM) <span class="required">*</span></label>
@@ -857,15 +869,23 @@ async function showAddOrderModal(userId) {
     `;
     document.body.appendChild(modal);
     
-    // 生成訂單號
-    const orderNoInput = document.getElementById('newOrderNo');
-    if (orderNoInput) orderNoInput.value = generateOrderNo();
-    
     // 獲取元素
+    const orderDateInput = document.getElementById('newOrderDate');
+    const orderNoInput = document.getElementById('newOrderNo');
     const planSelect = document.getElementById('newPlanType');
     const startDateInput = document.getElementById('newStartDate');
     const endDateInput = document.getElementById('newEndDate');
     const totalPriceInput = document.getElementById('newTotalPrice');
+    
+    function generateOrderNoByDate(dateStr) {
+    
+    // 更新訂單號
+    function updateOrderNo() {
+        const orderDate = orderDateInput.value;
+        if (orderNoInput && orderDate) {
+            orderNoInput.value = generateOrderNoByDate(orderDate);
+        }
+    }
     
     // 更新方案信息
     function updatePlanInfo() {
@@ -897,8 +917,13 @@ async function showAddOrderModal(userId) {
         }
     }
     
+    // 綁定事件
+    orderDateInput.onchange = updateOrderNo;
     planSelect.onchange = updatePlanInfo;
     startDateInput.onchange = updatePlanInfo;
+    
+    // 初始化
+    updateOrderNo();
     updatePlanInfo();
     
     const confirmBtn = document.getElementById('confirmAddOrderBtn');
@@ -907,17 +932,19 @@ async function showAddOrderModal(userId) {
 
 // 確認添加訂單
 async function confirmAddOrder(userId) {
+    const orderDate = document.getElementById('newOrderDate').value;  // 新增：下單日期
     const planType = document.getElementById('newPlanType').value;
     const startDate = document.getElementById('newStartDate').value;
     let totalPrice = parseFloat(document.getElementById('newTotalPrice').value) || 0;
     const paymentMethod = document.getElementById('newPaymentMethod').value;
     const subscriptionStatus = document.getElementById('newSubscriptionStatus').value;
     const paymentStatus = document.getElementById('newPaymentStatus').value;
-    const orderCompleteStatus = document.getElementById('newOrderCompleteStatus').value;  // 新增
+    const orderCompleteStatus = document.getElementById('newOrderCompleteStatus').value;
     const notes = document.getElementById('newOrderNotes').value;
     let orderNo = document.getElementById('newOrderNo').value;
     
-    if (!startDate) { showToast('請選擇開始日期', 'error'); return; }
+    if (!orderDate) { showToast('請選擇下單日期', 'error'); return; }
+    if (!startDate) { showToast('請選擇訂閱開始日期', 'error'); return; }
     if (totalPrice <= 0) { showToast('請輸入有效的訂單金額', 'error'); return; }
     
     // 計算天數和結束日期
@@ -933,14 +960,22 @@ async function confirmAddOrder(userId) {
     
     // 檢查訂單號是否重複
     const { data: existingOrder } = await supabaseClient.from('subscriptions').select('id').eq('order_no', orderNo).maybeSingle();
-    if (existingOrder) orderNo = generateOrderNo();
+    if (existingOrder) {
+        // 重新生成訂單號
+        const date = new Date(orderDate);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+        orderNo = `ORD${year}${month}${day}${randomNum}`;
+    }
     
     const confirmBtn = document.getElementById('confirmAddOrderBtn');
     const originalText = confirmBtn?.innerText || '確認添加訂單';
     if (confirmBtn) { confirmBtn.innerText = '處理中...'; confirmBtn.disabled = true; }
     
     try {
-        // 創建訂閱記錄
+        // 創建訂閱記錄 - 使用選擇的下單日期作為 created_at
         const { data: subscription, error: subError } = await supabaseClient.from('subscriptions').insert({
             user_id: userId,
             plan_type: planType === 'custom' ? 'custom' : planType,
@@ -954,7 +989,7 @@ async function confirmAddOrder(userId) {
             payment_status: paymentStatus,
             order_no: orderNo,
             notes: notes || null,
-            created_at: new Date()
+            created_at: new Date(orderDate)  // 使用選擇的下單日期
         }).select().single();
         
         if (subError) throw subError;
@@ -968,10 +1003,8 @@ async function confirmAddOrder(userId) {
             let deliveryStatus = 'upcoming';
             
             if (orderCompleteStatus === 'completed') {
-                // 歷史訂單：全部標記為「已送達」
                 deliveryStatus = 'delivered';
             } else if (orderCompleteStatus === 'pending') {
-                // 進行中的訂單：第一天待配送，其餘 upcoming
                 deliveryStatus = i === 0 ? 'pending' : 'upcoming';
             }
             
@@ -980,14 +1013,14 @@ async function confirmAddOrder(userId) {
                 subscription_id: subscription.id,
                 delivery_date: deliveryDate.toISOString().split('T')[0],
                 status: deliveryStatus,
-                meal_number: i + 1
+                meal_number: i + 1,
+                created_at: new Date(orderDate)  // 配送記錄也使用相同的下單日期
             });
         }
         
         if (deliveries.length > 0) {
             await supabaseClient.from('deliveries').insert(deliveries);
             
-            // 如果選擇「已完成」，更新已送達餐數
             if (orderCompleteStatus === 'completed') {
                 await supabaseClient.from('subscriptions').update({ meals_received: totalDays }).eq('id', subscription.id);
             }
