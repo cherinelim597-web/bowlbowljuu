@@ -250,7 +250,6 @@ async function loadUsersPage() {
         const userData = [];
         for (const user of users) {
             try {
-                // 獲取 active 訂閱（取第一條）
                 const { data: subscriptionsList } = await supabaseClient
                     .from('subscriptions')
                     .select('*')
@@ -259,7 +258,6 @@ async function loadUsersPage() {
                     .limit(1);
                 const subscription = subscriptionsList?.[0] || null;
                 
-                // 獲取所有歷史訂閱
                 const { data: allSubscriptions } = await supabaseClient
                     .from('subscriptions')
                     .select('*')
@@ -451,7 +449,7 @@ function filterUsers(allUsers) {
     renderUserTable(filtered);
     const tbody = document.getElementById('usersTableBody');
     if (tbody && filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td></tr>';
+        tbody.innerHTML = '<td><td colspan="8" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td></tr>';
     }
 }
 
@@ -769,7 +767,17 @@ async function exportUsersData() {
     } catch (err) { console.error('Export error:', err); showToast('導出失敗', 'error'); }
 }
 
-// 生成訂單號
+// 根據日期生成訂單號
+function generateOrderNoByDate(dateStr) {
+    const date = new Date(dateStr);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+    return `ORD${year}${month}${day}${randomNum}`;
+}
+
+// 生成當前時間訂單號（備用）
 function generateOrderNo() {
     const now = new Date();
     const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
@@ -877,8 +885,6 @@ async function showAddOrderModal(userId) {
     const endDateInput = document.getElementById('newEndDate');
     const totalPriceInput = document.getElementById('newTotalPrice');
     
-    function generateOrderNoByDate(dateStr) {
-    
     // 更新訂單號
     function updateOrderNo() {
         const orderDate = orderDateInput.value;
@@ -932,7 +938,7 @@ async function showAddOrderModal(userId) {
 
 // 確認添加訂單
 async function confirmAddOrder(userId) {
-    const orderDate = document.getElementById('newOrderDate').value;  // 新增：下單日期
+    const orderDate = document.getElementById('newOrderDate').value;
     const planType = document.getElementById('newPlanType').value;
     const startDate = document.getElementById('newStartDate').value;
     let totalPrice = parseFloat(document.getElementById('newTotalPrice').value) || 0;
@@ -961,7 +967,6 @@ async function confirmAddOrder(userId) {
     // 檢查訂單號是否重複
     const { data: existingOrder } = await supabaseClient.from('subscriptions').select('id').eq('order_no', orderNo).maybeSingle();
     if (existingOrder) {
-        // 重新生成訂單號
         const date = new Date(orderDate);
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -975,7 +980,6 @@ async function confirmAddOrder(userId) {
     if (confirmBtn) { confirmBtn.innerText = '處理中...'; confirmBtn.disabled = true; }
     
     try {
-        // 創建訂閱記錄 - 使用選擇的下單日期作為 created_at
         const { data: subscription, error: subError } = await supabaseClient.from('subscriptions').insert({
             user_id: userId,
             plan_type: planType === 'custom' ? 'custom' : planType,
@@ -989,7 +993,7 @@ async function confirmAddOrder(userId) {
             payment_status: paymentStatus,
             order_no: orderNo,
             notes: notes || null,
-            created_at: new Date(orderDate)  // 使用選擇的下單日期
+            created_at: new Date(orderDate)
         }).select().single();
         
         if (subError) throw subError;
@@ -1001,7 +1005,6 @@ async function confirmAddOrder(userId) {
             deliveryDate.setDate(deliveryDate.getDate() + i);
             
             let deliveryStatus = 'upcoming';
-            
             if (orderCompleteStatus === 'completed') {
                 deliveryStatus = 'delivered';
             } else if (orderCompleteStatus === 'pending') {
@@ -1014,13 +1017,12 @@ async function confirmAddOrder(userId) {
                 delivery_date: deliveryDate.toISOString().split('T')[0],
                 status: deliveryStatus,
                 meal_number: i + 1,
-                created_at: new Date(orderDate)  // 配送記錄也使用相同的下單日期
+                created_at: new Date(orderDate)
             });
         }
         
         if (deliveries.length > 0) {
             await supabaseClient.from('deliveries').insert(deliveries);
-            
             if (orderCompleteStatus === 'completed') {
                 await supabaseClient.from('subscriptions').update({ meals_received: totalDays }).eq('id', subscription.id);
             }
