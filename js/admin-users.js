@@ -1075,7 +1075,6 @@ async function showAddOrderModal(userId) {
                 <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- 訂單基本信息 -->
                 <div class="form-group">
                     <label><i class="fas fa-tag"></i> 訂單號</label>
                     <input type="text" id="newOrderNo" class="form-input" readonly style="background: rgba(0,0,0,0.3);">
@@ -1170,7 +1169,6 @@ async function showAddOrderModal(userId) {
         if (planConfig) {
             totalPriceInput.value = planConfig.price;
             
-            // 更新結束日期
             const startDate = new Date(startDateInput.value);
             if (startDateInput.value && !isNaN(startDate.getTime())) {
                 const endDate = new Date(startDate);
@@ -1189,15 +1187,16 @@ async function showAddOrderModal(userId) {
     // 綁定確認按鈕
     const confirmBtn = document.getElementById('confirmAddOrderBtn');
     if (confirmBtn) {
-        confirmBtn.onclick = () => confirmAddOrder(userId);
+        confirmBtn.onclick = function() {
+            confirmAddOrder(userId);
+        };
     }
 }
 
-// 確認添加訂單
+// 確認添加訂單（只有一個！）
 async function confirmAddOrder(userId) {
     const planType = document.getElementById('newPlanType').value;
     const startDate = document.getElementById('newStartDate').value;
-    const endDate = document.getElementById('newEndDate').value;
     const totalPrice = parseFloat(document.getElementById('newTotalPrice').value) || 0;
     const paymentMethod = document.getElementById('newPaymentMethod').value;
     const subscriptionStatus = document.getElementById('newSubscriptionStatus').value;
@@ -1213,6 +1212,12 @@ async function confirmAddOrder(userId) {
     const planConfig = PLAN_CONFIG[planType];
     const totalDays = planConfig.days;
     
+    // 計算結束日期
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(startDateObj);
+    endDateObj.setDate(endDateObj.getDate() + totalDays - 1);
+    const endDate = endDateObj.toISOString().split('T')[0];
+    
     // 檢查訂單號是否重複
     const { data: existingOrder } = await supabaseClient
         .from('subscriptions')
@@ -1222,14 +1227,16 @@ async function confirmAddOrder(userId) {
     
     let finalOrderNo = orderNo;
     if (existingOrder) {
-        // 如果訂單號重複，重新生成
         finalOrderNo = generateOrderNo();
     }
     
-    const btn = event.target;
-    const originalText = btn.innerText;
-    btn.innerText = '處理中...';
-    btn.disabled = true;
+    // 獲取按鈕並顯示加載狀態
+    const confirmBtn = document.getElementById('confirmAddOrderBtn');
+    const originalText = confirmBtn ? confirmBtn.innerText : '確認添加訂單';
+    if (confirmBtn) {
+        confirmBtn.innerText = '處理中...';
+        confirmBtn.disabled = true;
+    }
     
     try {
         // 創建訂閱記錄
@@ -1274,18 +1281,17 @@ async function confirmAddOrder(userId) {
             }
             
             if (deliveries.length > 0) {
-                const { error: delError } = await supabaseClient
+                await supabaseClient
                     .from('deliveries')
                     .insert(deliveries);
-                
-                if (delError) {
-                    console.error('創建配送日程失敗:', delError);
-                }
             }
         }
         
         showToast(`訂單 ${finalOrderNo} 添加成功！`);
-        document.querySelector('.modal-overlay')?.remove();
+        
+        // 關閉當前彈窗
+        const modal = document.querySelector('.modal-overlay');
+        if (modal) modal.remove();
         
         // 重新打開用戶詳情彈窗
         viewUserDetail(userId);
@@ -1295,7 +1301,9 @@ async function confirmAddOrder(userId) {
         console.error('Add order error:', err);
         showToast('添加訂單失敗: ' + err.message, 'error');
     } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
+        if (confirmBtn) {
+            confirmBtn.innerText = originalText;
+            confirmBtn.disabled = false;
+        }
     }
 }
