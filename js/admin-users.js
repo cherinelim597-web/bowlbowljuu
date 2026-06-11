@@ -531,18 +531,18 @@ async function viewUserDetail(userId) {
             <div class="table-container" style="padding: 0; overflow-x: auto;">
                 <table style="width: 100%; min-width: 800px;">
                     <thead>
-                        <tr style="background: rgba(0,0,0,0.2);">
-                            <th style="padding: 12px;">訂單號</th>
-                            <th style="padding: 12px;">下單時間</th>
-                            <th style="padding: 12px;">方案</th>
-                            <th style="padding: 12px;">訂閱期間</th>
-                            <th style="padding: 12px;">配送進度</th>
-                            <th style="padding: 12px;">訂單金額</th>
-                            <th style="padding: 12px;">支付狀態</th>
-                            <th style="padding: 12px;">對應收據</th>
-                            <th style="padding: 12px;">操作</th>
-                        </tr>
-                    </thead>
+    <tr style="background: rgba(0,0,0,0.2);">
+        <th style="padding: 12px;">訂單號</th>
+        <th style="padding: 12px;">下單時間</th>
+        <th style="padding: 12px;">方案</th>
+        <th style="padding: 12px;">訂閱期間</th>
+        <th style="padding: 12px;">配送進度</th>
+        <th style="padding: 12px;">訂單金額</th>
+        <th style="padding: 12px;">支付狀態</th>
+        <th style="padding: 12px;">對應收據</th>
+        <th style="padding: 12px;">操作</th>
+    </tr>
+</thead>
                     <tbody id="orderHistoryBody">
                         ${renderOrderHistory(allSubscriptions, receipts, userId)}
                     </tbody>
@@ -579,19 +579,20 @@ function renderOrderHistory(subscriptions, receipts, currentUserId) {
         const mealsReceived = sub.meals_received || 0;
         const totalDays = sub.total_days || 0;
         
+        // 重要：這裡必須輸出9個<td>，對應9個列頭
         return `
             <tr style="border-bottom: 1px solid #1e2a3a;">
-                <td style="padding: 12px;"><span class="order-no-badge">${sub.order_no || '無訂單號'}</span><\/td
-                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.created_at)}<\/td
-                <td style="padding: 12px;">${planNames[sub.plan_type] || sub.plan_type}<\/td
-                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.start_date)} → ${formatDate(sub.end_date)}<\/td
-                <td style="padding: 12px;">${mealsReceived}/${totalDays}<\/td
-                <td style="padding: 12px; color: #c8a15e;">RM ${sub.total_price}<\/td
-                <td style="padding: 12px;">${paymentStatusHtml}<\/td
+                <td style="padding: 12px;"><span class="order-no-badge">${sub.order_no || '無訂單號'}</span><\/td>
+                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.created_at)}<\/td>
+                <td style="padding: 12px;">${planNames[sub.plan_type] || sub.plan_type}<\/td>
+                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.start_date)} → ${formatDate(sub.end_date)}<\/td>
+                <td style="padding: 12px;">${mealsReceived}/${totalDays}<\/td>
+                <td style="padding: 12px; color: #c8a15e;">RM ${sub.total_price}<\/td>
+                <td style="padding: 12px;">${paymentStatusHtml}<\/td>
                 <td style="padding: 12px;">
                     ${hasReceipt ? `<a href="${receiptUrl}" target="_blank" class="btn-small" style="background: #c8a15e; color: #0a1a2e; padding: 4px 8px; font-size: 10px;"><i class="fas fa-receipt"></i> 查看</a>` : `<button class="btn-small" onclick="uploadReceiptForUserFromDetail('${sub.user_id}', '${sub.id}', '${sub.order_no}')" style="background: #4a7cff; padding: 4px 8px; font-size: 10px;"><i class="fas fa-upload"></i> 上傳</button>`}
-                <\/td
-                <td style="padding: 12px; text-align: center;"><button class="btn-icon" onclick="deleteOrder('${sub.id}', '${currentUserId}')" title="刪除訂單" style="color: #ff5a5a;"><i class="fas fa-trash-alt"></i></button><\/td
+                <\/td>
+                <td style="padding: 12px; text-align: center;"><button class="btn-icon" onclick="deleteOrder('${sub.id}', '${currentUserId}')" title="刪除訂單" style="color: #ff5a5a;"><i class="fas fa-trash-alt"></i></button><\/td>
             比
         `;
     }).join('');
