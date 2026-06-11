@@ -279,11 +279,10 @@ async function loadUsersPage() {
                 // 只計算已支付的收據金額
                 const totalPaid = receipts?.filter(r => r.payment_status === 'paid').reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
                 
-                // 計算該用戶的訂單支付統計
-                const userSubscriptions = allSubscriptions || [];
-                const paidOrdersCount = userSubscriptions.filter(sub => sub.payment_status === 'paid').length;
-                const unpaidOrdersCount = userSubscriptions.filter(sub => sub.payment_status === 'unpaid' || sub.payment_status === 'partial' || !sub.payment_status).length;
-                const totalOrdersCount = userSubscriptions.length;
+                // 計算該用戶所有已支付訂單的總金額（根據訂單，而不是收據）
+const totalPaid = userSubscriptions
+    .filter(sub => sub.payment_status === 'paid')
+    .reduce((sum, sub) => sum + (sub.total_price || 0), 0);
                 
                 userData.push({ 
                     ...user, 
@@ -475,7 +474,7 @@ async function viewUserDetail(userId) {
     const { data: receipts } = await supabaseClient.from('receipts').select('*').eq('user_id', userId);
     
     const activeSub = allSubscriptions?.find(s => s.status === 'active');
-    const totalPaid = receipts?.filter(r => r.payment_status === 'paid').reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+    const totalPaid = allSubscriptions?.filter(sub => sub.payment_status === 'paid').reduce((sum, sub) => sum + (sub.total_price || 0), 0) || 0;
     const unpaidAmount = allSubscriptions?.filter(s => s.payment_status === 'unpaid').reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
     
     let deliveredCount = 0, totalDays = 0, progressPercent = 0;
