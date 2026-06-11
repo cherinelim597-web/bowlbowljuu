@@ -369,17 +369,16 @@ async function loadUsersPage() {
             
             <div class="table-container">
                 <div style="overflow-x: auto;">
-                    <table style="width: 100%; min-width: 1200px;">
+                    <table style="width: 100%; min-width: 1000px;">
                         <thead>
-                            <tr>
-                                <th style="padding: 12px 16px;">用戶名</th>
-                                <th style="padding: 12px 16px;">用戶郵箱</th>
-                                <th style="padding: 12px 16px;">當前方案</th>
-                                <th style="padding: 12px 16px;">訂閱週期</th>
-                                <th style="padding: 12px 16px;">支付狀態</th>
-                                <th style="padding: 12px 16px;">總消費金額</th>
-                                <th style="padding: 12px 16px;">帳號狀態</th>
-                                <th style="padding: 12px 16px;">操作</th>
+                            <tr style="background: #0f172a; border-bottom: 1px solid #1e2a3a;">
+                                <th style="padding: 16px 20px; text-align: left;">用戶信息</th>
+                                <th style="padding: 16px 20px; text-align: left;">聯繫方式</th>
+                                <th style="padding: 16px 20px; text-align: left;">當前方案</th>
+                                <th style="padding: 16px 20px; text-align: left;">訂閱週期</th>
+                                <th style="padding: 16px 20px; text-align: left;">支付狀態</th>
+                                <th style="padding: 16px 20px; text-align: left;">消費金額</th>
+                                <th style="padding: 16px 20px; text-align: center;">操作</th>
                             </tr>
                         </thead>
                         <tbody id="usersTableBody"></tbody>
@@ -398,23 +397,6 @@ async function loadUsersPage() {
         console.error('Users page error:', err);
         container.innerHTML = '<div class="table-container"><p>加載失敗: ' + err.message + '</p></div>';
     }
-}
-
-// 渲染支付狀態（用於用戶管理主表格）
-function renderPaymentStatus(totalOrders, paidOrders, unpaidOrders) {
-    if (totalOrders === 0) {
-        return '<span class="badge badge-pending">無訂單</span>';
-    }
-    
-    if (paidOrders === totalOrders && totalOrders > 0) {
-        return '<span class="badge badge-active">✅ 已支付</span>';
-    }
-    
-    if (unpaidOrders > 0) {
-        return `<span class="badge badge-pending" style="background: rgba(255,184,77,0.15); color: #ffb84d;">⏳ ${unpaidOrders} 筆訂單未支付</span>`;
-    }
-    
-    return `<span class="badge badge-pending">${paidOrders}/${totalOrders} 已支付</span>`;
 }
 
 // 渲染用戶表格
@@ -447,7 +429,7 @@ function renderUserTable(userData) {
             }
         }
         
-        // 計算支付狀態顯示
+        // 支付狀態顯示
         let paymentStatusDisplay = '';
         if (user.totalOrdersCount === 0) {
             paymentStatusDisplay = '<span class="badge badge-pending">無訂單</span>';
@@ -461,38 +443,41 @@ function renderUserTable(userData) {
         
         return `
             <tr style="border-bottom: 1px solid #1e2a3a;">
-                <td style="padding: 12px 16px;">
+                <td style="padding: 16px 20px;">
                     <div style="font-weight: 600;">${escapeHtml(user.full_name || 'N/A')}</div>
                     <div style="font-size: 11px; color: #6b7a8a;">ID: ${user.id.substring(0, 12)}...</div>
-                 </td
-                <td style="padding: 12px 16px;">
-                    <div style="font-size: 12px;">${escapeHtml(user.email || '未設置')}</div>
                     <div style="font-size: 11px; color: #6b7a8a;">📅 ${formatDate(user.created_at)}</div>
                  </td
-                <td style="padding: 12px 16px;">
+                <td style="padding: 16px 20px;">
+                    <div style="font-size: 13px;"><i class="fas fa-envelope" style="width: 20px;"></i> ${escapeHtml(user.email || '未設置')}</div>
+                    <div style="font-size: 13px; margin-top: 6px;"><i class="fas fa-phone" style="width: 20px;"></i> ${escapeHtml(user.phone || '未設置')}</div>
+                    <div style="font-size: 13px; margin-top: 6px;"><i class="fas fa-map-marker-alt" style="width: 20px;"></i> ${escapeHtml(user.address || '未設置')}</div>
+                 </td
+                <td style="padding: 16px 20px;">
                     <div><span class="badge badge-active">${planName}</span></div>
-                    <div style="font-size: 12px; margin-top: 4px;">${planPrice}</div>
+                    <div style="font-size: 13px; margin-top: 6px;">💰 ${planPrice}</div>
+                    <div style="font-size: 12px; margin-top: 4px; color: #8a9abb;">${sub ? sub.payment_method || '—' : '—'}</div>
                  </td
-                <td style="padding: 12px 16px;">
+                <td style="padding: 16px 20px;">
                     ${sub ? `
-                        <div style="font-size: 12px; margin-bottom: 2px;">📅 ${startDate} → ${endDate}</div>
-                        <div style="font-size: 10px; color: #c8a15e;">${sub.order_no || '無訂單號'}</div>
-                    ` : '<span>無訂閱</span>'}
+                        <div style="font-size: 13px;">📅 ${startDate} → ${endDate}</div>
+                        <div style="font-size: 12px; margin-top: 4px;">
+                            <span class="badge ${sub.status === 'active' ? 'badge-active' : 'badge-expired'}">${sub.status}</span>
+                        </div>
+                        <div style="font-size: 11px; color: #c8a15e; margin-top: 4px;">${sub.order_no || '無訂單號'}</div>
+                    ` : '<span style="color: #8a9abb;">無訂閱</span>'}
                  </td
-                <td style="padding: 12px 16px;">
+                <td style="padding: 16px 20px;">
                     ${paymentStatusDisplay}
                  </td
-                <td style="padding: 12px 16px;">
+                <td style="padding: 16px 20px;">
                     <div style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</div>
                  </td
-                <td style="padding: 12px 16px;">
-                    <span class="badge ${statusClass}">${accountStatus}</span>
-                 </td
-                <td style="padding: 12px 16px; text-align: center;">
-                    <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情"><i class="fas fa-eye"></i></button>
+                <td style="padding: 16px 20px; text-align: center;">
                     <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯"><i class="fas fa-edit"></i></button>
+                    <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情"><i class="fas fa-eye"></i></button>
                  </td
-             </tr>
+             </td>
         `;
     }).join('');
 }
@@ -519,7 +504,7 @@ function filterUsers(allUsers) {
     renderUserTable(filtered);
     const tbody = document.getElementById('usersTableBody');
     if (tbody && filtered.length === 0) {
-        tbody.innerHTML = '<td><td colspan="8" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td><td></table>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td><td style="display: none;"></td><td style="display: none;"></td><td style="display: none;"></td><td style="display: none;"></td><td style="display: none;"></td><td style="display: none;"></td><td style="display: none;"></td><td style="display: none;"></td></tr>';
     }
 }
 
@@ -530,7 +515,6 @@ async function viewUserDetail(userId) {
     const { data: receipts } = await supabaseClient.from('receipts').select('*').eq('user_id', userId);
     
     const activeSub = allSubscriptions?.find(s => s.status === 'active');
-    // 只計算已支付的收據金額
     const totalPaid = receipts?.filter(r => r.payment_status === 'paid').reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
     const unpaidAmount = allSubscriptions?.filter(s => s.payment_status === 'unpaid').reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
     
@@ -546,7 +530,7 @@ async function viewUserDetail(userId) {
     modal.className = 'modal-overlay';
     modal.style.display = 'flex';
     modal.innerHTML = `
-        <div class="modal-card" style="max-width: 1300px; width: 95%; max-height: 85vh; overflow-y: auto;">
+        <div class="modal-card" style="max-width: 1200px; width: 95%; max-height: 85vh; overflow-y: auto;">
             <div style="background: linear-gradient(135deg, rgba(200,161,94,0.1), rgba(200,161,94,0.05)); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
                     <div>
@@ -585,18 +569,18 @@ async function viewUserDetail(userId) {
             
             <h3 style="margin-bottom: 16px; color: #eef5ff;"><i class="fas fa-history"></i> 歷史訂單</h3>
             <div class="table-container" style="padding: 0; overflow-x: auto;">
-                <table style="width: 100%; min-width: 1000px; border-collapse: collapse;">
+                <table style="width: 100%; min-width: 800px;">
                     <thead>
                         <tr style="background: rgba(0,0,0,0.2);">
-                            <th style="padding: 12px; text-align: left;">訂單號</th>
-                            <th style="padding: 12px; text-align: left;">下單時間</th>
-                            <th style="padding: 12px; text-align: left;">方案</th>
-                            <th style="padding: 12px; text-align: left;">訂閱期間</th>
-                            <th style="padding: 12px; text-align: left;">配送進度</th>
-                            <th style="padding: 12px; text-align: left;">訂單金額</th>
-                            <th style="padding: 12px; text-align: left;">支付狀態</th>
-                            <th style="padding: 12px; text-align: left;">對應收據</th>
-                            <th style="padding: 12px; text-align: center;">操作</th>
+                            <th style="padding: 12px;">訂單號</th>
+                            <th style="padding: 12px;">下單時間</th>
+                            <th style="padding: 12px;">方案</th>
+                            <th style="padding: 12px;">訂閱期間</th>
+                            <th style="padding: 12px;">配送進度</th>
+                            <th style="padding: 12px;">訂單金額</th>
+                            <th style="padding: 12px;">支付狀態</th>
+                            <th style="padding: 12px;">對應收據</th>
+                            <th style="padding: 12px;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="orderHistoryBody">
@@ -616,7 +600,7 @@ async function viewUserDetail(userId) {
 // 渲染歷史訂單列表
 function renderOrderHistory(subscriptions, receipts, currentUserId) {
     if (!subscriptions || subscriptions.length === 0) {
-        return '<tr><td colspan="9" style="text-align: center; padding: 40px;">暫無訂單記錄</td><td></tr>';
+        return '<tr><td colspan="9" style="text-align: center; padding: 40px;">暫無訂單記錄</td></tr>';
     }
     
     const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
@@ -637,16 +621,18 @@ function renderOrderHistory(subscriptions, receipts, currentUserId) {
         
         return `
             <tr style="border-bottom: 1px solid #1e2a3a;">
-                <td style="padding: 12px;"><span class="order-no-badge" style="font-size: 11px;">${sub.order_no || '無訂單號'}</span></td
-                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.created_at)}</td
-                <td style="padding: 12px;">${planNames[sub.plan_type] || sub.plan_type}</td
-                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.start_date)} → ${formatDate(sub.end_date)}</td
-                <td style="padding: 12px;"><div style="display: flex; align-items: center; gap: 8px;"><div style="width: 60px; background: #1e2a3a; border-radius: 10px; height: 4px;"><div style="width: ${totalDays > 0 ? (mealsReceived / totalDays) * 100 : 0}%; background: #2ed15a; border-radius: 10px; height: 4px;"></div></div><span style="font-size: 11px;">${mealsReceived}/${totalDays}</span></div></td
-                <td style="padding: 12px; color: #c8a15e;">RM ${sub.total_price}</td
-                <td style="padding: 12px;">${paymentStatusHtml}</td
-                <td style="padding: 12px;">${hasReceipt ? `<a href="${receiptUrl}" target="_blank" class="btn-small" style="background: #c8a15e; color: #0a1a2e; padding: 4px 8px; font-size: 10px;"><i class="fas fa-receipt"></i> 查看</a>` : `<button class="btn-small" onclick="uploadReceiptForUserFromDetail('${sub.user_id}', '${sub.id}', '${sub.order_no}')" style="background: #4a7cff; padding: 4px 8px; font-size: 10px;"><i class="fas fa-upload"></i> 上傳</button>`}</td
-                <td style="padding: 12px; text-align: center;"><button class="btn-icon" onclick="deleteOrder('${sub.id}', '${currentUserId}')" title="刪除訂單" style="color: #ff5a5a;"><i class="fas fa-trash-alt"></i></button></td
-             </tr>
+                <td style="padding: 12px;"><span class="order-no-badge">${sub.order_no || '無訂單號'}</span></td>
+                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.created_at)}</td>
+                <td style="padding: 12px;">${planNames[sub.plan_type] || sub.plan_type}</td>
+                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.start_date)} → ${formatDate(sub.end_date)}</td>
+                <td style="padding: 12px;">${mealsReceived}/${totalDays}</td>
+                <td style="padding: 12px; color: #c8a15e;">RM ${sub.total_price}</td>
+                <td style="padding: 12px;">${paymentStatusHtml}</td>
+                <td style="padding: 12px;">
+                    ${hasReceipt ? `<a href="${receiptUrl}" target="_blank" class="btn-small" style="background: #c8a15e; color: #0a1a2e; padding: 4px 8px; font-size: 10px;"><i class="fas fa-receipt"></i> 查看</a>` : `<button class="btn-small" onclick="uploadReceiptForUserFromDetail('${sub.user_id}', '${sub.id}', '${sub.order_no}')" style="background: #4a7cff; padding: 4px 8px; font-size: 10px;"><i class="fas fa-upload"></i> 上傳</button>`}
+                </td>
+                <td style="padding: 12px; text-align: center;"><button class="btn-icon" onclick="deleteOrder('${sub.id}', '${currentUserId}')" title="刪除訂單" style="color: #ff5a5a;"><i class="fas fa-trash-alt"></i></button></td>
+            </tr>
         `;
     }).join('');
 }
@@ -747,7 +733,10 @@ async function editUser(userId) {
                 <div class="input-group"><label>郵箱</label><input type="email" id="editEmail" value="${escapeHtml(user.email || '')}"></div>
                 <div class="input-group"><label>密碼</label><input type="password" id="editPassword" placeholder="留空則不修改"><small>留空表示保持原密碼不變</small></div>
                 <div class="input-group"><label>手機號</label><input type="tel" id="editPhone" value="${escapeHtml(user.phone || '')}"></div>
-                <div class="input-group"><label>付款方式</label><select id="editPaymentMethod">${PAYMENT_METHODS.map(m => `<option value="${m}" ${user.payment_method === m ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+                <div class="input-group">
+                    <label>付款方式</label>
+                    <select id="editPaymentMethod">${PAYMENT_METHODS.map(m => `<option value="${m}" ${user.payment_method === m ? 'selected' : ''}>${m}</option>`).join('')}</select>
+                </div>
             </div>
             <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 15px; margin: 15px 0;">
                 <h4 style="color: #c8a15e;">訂閱信息</h4>
@@ -960,7 +949,6 @@ async function showAddOrderModal(userId) {
     `;
     document.body.appendChild(modal);
     
-    // 獲取元素
     const orderDateInput = document.getElementById('newOrderDate');
     const orderNoInput = document.getElementById('newOrderNo');
     const planSelect = document.getElementById('newPlanType');
@@ -968,7 +956,6 @@ async function showAddOrderModal(userId) {
     const endDateInput = document.getElementById('newEndDate');
     const totalPriceInput = document.getElementById('newTotalPrice');
     
-    // 更新訂單號
     function updateOrderNo() {
         const orderDate = orderDateInput.value;
         if (orderNoInput && orderDate) {
@@ -976,7 +963,6 @@ async function showAddOrderModal(userId) {
         }
     }
     
-    // 更新方案信息
     function updatePlanInfo() {
         const selectedPlan = planSelect.value;
         
@@ -990,7 +976,6 @@ async function showAddOrderModal(userId) {
             }
         }
         
-        // 更新結束日期
         if (startDateInput.value) {
             let days = 0;
             if (selectedPlan === 'custom') {
@@ -1006,12 +991,10 @@ async function showAddOrderModal(userId) {
         }
     }
     
-    // 綁定事件
     orderDateInput.onchange = updateOrderNo;
     planSelect.onchange = updatePlanInfo;
     startDateInput.onchange = updatePlanInfo;
     
-    // 初始化
     updateOrderNo();
     updatePlanInfo();
     
@@ -1036,7 +1019,6 @@ async function confirmAddOrder(userId) {
     if (!startDate) { showToast('請選擇訂閱開始日期', 'error'); return; }
     if (totalPrice <= 0) { showToast('請輸入有效的訂單金額', 'error'); return; }
     
-    // 計算天數和結束日期
     let totalDays = 30;
     if (planType !== 'custom' && PLAN_CONFIG[planType]) {
         totalDays = PLAN_CONFIG[planType].days;
@@ -1047,7 +1029,6 @@ async function confirmAddOrder(userId) {
     endDateObj.setDate(endDateObj.getDate() + totalDays - 1);
     const endDate = endDateObj.toISOString().split('T')[0];
     
-    // 檢查訂單號是否重複
     const { data: existingOrder } = await supabaseClient.from('subscriptions').select('id').eq('order_no', orderNo).maybeSingle();
     if (existingOrder) {
         const date = new Date(orderDate);
@@ -1081,7 +1062,6 @@ async function confirmAddOrder(userId) {
         
         if (subError) throw subError;
         
-        // 創建配送日程
         const deliveries = [];
         for (let i = 0; i < totalDays; i++) {
             const deliveryDate = new Date(startDate);
