@@ -271,26 +271,24 @@ async function loadUsersPage() {
                 
                 const deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
                 
-                const { data: receipts } = await supabaseClient
-                    .from('receipts')
-                    .select('*')
-                    .eq('user_id', user.id);
+                // 計算該用戶的訂單支付統計
+                const userSubscriptions = allSubscriptions || [];
+                const paidOrdersCount = userSubscriptions.filter(sub => sub.payment_status === 'paid').length;
+                const unpaidOrdersCount = userSubscriptions.filter(sub => sub.payment_status === 'unpaid' || sub.payment_status === 'partial' || !sub.payment_status).length;
+                const totalOrdersCount = userSubscriptions.length;
                 
-                // 只計算已支付的收據金額
-                const totalPaid = receipts?.filter(r => r.payment_status === 'paid').reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
-                
-                // 計算該用戶所有已支付訂單的總金額（根據訂單，而不是收據）
-const totalPaid = userSubscriptions
-    .filter(sub => sub.payment_status === 'paid')
-    .reduce((sum, sub) => sum + (sub.total_price || 0), 0);
+                // 根據已支付的訂單計算總消費（不是根據收據）
+                const totalPaidAmount = userSubscriptions
+                    .filter(sub => sub.payment_status === 'paid')
+                    .reduce((sum, sub) => sum + (sub.total_price || 0), 0);
                 
                 userData.push({ 
                     ...user, 
                     subscription, 
                     allSubscriptions,
-                    receipts,
+                    deliveries,
                     deliveredCount, 
-                    totalPaid,
+                    totalPaid: totalPaidAmount,
                     paidOrdersCount,
                     unpaidOrdersCount,
                     totalOrdersCount
@@ -301,7 +299,7 @@ const totalPaid = userSubscriptions
                     ...user, 
                     subscription: null, 
                     allSubscriptions: [], 
-                    receipts: [], 
+                    deliveries: [],
                     deliveredCount: 0, 
                     totalPaid: 0,
                     paidOrdersCount: 0,
@@ -367,16 +365,16 @@ const totalPaid = userSubscriptions
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; min-width: 800px;">
                         <thead>
-    <tr style="background: #0f172a; border-bottom: 1px solid #1e2a3a;">
-        <th style="padding: 12px 16px; text-align: left;">用戶名</th>
-        <th style="padding: 12px 16px; text-align: left;">郵箱</th>
-        <th style="padding: 12px 16px; text-align: left;">當前方案</th>
-        <th style="padding: 12px 16px; text-align: left;">訂閱週期</th>
-        <th style="padding: 12px 16px; text-align: left;">支付狀態</th>
-        <th style="padding: 12px 16px; text-align: left;">消費金額</th>
-        <th style="padding: 12px 16px; text-align: center;">操作</th>
-    </tr>
-</thead>
+                            <tr style="background: #0f172a; border-bottom: 1px solid #1e2a3a;">
+                                <th style="padding: 12px 16px; text-align: left;">用戶名</th>
+                                <th style="padding: 12px 16px; text-align: left;">郵箱</th>
+                                <th style="padding: 12px 16px; text-align: left;">當前方案</th>
+                                <th style="padding: 12px 16px; text-align: left;">訂閱週期</th>
+                                <th style="padding: 12px 16px; text-align: left;">支付狀態</th>
+                                <th style="padding: 12px 16px; text-align: left;">消費金額</th>
+                                <th style="padding: 12px 16px; text-align: center;">操作</th>
+                            </tr>
+                        </thead>
                         <tbody id="usersTableBody"></tbody>
                     </table>
                 </div>
