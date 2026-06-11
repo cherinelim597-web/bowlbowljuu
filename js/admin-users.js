@@ -276,8 +276,15 @@ async function loadUsersPage() {
                     .select('*')
                     .eq('user_id', user.id);
                 
-                const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+                // 只計算已支付的收據金額
+                const totalPaid = receipts?.filter(r => r.payment_status === 'paid').reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
                 const progressPercent = subscription ? (deliveredCount / subscription.total_days) * 100 : 0;
+                
+                // 計算該用戶的訂單支付統計
+                const userSubscriptions = allSubscriptions || [];
+                const paidOrdersCount = userSubscriptions.filter(sub => sub.payment_status === 'paid').length;
+                const unpaidOrdersCount = userSubscriptions.filter(sub => sub.payment_status === 'unpaid' || sub.payment_status === 'partial' || !sub.payment_status).length;
+                const totalOrdersCount = userSubscriptions.length;
                 
                 userData.push({ 
                     ...user, 
@@ -286,11 +293,25 @@ async function loadUsersPage() {
                     receipts,
                     deliveredCount, 
                     totalPaid,
-                    progressPercent
+                    progressPercent,
+                    paidOrdersCount,
+                    unpaidOrdersCount,
+                    totalOrdersCount
                 });
             } catch (err) {
                 console.error('Error processing user', user.id, err);
-                userData.push({ ...user, subscription: null, allSubscriptions: [], receipts: [], deliveredCount: 0, totalPaid: 0, progressPercent: 0 });
+                userData.push({ 
+                    ...user, 
+                    subscription: null, 
+                    allSubscriptions: [], 
+                    receipts: [], 
+                    deliveredCount: 0, 
+                    totalPaid: 0, 
+                    progressPercent: 0,
+                    paidOrdersCount: 0,
+                    unpaidOrdersCount: 0,
+                    totalOrdersCount: 0
+                });
             }
         }
         
@@ -350,7 +371,16 @@ async function loadUsersPage() {
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; min-width: 1200px;">
                         <thead>
-                            <tr><th>用戶名</th><th>用戶郵箱</th><th>當前方案</th><th>訂閱週期</th><th>配送進度</th><th>總消費金額</th><th>帳號狀態</th><th>操作</th></tr>
+                            <tr>
+                                <th style="padding: 12px 16px;">用戶名</th>
+                                <th style="padding: 12px 16px;">用戶郵箱</th>
+                                <th style="padding: 12px 16px;">當前方案</th>
+                                <th style="padding: 12px 16px;">訂閱週期</th>
+                                <th style="padding: 12px 16px;">支付狀態</th>
+                                <th style="padding: 12px 16px;">總消費金額</th>
+                                <th style="padding: 12px 16px;">帳號狀態</th>
+                                <th style="padding: 12px 16px;">操作</th>
+                            </tr>
                         </thead>
                         <tbody id="usersTableBody"></tbody>
                     </table>
@@ -368,6 +398,23 @@ async function loadUsersPage() {
         console.error('Users page error:', err);
         container.innerHTML = '<div class="table-container"><p>加載失敗: ' + err.message + '</p></div>';
     }
+}
+
+// 渲染支付狀態（用於用戶管理主表格）
+function renderPaymentStatus(totalOrders, paidOrders, unpaidOrders) {
+    if (totalOrders === 0) {
+        return '<span class="badge badge-pending">無訂單</span>';
+    }
+    
+    if (paidOrders === totalOrders && totalOrders > 0) {
+        return '<span class="badge badge-active">✅ 已支付</span>';
+    }
+    
+    if (unpaidOrders > 0) {
+        return `<span class="badge badge-pending" style="background: rgba(255,184,77,0.15); color: #ffb84d;">⏳ ${unpaidOrders} 筆訂單未支付</span>`;
+    }
+    
+    return `<span class="badge badge-pending">${paidOrders}/${totalOrders} 已支付</span>`;
 }
 
 // 渲染用戶表格
@@ -400,29 +447,40 @@ function renderUserTable(userData) {
             }
         }
         
-        const progressBar = sub ? `
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <div style="width: 80px; background: #1e2a3a; border-radius: 10px; height: 6px;">
-                    <div style="width: ${user.progressPercent}%; background: #c8a15e; border-radius: 10px; height: 6px;"></div>
-                </div>
-                <span style="font-size: 11px;">${user.deliveredCount}/${sub.total_days}</span>
-            </div>
-        ` : '<span>—</span>';
-        
         return `
             <tr style="border-bottom: 1px solid #1e2a3a;">
-                <td style="padding: 12px 16px;"><div style="font-weight: 600;">${escapeHtml(user.full_name || 'N/A')}</div><div style="font-size: 11px; color: #6b7a8a;">ID: ${user.id.substring(0, 12)}...</div></td>
-                <td style="padding: 12px 16px;"><div style="font-size: 12px;">${escapeHtml(user.email || '未設置')}</div><div style="font-size: 11px; color: #6b7a8a;">📅 ${formatDate(user.created_at)}</div></td>
-                <td style="padding: 12px 16px;"><div><span class="badge badge-active">${planName}</span></div><div style="font-size: 12px; margin-top: 4px;">${planPrice}</div></td>
-                <td style="padding: 12px 16px;">${sub ? `<div style="font-size: 12px; margin-bottom: 2px;">📅 ${startDate} → ${endDate}</div><div style="font-size: 10px; color: #c8a15e;">${sub.order_no || '無訂單號'}</div>` : '<span>無訂閱</span>'}</td>
-                <td style="padding: 12px 16px;">${progressBar}</td>
-                <td style="padding: 12px 16px;"><div style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</div></td>
-                <td style="padding: 12px 16px;"><span class="badge ${statusClass}">${accountStatus}</span></td>
+                <td style="padding: 12px 16px;">
+                    <div style="font-weight: 600;">${escapeHtml(user.full_name || 'N/A')}</div>
+                    <div style="font-size: 11px; color: #6b7a8a;">ID: ${user.id.substring(0, 12)}...</div>
+                 </td
+                <td style="padding: 12px 16px;">
+                    <div style="font-size: 12px;">${escapeHtml(user.email || '未設置')}</div>
+                    <div style="font-size: 11px; color: #6b7a8a;">📅 ${formatDate(user.created_at)}</div>
+                 </td
+                <td style="padding: 12px 16px;">
+                    <div><span class="badge badge-active">${planName}</span></div>
+                    <div style="font-size: 12px; margin-top: 4px;">${planPrice}</div>
+                 </td
+                <td style="padding: 12px 16px;">
+                    ${sub ? `
+                        <div style="font-size: 12px; margin-bottom: 2px;">📅 ${startDate} → ${endDate}</div>
+                        <div style="font-size: 10px; color: #c8a15e;">${sub.order_no || '無訂單號'}</div>
+                    ` : '<span>無訂閱</span>'}
+                 </td
+                <td style="padding: 12px 16px;">
+                    ${renderPaymentStatus(user.totalOrdersCount, user.paidOrdersCount, user.unpaidOrdersCount)}
+                 </td
+                <td style="padding: 12px 16px;">
+                    <div style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</div>
+                 </td
+                <td style="padding: 12px 16px;">
+                    <span class="badge ${statusClass}">${accountStatus}</span>
+                 </td
                 <td style="padding: 12px 16px; text-align: center;">
                     <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情"><i class="fas fa-eye"></i></button>
                     <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯"><i class="fas fa-edit"></i></button>
-                </td>
-            </tr>
+                 </td
+             </tr>
         `;
     }).join('');
 }
@@ -449,7 +507,7 @@ function filterUsers(allUsers) {
     renderUserTable(filtered);
     const tbody = document.getElementById('usersTableBody');
     if (tbody && filtered.length === 0) {
-        tbody.innerHTML = '<td><td colspan="8" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td></tr>';
+        tbody.innerHTML = '<td><td colspan="8" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td><td></table>';
     }
 }
 
@@ -460,7 +518,8 @@ async function viewUserDetail(userId) {
     const { data: receipts } = await supabaseClient.from('receipts').select('*').eq('user_id', userId);
     
     const activeSub = allSubscriptions?.find(s => s.status === 'active');
-    const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+    // 只計算已支付的收據金額
+    const totalPaid = receipts?.filter(r => r.payment_status === 'paid').reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
     const unpaidAmount = allSubscriptions?.filter(s => s.payment_status === 'unpaid').reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
     
     let deliveredCount = 0, totalDays = 0, progressPercent = 0;
@@ -545,7 +604,7 @@ async function viewUserDetail(userId) {
 // 渲染歷史訂單列表
 function renderOrderHistory(subscriptions, receipts, currentUserId) {
     if (!subscriptions || subscriptions.length === 0) {
-        return '<tr><td colspan="9" style="text-align: center; padding: 40px;">暫無訂單記錄</td></tr>';
+        return '<tr><td colspan="9" style="text-align: center; padding: 40px;">暫無訂單記錄</td><td></tr>';
     }
     
     const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
@@ -566,16 +625,16 @@ function renderOrderHistory(subscriptions, receipts, currentUserId) {
         
         return `
             <tr style="border-bottom: 1px solid #1e2a3a;">
-                <td style="padding: 12px;"><span class="order-no-badge" style="font-size: 11px;">${sub.order_no || '無訂單號'}</span></td>
-                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.created_at)}</td>
-                <td style="padding: 12px;">${planNames[sub.plan_type] || sub.plan_type}</td>
-                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.start_date)} → ${formatDate(sub.end_date)}</td>
-                <td style="padding: 12px;"><div style="display: flex; align-items: center; gap: 8px;"><div style="width: 60px; background: #1e2a3a; border-radius: 10px; height: 4px;"><div style="width: ${totalDays > 0 ? (mealsReceived / totalDays) * 100 : 0}%; background: #2ed15a; border-radius: 10px; height: 4px;"></div></div><span style="font-size: 11px;">${mealsReceived}/${totalDays}</span></div></td>
-                <td style="padding: 12px; color: #c8a15e;">RM ${sub.total_price}</td>
-                <td style="padding: 12px;">${paymentStatusHtml}</td>
-                <td style="padding: 12px;">${hasReceipt ? `<a href="${receiptUrl}" target="_blank" class="btn-small" style="background: #c8a15e; color: #0a1a2e; padding: 4px 8px; font-size: 10px;"><i class="fas fa-receipt"></i> 查看</a>` : `<button class="btn-small" onclick="uploadReceiptForUserFromDetail('${sub.user_id}', '${sub.id}', '${sub.order_no}')" style="background: #4a7cff; padding: 4px 8px; font-size: 10px;"><i class="fas fa-upload"></i> 上傳</button>`}</td>
-                <td style="padding: 12px; text-align: center;"><button class="btn-icon" onclick="deleteOrder('${sub.id}', '${currentUserId}')" title="刪除訂單" style="color: #ff5a5a;"><i class="fas fa-trash-alt"></i></button></td>
-            </tr>
+                <td style="padding: 12px;"><span class="order-no-badge" style="font-size: 11px;">${sub.order_no || '無訂單號'}</span></td
+                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.created_at)}</td
+                <td style="padding: 12px;">${planNames[sub.plan_type] || sub.plan_type}</td
+                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.start_date)} → ${formatDate(sub.end_date)}</td
+                <td style="padding: 12px;"><div style="display: flex; align-items: center; gap: 8px;"><div style="width: 60px; background: #1e2a3a; border-radius: 10px; height: 4px;"><div style="width: ${totalDays > 0 ? (mealsReceived / totalDays) * 100 : 0}%; background: #2ed15a; border-radius: 10px; height: 4px;"></div></div><span style="font-size: 11px;">${mealsReceived}/${totalDays}</span></div></td
+                <td style="padding: 12px; color: #c8a15e;">RM ${sub.total_price}</td
+                <td style="padding: 12px;">${paymentStatusHtml}</td
+                <td style="padding: 12px;">${hasReceipt ? `<a href="${receiptUrl}" target="_blank" class="btn-small" style="background: #c8a15e; color: #0a1a2e; padding: 4px 8px; font-size: 10px;"><i class="fas fa-receipt"></i> 查看</a>` : `<button class="btn-small" onclick="uploadReceiptForUserFromDetail('${sub.user_id}', '${sub.id}', '${sub.order_no}')" style="background: #4a7cff; padding: 4px 8px; font-size: 10px;"><i class="fas fa-upload"></i> 上傳</button>`}</td
+                <td style="padding: 12px; text-align: center;"><button class="btn-icon" onclick="deleteOrder('${sub.id}', '${currentUserId}')" title="刪除訂單" style="color: #ff5a5a;"><i class="fas fa-trash-alt"></i></button></td
+             </tr>
         `;
     }).join('');
 }
@@ -633,8 +692,20 @@ async function confirmUploadReceiptFromDetail(userId, subscriptionId, orderNo) {
         const { error: uploadError } = await supabaseClient.storage.from('receipts').upload(fileName, file);
         if (uploadError) throw uploadError;
         const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
-        await supabaseClient.from('receipts').insert({ user_id: userId, subscription_id: subscriptionId, order_no: orderNo, amount: amount, receipt_url: urlData.publicUrl, payment_method: paymentMethod, created_at: new Date() });
+        
+        await supabaseClient.from('receipts').insert({ 
+            user_id: userId, 
+            subscription_id: subscriptionId, 
+            order_no: orderNo, 
+            amount: amount, 
+            receipt_url: urlData.publicUrl, 
+            payment_method: paymentMethod, 
+            payment_status: 'paid',
+            created_at: new Date() 
+        });
+        
         await supabaseClient.from('subscriptions').update({ payment_status: 'paid' }).eq('id', subscriptionId);
+        
         showToast('收據上傳成功！');
         viewUserDetail(userId);
         loadUsersPage();
