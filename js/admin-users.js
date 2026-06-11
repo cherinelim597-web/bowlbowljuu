@@ -528,7 +528,7 @@ async function viewUserDetail(userId) {
             </div>
             
             <h3 style="margin-bottom: 16px; color: #eef5ff;"><i class="fas fa-history"></i> 歷史訂單</h3>
-            <div class="table-container" style="padding: 0; overflow-x: auto;">
+            <div class="table-container" style="padding: 0; overflow-x: auto; max-height: 400px; overflow-y: auto;">
                 <table style="width: 100%; min-width: 800px;">
                     <thead>
     <tr style="background: rgba(0,0,0,0.2);">
