@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Healthy Bowl Admin | 管理後台</title>
+    <title>Healthy Bowl Admin | 奶油軟萌風格</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/admin.css">
+    <link rel="shortcut icon" href="#">
 </head>
 <body>
 
@@ -16,8 +17,7 @@
     <!-- 側邊欄 -->
     <div class="sidebar" id="sidebar">
         <div class="logo">
-            🥗 Healthy <span style="color: #C9A15D;">Bowl</span>
-            <span style="font-size: 11px; display: block; color: #8a9abb;">Admin Panel</span>
+            🥗 <span>Healthy</span> <span style="color: #f5a0b0;">Bowl</span>
         </div>
         
         <div class="nav-item active" data-page="dashboard">
@@ -29,9 +29,9 @@
         <div class="nav-item" data-page="deliveries">
             <i class="fas fa-truck"></i> <span>Daily Delivery</span>
         </div>
-<div class="nav-item" data-page="invitations">
-    <i class="fas fa-ticket-alt"></i> <span>Invitation Records</span>
-</div>
+        <div class="nav-item" data-page="invitations">
+            <i class="fas fa-ticket-alt"></i> <span>Invitation Records</span>
+        </div>
         <div class="nav-item" data-page="receipts">
             <i class="fas fa-receipt"></i> <span>Receipts</span>
         </div>
@@ -65,13 +65,13 @@
         <div id="page_dashboard" class="page active"></div>
         <div id="page_users" class="page"></div>
         <div id="page_deliveries" class="page"></div>
-<div id="page_invitations" class="page"></div>
+        <div id="page_invitations" class="page"></div>
         <div id="page_receipts" class="page"></div>
         <div id="page_reports" class="page"></div>
     </div>
 </div>
 
-<!-- 用戶編輯 Modal -->
+<!-- 用戶編輯 Modal（保留原有結構） -->
 <div id="userModal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
         <h3><i class="fas fa-user-edit"></i> Edit User</h3>
@@ -95,7 +95,7 @@
     </div>
 </div>
 
-<!-- 上傳收據 Modal -->
+<!-- 上傳收據 Modal（保留原有結構） -->
 <div id="receiptModal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
         <h3><i class="fas fa-upload"></i> Upload Receipt</h3>
