@@ -447,6 +447,18 @@ function renderUserTable(userData) {
             }
         }
         
+        // 計算支付狀態顯示
+        let paymentStatusDisplay = '';
+        if (user.totalOrdersCount === 0) {
+            paymentStatusDisplay = '<span class="badge badge-pending">無訂單</span>';
+        } else if (user.paidOrdersCount === user.totalOrdersCount) {
+            paymentStatusDisplay = '<span class="badge badge-active">✅ 已支付</span>';
+        } else if (user.unpaidOrdersCount > 0) {
+            paymentStatusDisplay = `<span class="badge badge-pending" style="background: rgba(255,184,77,0.15); color: #ffb84d;">⏳ ${user.unpaidOrdersCount} 筆訂單未支付</span>`;
+        } else {
+            paymentStatusDisplay = `<span class="badge badge-pending">${user.paidOrdersCount}/${user.totalOrdersCount} 已支付</span>`;
+        }
+        
         return `
             <tr style="border-bottom: 1px solid #1e2a3a;">
                 <td style="padding: 12px 16px;">
@@ -468,7 +480,7 @@ function renderUserTable(userData) {
                     ` : '<span>無訂閱</span>'}
                  </td
                 <td style="padding: 12px 16px;">
-                    ${renderPaymentStatus(user.totalOrdersCount, user.paidOrdersCount, user.unpaidOrdersCount)}
+                    ${paymentStatusDisplay}
                  </td
                 <td style="padding: 12px 16px;">
                     <div style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</div>
