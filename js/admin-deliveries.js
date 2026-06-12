@@ -86,9 +86,10 @@ async function loadDeliveriesPage() {
         }
         
         currentDeliveries = filtered;
-        todayPendingCount = filtered.filter(function(d) { 
-            return d.status === 'pending'; 
-        }).length;
+// 今日待配送 = 所有 pending 狀態的配送（排除已送達和已暫停）
+todayPendingCount = filtered.filter(function(d) { 
+    return d.status === 'pending'; 
+}).length;
         
         renderDeliveriesPage(filtered, todayStr);
         
@@ -327,6 +328,10 @@ function updateCompletionRate() {
 
 function tempMarkAsDelivered(deliveryId) {
     if (tempDeliveredIds.indexOf(deliveryId) !== -1) return;
+    
+    // 檢查是否已經被臨時標記過
+    if (tempDeliveredIds.indexOf(deliveryId) !== -1) return;
+    
     tempDeliveredIds.push(deliveryId);
     
     var row = document.querySelector('.table-row[data-delivery-id="' + deliveryId + '"]');
@@ -338,16 +343,18 @@ function tempMarkAsDelivered(deliveryId) {
             deliverBtn.innerHTML = '<i class="fas fa-check-circle"></i> ✅ 已送達';
             deliverBtn.disabled = true;
             deliverBtn.style.opacity = '0.6';
-            deliverBtn.style.cursor = 'not-allowed';
-            deliverBtn.style.background = '#a0a0a0';
         }
         var undoBtn = row.querySelector('.action-undo');
         if (undoBtn) undoBtn.style.opacity = '1';
     }
     
-    todayPendingCount--;
+    // 確保不會變成負數
+    if (todayPendingCount > 0) {
+        todayPendingCount--;
+    }
     var countElement = document.getElementById('todayPendingCount');
     if (countElement) countElement.innerText = todayPendingCount;
+    
     updateCompletionRate();
     showToast('已標記，點擊「今日配送完畢」後保存', 'success');
 }
@@ -366,7 +373,6 @@ function undoTempDelivery(deliveryId) {
             deliverBtn.innerHTML = '<i class="fas fa-check-circle"></i> 🚚 送達';
             deliverBtn.disabled = false;
             deliverBtn.style.opacity = '1';
-            deliverBtn.style.background = '';
         }
         var undoBtn = row.querySelector('.action-undo');
         if (undoBtn) undoBtn.style.opacity = '0.5';
@@ -375,6 +381,7 @@ function undoTempDelivery(deliveryId) {
     todayPendingCount++;
     var countElement = document.getElementById('todayPendingCount');
     if (countElement) countElement.innerText = todayPendingCount;
+    
     updateCompletionRate();
     showToast('已撤回臨時標記', 'info');
 }
