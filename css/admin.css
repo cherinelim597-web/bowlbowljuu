@@ -1039,3 +1039,425 @@ td {
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0,0,0,0.08);
 }
+
+/* ============================================
+   用戶詳情彈窗 - 高級專業版
+   乾淨 | 優雅 | 信息清晰
+============================================ */
+
+/* 彈窗主體 */
+.modal-overlay .modal-card {
+    background: #ffffff;
+    border-radius: 28px;
+    border: none;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    padding: 0;
+    overflow: hidden;
+}
+
+/* ========== 用戶信息頭部 ========== */
+.modal-card .user-profile-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    padding: 28px 32px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.modal-card .user-profile-header h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #2c3e4e;
+    margin-bottom: 16px;
+}
+
+.modal-card .user-profile-header h2 i {
+    color: #c8a15e;
+    margin-right: 12px;
+}
+
+.modal-card .user-details-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-top: 8px;
+}
+
+.modal-card .user-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #5a6a7a;
+}
+
+.modal-card .user-detail-item i {
+    width: 18px;
+    color: #c8a15e;
+    font-size: 14px;
+}
+
+/* ========== 統計卡片 ========== */
+.modal-card .stats-section {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 24px 32px;
+    background: #ffffff;
+}
+
+.modal-card .stat-item {
+    background: #f8f9fa;
+    border-radius: 20px;
+    padding: 18px 12px;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.modal-card .stat-item:hover {
+    transform: translateY(-2px);
+    background: #f0f2f5;
+}
+
+.modal-card .stat-label {
+    font-size: 12px;
+    color: #8a9abb;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.modal-card .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2c3e4e;
+}
+
+.modal-card .stat-value.small {
+    font-size: 16px;
+}
+
+/* ========== 歷史訂單標題 ========== */
+.modal-card .orders-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 32px 16px 32px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.modal-card .orders-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e4e;
+}
+
+.modal-card .orders-header h3 i {
+    color: #c8a15e;
+    margin-right: 8px;
+}
+
+.modal-card .orders-count {
+    background: #f0f2f5;
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 12px;
+    color: #5a6a7a;
+}
+
+/* ========== 訂單表格 ========== */
+.modal-card .orders-table-wrapper {
+    padding: 0 32px 28px 32px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.modal-card .orders-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.modal-card .orders-table th {
+    text-align: left;
+    padding: 14px 12px;
+    background: #f8f9fa;
+    color: #5a6a7a;
+    font-weight: 600;
+    font-size: 12px;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-card .orders-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #2c3e4e;
+}
+
+.modal-card .orders-table tr:last-child td {
+    border-bottom: none;
+}
+
+.modal-card .orders-table tr:hover td {
+    background: #fafbfc;
+}
+
+/* 訂單號 */
+.modal-card .order-no {
+    font-family: monospace;
+    font-size: 12px;
+    color: #c8a15e;
+    background: #fef8e8;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-block;
+}
+
+/* 進度條 */
+.modal-card .progress-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-card .progress-bar-mini {
+    width: 80px;
+    background: #e8e8e8;
+    border-radius: 20px;
+    height: 5px;
+    overflow: hidden;
+}
+
+.modal-card .progress-fill-mini {
+    background: #c8a15e;
+    height: 100%;
+    border-radius: 20px;
+}
+
+/* 支付狀態標籤 */
+.modal-card .status-paid {
+    background: #e8f5e9;
+    color: #5a8f5a;
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.modal-card .status-unpaid {
+    background: #fff0eb;
+    color: #e8a878;
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.modal-card .status-partial {
+    background: #fff8e8;
+    color: #e8a050;
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* 按鈕 */
+.modal-card .btn-close-detail {
+    background: #f0f2f5;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 40px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #5a6a7a;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-card .btn-close-detail:hover {
+    background: #e8e8e8;
+}
+
+.modal-card .btn-add-order {
+    background: #c8a15e;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 40px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-card .btn-add-order:hover {
+    background: #b8944a;
+    transform: translateY(-1px);
+}
+
+/* 空狀態 */
+.modal-card .empty-orders {
+    text-align: center;
+    padding: 48px 20px;
+    color: #8a9abb;
+}
+
+.modal-card .empty-orders i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+/* 滾動條 */
+.modal-card .orders-table-wrapper::-webkit-scrollbar {
+    width: 5px;
+}
+
+.modal-card .orders-table-wrapper::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 10px;
+}
+
+.modal-card .orders-table-wrapper::-webkit-scrollbar-thumb {
+    background: #c8a15e;
+    border-radius: 10px;
+}
+
+/* ============================================
+   用戶管理表格 - 珊瑚橘風格
+   完整無斷裂 | 表頭左右貫穿 | 鼠標懸浮整行高亮
+============================================ */
+
+/* 用戶管理主容器 */
+#page_users .table-container {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(232, 168, 120, 0.08);
+}
+
+/* 表格本身 */
+#page_users .table-container table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+/* 表頭樣式 - 珊瑚橘 */
+#page_users .table-container th {
+    background: #fff8f0;
+    color: #e8a878;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 16px 16px;
+    border-bottom: 1px solid #ffe8d8;
+    text-align: left;
+}
+
+/* 表格單元格 */
+#page_users .table-container td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #fff0e8;
+    color: #5a4a3a;
+    font-size: 13px;
+    vertical-align: top;
+}
+
+/* 鼠標懸浮高亮 - 整行變淡橘色背景 */
+#page_users .table-container tbody tr:hover td {
+    background: #fff8f0;
+    transition: background 0.2s ease;
+}
+
+/* 按鈕樣式 */
+#page_users .table-container .btn-icon {
+    color: #e8a878;
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#page_users .table-container .btn-icon:hover {
+    background: #ffe0d0;
+    color: #d89868;
+}
+
+/* 狀態標籤 - 已支付 */
+#page_users .table-container .badge-active {
+    background: #e8f5e9;
+    color: #5a8f5a;
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* 狀態標籤 - 未支付 / 待處理 */
+#page_users .table-container .badge-expired,
+#page_users .table-container .badge-pending {
+    background: #fff0eb;
+    color: #e8a878;
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* 狀態標籤 - 部分支付 */
+#page_users .table-container .badge-warning {
+    background: #fff8e8;
+    color: #e8a050;
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* 訂單號標籤 */
+#page_users .table-container .order-no-badge {
+    background: #fff0e8;
+    color: #e8a878;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-family: monospace;
+    display: inline-block;
+}
+
+/* 表格滾動條 */
+#page_users .table-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+#page_users .table-container::-webkit-scrollbar-track {
+    background: #fff0e8;
+    border-radius: 10px;
+}
+
+#page_users .table-container::-webkit-scrollbar-thumb {
+    background: #e8a878;
+    border-radius: 10px;
+}
+
+.btn-restore {
+    background: #4a7cff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 30px;
+    color: white;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-restore:hover {
+    background: #3a6cee;
+    transform: translateY(-1px);
+}

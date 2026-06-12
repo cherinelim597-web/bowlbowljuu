@@ -260,8 +260,8 @@ function renderTableRows(deliveries) {
                             <i class="fas fa-undo-alt"></i> 撤回
                         </button>
                         <button class="action-pause" onclick="pauseToday('${d.id}', '${userId}', '${d.subscription_id}')" title="今日暫停">
-                            <i class="fas fa-pause-circle"></i> 暫停
-                        </button>
+    <i class="fas fa-pause-circle"></i> 暫停
+</button>
                         <button class="action-deliver" onclick="tempMarkAsDelivered('${d.id}')" title="標記送達" ${deliverBtnDisabled} style="${deliverBtnStyle}">
                             <i class="fas fa-check-circle"></i> ${statusText}
                         </button>
@@ -464,7 +464,7 @@ function filterTableByPhone(searchTerm) {
     tableBody.innerHTML = renderTableRows(filtered);
 }
 
-// 今日暫停（保持原有功能，直接保存到數據庫）
+// 今日暫停 - 條目變灰色，顯示恢復按鈕
 async function pauseToday(deliveryId, userId, subscriptionId) {
     if (!confirm('暫停後今日配送將取消，訂閱週期順延一天，確定暫停嗎？')) return;
     
@@ -475,8 +475,12 @@ async function pauseToday(deliveryId, userId, subscriptionId) {
             .eq('id', deliveryId)
             .single();
         
+        if (!delivery) throw new Error('配送記錄不存在');
+        
+        // 刪除今日的配送記錄
         await supabaseClient.from('deliveries').delete().eq('id', deliveryId);
         
+        // 記錄暫停記錄
         await supabaseClient
             .from('delivery_pauses')
             .insert({
@@ -487,6 +491,7 @@ async function pauseToday(deliveryId, userId, subscriptionId) {
                 created_at: new Date()
             });
         
+        // 更新訂閱的結束日期和總天數
         var { data: subscription } = await supabaseClient
             .from('subscriptions')
             .select('end_date, total_days')
@@ -504,20 +509,70 @@ async function pauseToday(deliveryId, userId, subscriptionId) {
             })
             .eq('id', subscriptionId);
         
-        // 如果暫停的配送在臨時標記列表中，移除
-        var index = tempDeliveredIds.indexOf(deliveryId);
-        if (index !== -1) {
-            tempDeliveredIds.splice(index, 1);
+        // 重新排列該用戶後續的 meal_number
+        var { data: futureDeliveries } = await supabaseClient
+            .from('deliveries')
+            .select('id, meal_number')
+            .eq('user_id', userId)
+            .eq('subscription_id', subscriptionId)
+            .gt('meal_number', delivery.meal_number)
+            .order('meal_number', { ascending: true });
+        
+        if (futureDeliveries && futureDeliveries.length > 0) {
+            for (var i = 0; i < futureDeliveries.length; i++) {
+                await supabaseClient
+                    .from('deliveries')
+                    .update({ meal_number: delivery.meal_number + i })
+                    .eq('id', futureDeliveries[i].id);
+            }
         }
         
+        // 更新UI：該條目變灰色，顯示恢復按鈕
+        var row = document.querySelector('.table-row[data-delivery-id="' + deliveryId + '"]');
+        if (row) {
+            row.style.opacity = '0.6';
+            row.style.background = '#f5f5f5';
+            
+            var actionCell = row.querySelector('.action-td');
+            if (actionCell) {
+                actionCell.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="color: #e8a878; font-size: 12px;">
+                            <i class="fas fa-pause-circle"></i> 今日已暫停
+                        </span>
+                        <button class="btn-restore" onclick="restoreDelivery('${deliveryId}', '${userId}', '${subscriptionId}', ${delivery.meal_number})" 
+                                style="background: #4a7cff; border: none; padding: 6px 14px; border-radius: 30px; color: white; font-size: 11px; cursor: pointer;">
+                            <i class="fas fa-redo-alt"></i> 恢復
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // 更新今日待配送總數
+        todayPendingCount--;
+        var countElement = document.getElementById('todayPendingCount');
+        if (countElement) countElement.innerText = todayPendingCount;
+        updateCompletionRateNumber();
+        
         showToast('已暫停今日配送，訂閱週期已順延', 'success');
-        loadDeliveriesPage();
+        
+        // 從 currentDeliveries 中移除（但UI保留了灰色條目）
+        var newList = [];
+        for (var j = 0; j < currentDeliveries.length; j++) {
+            if (currentDeliveries[j].id !== deliveryId) {
+                newList.push(currentDeliveries[j]);
+            }
+        }
+        currentDeliveries = newList;
         
         var dashboardPage = document.getElementById('page_dashboard');
         if (dashboardPage && dashboardPage.classList && dashboardPage.classList.contains('active')) {
             if (typeof loadDashboard === 'function') loadDashboard();
         }
+        
     } catch (err) {
+        console.error('Error pausing delivery:', err);
         showToast('操作失敗: ' + err.message, 'error');
     }
 }
@@ -527,6 +582,135 @@ function escapeHtml(text) {
     var div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// 恢復今日配送
+async function restoreDelivery(deliveryId, userId, subscriptionId, originalMealNumber) {
+    if (!confirm('恢復後將重新建立今日配送任務，訂閱週期將減少一天，確定恢復嗎？')) return;
+    
+    try {
+        // 獲取訂閱信息
+        var { data: subscription } = await supabaseClient
+            .from('subscriptions')
+            .select('end_date, total_days, start_date')
+            .eq('id', subscriptionId)
+            .single();
+        
+        // 將訂閱的結束日期減少一天
+        var newEndDate = new Date(subscription.end_date);
+        newEndDate.setDate(newEndDate.getDate() - 1);
+        
+        await supabaseClient
+            .from('subscriptions')
+            .update({ 
+                end_date: newEndDate.toISOString().split('T')[0],
+                total_days: subscription.total_days - 1
+            })
+            .eq('id', subscriptionId);
+        
+        // 刪除暫停記錄
+        await supabaseClient
+            .from('delivery_pauses')
+            .delete()
+            .eq('delivery_id', deliveryId);
+        
+        // 重新創建今天的配送記錄
+        var todayStr = getTodayString();
+        var { data: newDelivery, error: createError } = await supabaseClient
+            .from('deliveries')
+            .insert({
+                user_id: userId,
+                subscription_id: subscriptionId,
+                delivery_date: todayStr,
+                status: 'pending',
+                meal_number: originalMealNumber,
+                created_at: new Date()
+            })
+            .select()
+            .single();
+        
+        if (createError) throw createError;
+        
+        // 重新排列該用戶後續的 meal_number
+        var { data: futureDeliveries } = await supabaseClient
+            .from('deliveries')
+            .select('id, meal_number')
+            .eq('user_id', userId)
+            .eq('subscription_id', subscriptionId)
+            .gt('meal_number', originalMealNumber)
+            .order('meal_number', { ascending: true });
+        
+        if (futureDeliveries && futureDeliveries.length > 0) {
+            for (var i = 0; i < futureDeliveries.length; i++) {
+                await supabaseClient
+                    .from('deliveries')
+                    .update({ meal_number: originalMealNumber + i + 1 })
+                    .eq('id', futureDeliveries[i].id);
+            }
+        }
+        
+        // 更新UI：恢復正常顯示
+        var row = document.querySelector('.table-row[data-delivery-id="' + deliveryId + '"]');
+        if (row) {
+            row.style.opacity = '1';
+            row.style.background = '';
+            
+            // 重新渲染操作按鈕
+            var actionCell = row.querySelector('.action-td');
+            if (actionCell && newDelivery) {
+                actionCell.innerHTML = `
+                    <div class="action-buttons-modern">
+                        <button class="action-undo" onclick="undoDelivery('${newDelivery.id}', '${userId}', '${subscriptionId}')" title="撤回配送">
+                            <i class="fas fa-undo-alt"></i> 撤回
+                        </button>
+                        <button class="action-pause" onclick="pauseToday('${newDelivery.id}', '${userId}', '${subscriptionId}')" title="今日暫停">
+                            <i class="fas fa-pause-circle"></i> 暫停
+                        </button>
+                        <button class="action-deliver" onclick="tempMarkAsDelivered('${newDelivery.id}')" title="標記送達">
+                            <i class="fas fa-check-circle"></i> 送達
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // 更新今日待配送總數
+        todayPendingCount++;
+        var countElement = document.getElementById('todayPendingCount');
+        if (countElement) countElement.innerText = todayPendingCount;
+        updateCompletionRateNumber();
+        
+        // 重新加入 currentDeliveries
+        var user = row ? row.getAttribute('data-user-id') : userId;
+        var { data: userData } = await supabaseClient
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single();
+        
+        var { data: subData } = await supabaseClient
+            .from('subscriptions')
+            .select('*')
+            .eq('id', subscriptionId)
+            .single();
+        
+        currentDeliveries.push({
+            ...newDelivery,
+            users: userData,
+            subscriptions: subData
+        });
+        
+        showToast('已恢復今日配送，訂閱週期已縮減', 'success');
+        
+        var dashboardPage = document.getElementById('page_dashboard');
+        if (dashboardPage && dashboardPage.classList && dashboardPage.classList.contains('active')) {
+            if (typeof loadDashboard === 'function') loadDashboard();
+        }
+        
+    } catch (err) {
+        console.error('Error restoring delivery:', err);
+        showToast('恢復失敗: ' + err.message, 'error');
+    }
 }
 
 function formatDisplayDate(dateStr) {
