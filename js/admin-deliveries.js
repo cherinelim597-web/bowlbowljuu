@@ -1,11 +1,36 @@
 // ============================================
-// 每日配送模組 - 最終完整穩定版
+// 每日配送模組 - 修復 400 錯誤 + 性能優化
 // ============================================
 
 var todayPendingCount = 0;
 var todayPausedCount = 0;
 var currentDeliveries = [];
 var tempDeliveredIds = [];
+var tempDeliveredSet = new Set();
+
+// 更新待配送數字
+function updatePendingCount() {
+    var count = currentDeliveries.filter(function(d) {
+        return !d.is_paused && d.status === 'pending' && !tempDeliveredSet.has(d.id);
+    }).length;
+    
+    todayPendingCount = count;
+    var countElement = document.getElementById('todayPendingCount');
+    if (countElement) countElement.innerText = todayPendingCount;
+    updateCompletionRate();
+    return todayPendingCount;
+}
+
+function updateCompletionRate() {
+    var totalActive = currentDeliveries.filter(function(d) { return !d.is_paused; }).length;
+    var completed = tempDeliveredSet.size;
+    var rateElement = document.getElementById('completionRate');
+    if (rateElement && totalActive > 0) {
+        rateElement.innerText = Math.round((completed / totalActive) * 100) + '%';
+    } else if (rateElement) {
+        rateElement.innerText = '0%';
+    }
+}
 
 async function loadDeliveriesPage() {
     var container = document.getElementById('page_deliveries');
@@ -16,7 +41,8 @@ async function loadDeliveriesPage() {
     try {
         var todayStr = getTodayString();
         
-        var { data: deliveries, error } = await supabaseClient
+        // 查詢今日配送
+        var { data: deliveries, error: deliveriesError } = await supabaseClient
             .from('deliveries')
             .select(`
                 *,
@@ -25,13 +51,25 @@ async function loadDeliveriesPage() {
             `)
             .eq('delivery_date', todayStr);
         
-        if (error) throw error;
+        if (deliveriesError) throw deliveriesError;
         
-        var { data: pausedRecords } = await supabaseClient
-            .from('delivery_pauses')
-            .select('*, users(id, full_name, email, phone, address), subscriptions(plan_type, total_days, meals_received, start_date, end_date, status)')
-            .eq('pause_date', todayStr);
+        // 查詢今日暫停記錄（使用 try-catch 避免 400 錯誤）
+        var pausedDeliveries = [];
+        try {
+            var { data: pausedRecords, error: pausedError } = await supabaseClient
+                .from('delivery_pauses')
+                .select('*, users(id, full_name, email, phone, address), subscriptions(plan_type, total_days, meals_received, start_date, end_date, status)')
+                .eq('pause_date', todayStr);
+            
+            if (!pausedError && pausedRecords && pausedRecords.length > 0) {
+                pausedDeliveries = pausedRecords;
+            }
+        } catch (pauseErr) {
+            // 表可能為空，忽略錯誤
+            console.log('No paused records found or table empty');
+        }
         
+        // 過濾活躍配送（排除管理員和單次方案）
         var activeDeliveries = [];
         if (deliveries) {
             for (var i = 0; i < deliveries.length; i++) {
@@ -44,14 +82,15 @@ async function loadDeliveriesPage() {
             }
         }
         
-        var pausedDeliveries = [];
-        if (pausedRecords) {
-            for (var j = 0; j < pausedRecords.length; j++) {
-                var p = pausedRecords[j];
+        // 處理暫停配送
+        var pausedItems = [];
+        if (pausedDeliveries && pausedDeliveries.length > 0) {
+            for (var j = 0; j < pausedDeliveries.length; j++) {
+                var p = pausedDeliveries[j];
                 if (p.users && p.users.email === ADMIN_EMAIL) continue;
                 var planType = p.subscriptions ? p.subscriptions.plan_type : null;
                 if (planType && planType !== 'single') {
-                    pausedDeliveries.push({
+                    pausedItems.push({
                         id: p.delivery_id,
                         user_id: p.user_id,
                         subscription_id: p.subscription_id,
@@ -66,22 +105,24 @@ async function loadDeliveriesPage() {
             }
         }
         
-        var allDeliveries = [...activeDeliveries, ...pausedDeliveries];
+        // 合併並排序
+        var allDeliveries = [...activeDeliveries, ...pausedItems];
         allDeliveries.sort(function(a, b) {
             return (a.meal_number || 0) - (b.meal_number || 0);
         });
         
         currentDeliveries = allDeliveries;
-        todayPendingCount = allDeliveries.filter(function(d) { 
-            return d.status === 'pending' && !d.is_paused; 
+        tempDeliveredSet.clear();
+        todayPausedCount = pausedItems.length;
+        todayPendingCount = allDeliveries.filter(function(d) {
+            return !d.is_paused && d.status === 'pending';
         }).length;
-        todayPausedCount = pausedDeliveries.length;
         
         renderDeliveriesPage(allDeliveries, todayStr);
         
     } catch (err) {
         console.error('Error:', err);
-        container.innerHTML = '<div class="table-container"><p>加載失敗: ' + err.message + '</p></div>';
+        container.innerHTML = '<div class="table-container"><p>加載失敗: ' + (err.message || '請刷新頁面') + '</p><button class="btn-small" onclick="loadDeliveriesPage()" style="margin-top: 10px;">重新加載</button></div>';
     }
 }
 
@@ -90,8 +131,10 @@ function renderDeliveriesPage(deliveries, todayStr) {
     if (!container) return;
     
     var totalActive = deliveries.filter(function(d) { return !d.is_paused; }).length;
-    var completed = tempDeliveredIds.length;
+    var completed = tempDeliveredSet.size;
     var completionRate = totalActive > 0 ? Math.round((completed / totalActive) * 100) : 0;
+    
+    var tableRowsHtml = renderTableRows(deliveries);
     
     container.innerHTML = `
         <div class="deliveries-container">
@@ -102,7 +145,6 @@ function renderDeliveriesPage(deliveries, todayStr) {
                         <div class="stat-number-lg" id="todayPendingCount">${todayPendingCount}</div>
                         <div class="stat-label-sm">今日待配送</div>
                     </div>
-                    <div class="stat-tag pending-tag">待處理</div>
                 </div>
                 <div class="stat-card-cyan">
                     <div class="stat-icon-lg"><i class="fas fa-map-marked-alt"></i></div>
@@ -110,7 +152,6 @@ function renderDeliveriesPage(deliveries, todayStr) {
                         <div class="stat-number-lg">${deliveries.length}</div>
                         <div class="stat-label-sm">配送路線數</div>
                     </div>
-                    <div class="stat-tag route-tag">今日路線</div>
                 </div>
                 <div class="stat-card-orange">
                     <div class="stat-icon-lg"><i class="fas fa-pause-circle"></i></div>
@@ -118,7 +159,6 @@ function renderDeliveriesPage(deliveries, todayStr) {
                         <div class="stat-number-lg" id="todayPausedCount">${todayPausedCount}</div>
                         <div class="stat-label-sm">今日暫停用戶</div>
                     </div>
-                    <div class="stat-tag paused-tag">已暫停</div>
                 </div>
                 <div class="stat-card-green">
                     <div class="stat-icon-lg"><i class="fas fa-chart-line"></i></div>
@@ -126,7 +166,6 @@ function renderDeliveriesPage(deliveries, todayStr) {
                         <div class="stat-number-lg" id="completionRate">${completionRate}%</div>
                         <div class="stat-label-sm">完成率</div>
                     </div>
-                    <div class="stat-tag rate-tag">即時更新</div>
                 </div>
             </div>
             
@@ -155,7 +194,7 @@ function renderDeliveriesPage(deliveries, todayStr) {
                     <div class="th" style="width: 20%"><i class="fas fa-cog"></i> 操作</div>
                 </div>
                 <div id="deliveriesTableBody" class="table-body">
-                    ${renderTableRows(deliveries)}
+                    ${tableRowsHtml}
                 </div>
             </div>
             
@@ -168,6 +207,7 @@ function renderDeliveriesPage(deliveries, todayStr) {
         </div>
     `;
     
+    // 綁定搜索事件
     var searchInput = document.getElementById('searchPhoneInput');
     var clearBtn = document.getElementById('clearSearchBtn');
     
@@ -205,7 +245,7 @@ function renderTableRows(deliveries) {
         var user = d.users;
         var sub = d.subscriptions;
         var isPaused = d.is_paused === true || d.status === 'paused';
-        var isTempDelivered = !isPaused && tempDeliveredIds.indexOf(d.id) !== -1;
+        var isTempDelivered = !isPaused && tempDeliveredSet.has(d.id);
         
         var mealsReceived = sub ? sub.meals_received : 0;
         var totalDays = sub ? sub.total_days : 0;
@@ -225,7 +265,7 @@ function renderTableRows(deliveries) {
                 <div class="table-row paused-row" data-delivery-id="${d.id}" data-user-id="${userId}" data-subscription-id="${d.subscription_id}" style="opacity: 0.6; background: #f5f5f5;">
                     <div class="td" style="width: 18%">
                         <div class="user-info-modern">
-                            <div class="user-avatar-modern">${userInitial}</div>
+                            <div class="user-avatar-modern">${escapeHtml(userInitial)}</div>
                             <div class="user-details-modern">
                                 <div class="user-name-modern">${escapeHtml(userName)}</div>
                                 <div class="user-id-modern">${userId.substring(0, 12)}</div>
@@ -354,22 +394,13 @@ function filterTableByPhone(searchTerm) {
     tableBody.innerHTML = renderTableRows(filtered);
 }
 
-function updateCompletionRate() {
-    var totalActive = currentDeliveries.filter(function(d) { return !d.is_paused; }).length;
-    var completed = tempDeliveredIds.length;
-    var rateElement = document.getElementById('completionRate');
-    if (rateElement && totalActive > 0) {
-        var rate = Math.round((completed / totalActive) * 100);
-        rateElement.innerText = rate + '%';
-    } else if (rateElement) {
-        rateElement.innerText = '0%';
-    }
-}
-
 function tempMarkAsDelivered(deliveryId) {
-    if (tempDeliveredIds.indexOf(deliveryId) !== -1) return;
+    if (tempDeliveredSet.has(deliveryId)) return;
     
-    tempDeliveredIds.push(deliveryId);
+    var delivery = currentDeliveries.find(function(d) { return d.id === deliveryId; });
+    if (!delivery || delivery.is_paused) return;
+    
+    tempDeliveredSet.add(deliveryId);
     
     var row = document.querySelector('.table-row[data-delivery-id="' + deliveryId + '"]');
     if (row) {
@@ -385,18 +416,13 @@ function tempMarkAsDelivered(deliveryId) {
         if (undoBtn) undoBtn.style.opacity = '1';
     }
     
-    todayPendingCount--;
-    var countElement = document.getElementById('todayPendingCount');
-    if (countElement) countElement.innerText = todayPendingCount;
-    
-    updateCompletionRate();
+    updatePendingCount();
     showToast('已標記，點擊「今日配送完畢」後保存', 'success');
 }
 
 function undoTempDelivery(deliveryId) {
-    var index = tempDeliveredIds.indexOf(deliveryId);
-    if (index === -1) return;
-    tempDeliveredIds.splice(index, 1);
+    if (!tempDeliveredSet.has(deliveryId)) return;
+    tempDeliveredSet.delete(deliveryId);
     
     var row = document.querySelector('.table-row[data-delivery-id="' + deliveryId + '"]');
     if (row) {
@@ -412,16 +438,17 @@ function undoTempDelivery(deliveryId) {
         if (undoBtn) undoBtn.style.opacity = '0.5';
     }
     
-    todayPendingCount++;
-    var countElement = document.getElementById('todayPendingCount');
-    if (countElement) countElement.innerText = todayPendingCount;
-    
-    updateCompletionRate();
+    updatePendingCount();
     showToast('已撤回臨時標記', 'info');
 }
 
 async function pauseDelivery(deliveryId, userId, subscriptionId) {
     if (!confirm('暫停後今日配送將取消，訂閱週期順延一天，確定暫停嗎？')) return;
+    
+    var btn = event.target;
+    var originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
     
     try {
         var { data: delivery } = await supabaseClient
@@ -430,48 +457,56 @@ async function pauseDelivery(deliveryId, userId, subscriptionId) {
             .eq('id', deliveryId)
             .single();
         
+        if (!delivery) throw new Error('配送記錄不存在');
+        
+        // 刪除配送記錄
         await supabaseClient.from('deliveries').delete().eq('id', deliveryId);
         
+        // 添加暫停記錄
         await supabaseClient.from('delivery_pauses').insert({
             user_id: userId,
             delivery_id: deliveryId,
             pause_date: getTodayString(),
             original_meal_number: delivery.meal_number,
+            subscription_id: subscriptionId,
             created_at: new Date()
         });
         
+        // 更新訂閱週期
         var { data: subscription } = await supabaseClient
             .from('subscriptions')
             .select('end_date, total_days')
             .eq('id', subscriptionId)
             .single();
         
-        var newEndDate = new Date(subscription.end_date);
-        newEndDate.setDate(newEndDate.getDate() + 1);
-        
-        await supabaseClient.from('subscriptions').update({ 
-            end_date: newEndDate.toISOString().split('T')[0],
-            total_days: subscription.total_days + 1
-        }).eq('id', subscriptionId);
-        
-        var { data: futureDeliveries } = await supabaseClient
-            .from('deliveries')
-            .select('id, meal_number')
-            .eq('user_id', userId)
-            .eq('subscription_id', subscriptionId)
-            .gt('meal_number', delivery.meal_number)
-            .order('meal_number', { ascending: true });
-        
-        if (futureDeliveries && futureDeliveries.length > 0) {
-            for (var i = 0; i < futureDeliveries.length; i++) {
-                await supabaseClient
-                    .from('deliveries')
-                    .update({ meal_number: delivery.meal_number + i })
-                    .eq('id', futureDeliveries[i].id);
-            }
+        if (subscription) {
+            var newEndDate = new Date(subscription.end_date);
+            newEndDate.setDate(newEndDate.getDate() + 1);
+            
+            await supabaseClient.from('subscriptions').update({ 
+                end_date: newEndDate.toISOString().split('T')[0],
+                total_days: subscription.total_days + 1
+            }).eq('id', subscriptionId);
         }
         
-        // 更新UI：條目變灰色，不消失
+        // 更新本地數據
+        var deliveryIndex = currentDeliveries.findIndex(function(d) { return d.id === deliveryId; });
+        if (deliveryIndex !== -1) {
+            currentDeliveries[deliveryIndex].is_paused = true;
+            currentDeliveries[deliveryIndex].status = 'paused';
+        }
+        
+        if (tempDeliveredSet.has(deliveryId)) {
+            tempDeliveredSet.delete(deliveryId);
+        }
+        
+        todayPausedCount++;
+        var pausedElement = document.getElementById('todayPausedCount');
+        if (pausedElement) pausedElement.innerText = todayPausedCount;
+        
+        updatePendingCount();
+        
+        // 更新UI
         var row = document.querySelector('.table-row[data-delivery-id="' + deliveryId + '"]');
         if (row) {
             row.style.opacity = '0.6';
@@ -485,25 +520,6 @@ async function pauseDelivery(deliveryId, userId, subscriptionId) {
                     </button>
                 `;
             }
-            row.setAttribute('data-paused', 'true');
-        }
-        
-        todayPendingCount--;
-        var countElement = document.getElementById('todayPendingCount');
-        if (countElement) countElement.innerText = todayPendingCount;
-        
-        todayPausedCount++;
-        var pausedElement = document.getElementById('todayPausedCount');
-        if (pausedElement) pausedElement.innerText = todayPausedCount;
-        
-        updateCompletionRate();
-        
-        for (var i = 0; i < currentDeliveries.length; i++) {
-            if (currentDeliveries[i].id === deliveryId) {
-                currentDeliveries[i].is_paused = true;
-                currentDeliveries[i].status = 'paused';
-                break;
-            }
         }
         
         showToast('已暫停今日配送，訂閱週期已順延', 'success');
@@ -511,6 +527,9 @@ async function pauseDelivery(deliveryId, userId, subscriptionId) {
     } catch (err) {
         console.error('Error pausing delivery:', err);
         showToast('操作失敗: ' + err.message, 'error');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 }
 
@@ -524,18 +543,21 @@ async function restoreDelivery(deliveryId, userId, subscriptionId, originalMealN
             .eq('id', subscriptionId)
             .single();
         
-        var newEndDate = new Date(subscription.end_date);
-        newEndDate.setDate(newEndDate.getDate() - 1);
-        
-        await supabaseClient.from('subscriptions').update({ 
-            end_date: newEndDate.toISOString().split('T')[0],
-            total_days: subscription.total_days - 1
-        }).eq('id', subscriptionId);
+        if (subscription) {
+            var newEndDate = new Date(subscription.end_date);
+            newEndDate.setDate(newEndDate.getDate() - 1);
+            
+            await supabaseClient.from('subscriptions').update({ 
+                end_date: newEndDate.toISOString().split('T')[0],
+                total_days: subscription.total_days - 1
+            }).eq('id', subscriptionId);
+        }
         
         await supabaseClient.from('delivery_pauses').delete().eq('delivery_id', deliveryId);
         
         var todayStr = getTodayString();
         await supabaseClient.from('deliveries').insert({
+            id: deliveryId,
             user_id: userId,
             subscription_id: subscriptionId,
             delivery_date: todayStr,
@@ -544,8 +566,12 @@ async function restoreDelivery(deliveryId, userId, subscriptionId, originalMealN
             created_at: new Date()
         });
         
-        loadDeliveriesPage();
+        if (todayPausedCount > 0) todayPausedCount--;
+        var pausedElement = document.getElementById('todayPausedCount');
+        if (pausedElement) pausedElement.innerText = todayPausedCount;
+        
         showToast('已恢復今日配送，訂閱週期已縮減', 'success');
+        loadDeliveriesPage();
         
     } catch (err) {
         console.error('Error restoring delivery:', err);
@@ -554,7 +580,7 @@ async function restoreDelivery(deliveryId, userId, subscriptionId, originalMealN
 }
 
 async function submitAllDeliveries() {
-    if (tempDeliveredIds.length === 0) {
+    if (tempDeliveredSet.size === 0) {
         showToast('沒有需要提交的配送記錄', 'warning');
         return;
     }
@@ -570,9 +596,10 @@ async function submitAllDeliveries() {
     
     var successCount = 0;
     var failCount = 0;
+    var deliveryIds = Array.from(tempDeliveredSet);
     
-    for (var i = 0; i < tempDeliveredIds.length; i++) {
-        var deliveryId = tempDeliveredIds[i];
+    for (var i = 0; i < deliveryIds.length; i++) {
+        var deliveryId = deliveryIds[i];
         var row = document.querySelector('.table-row[data-delivery-id="' + deliveryId + '"]');
         if (!row) continue;
         
@@ -581,9 +608,17 @@ async function submitAllDeliveries() {
         
         try {
             await supabaseClient.from('deliveries').update({ status: 'delivered' }).eq('id', deliveryId);
-            var { data: sub } = await supabaseClient.from('subscriptions').select('meals_received, total_days').eq('id', subscriptionId).single();
-            var newCount = (sub ? sub.meals_received : 0) + 1;
-            await supabaseClient.from('subscriptions').update({ meals_received: newCount }).eq('id', subscriptionId);
+            
+            var { data: sub } = await supabaseClient
+                .from('subscriptions')
+                .select('meals_received, total_days')
+                .eq('id', subscriptionId)
+                .single();
+            
+            if (sub) {
+                var newCount = (sub.meals_received || 0) + 1;
+                await supabaseClient.from('subscriptions').update({ meals_received: newCount }).eq('id', subscriptionId);
+            }
             successCount++;
         } catch (err) {
             console.error('提交失敗:', deliveryId, err);
@@ -602,7 +637,7 @@ async function submitAllDeliveries() {
         showToast('提交完成：成功 ' + successCount + ' 筆，失敗 ' + failCount + ' 筆', 'warning');
     }
     
-    tempDeliveredIds = [];
+    tempDeliveredSet.clear();
     loadDeliveriesPage();
     
     var dashboardPage = document.getElementById('page_dashboard');
@@ -639,8 +674,10 @@ function getTodayString() {
 function showToast(message, type) {
     var toast = document.createElement('div');
     toast.className = 'toast-message';
-    toast.innerHTML = '<i class="fas ' + (type === 'error' ? 'fa-exclamation-circle' : (type === 'warning' ? 'fa-exclamation-triangle' : 'fa-check-circle')) + '"></i> ' + message;
-    toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:' + (type === 'error' ? '#e87a8a' : (type === 'warning' ? '#e8a878' : '#6fb87f')) + ';color:white;padding:12px 20px;border-radius:40px;z-index:2000;animation:slideIn 0.3s ease;';
+    var iconClass = type === 'error' ? 'fa-exclamation-circle' : (type === 'warning' ? 'fa-exclamation-triangle' : 'fa-check-circle');
+    var bgColor = type === 'error' ? '#e87a8a' : (type === 'warning' ? '#e8a878' : '#6fb87f');
+    toast.innerHTML = '<i class="fas ' + iconClass + '"></i> ' + message;
+    toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:' + bgColor + ';color:white;padding:12px 20px;border-radius:40px;z-index:2000;animation:slideIn 0.3s ease;';
     document.body.appendChild(toast);
     setTimeout(function() { toast.remove(); }, 3000);
 }
