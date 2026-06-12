@@ -225,6 +225,7 @@ function renderTableRows(deliveries) {
         var userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
         var remainingDays = totalDays - mealsReceived;
         
+        // 暫停狀態
         if (isPaused) {
             html += `
                 <div class="table-row paused-row" data-delivery-id="${d.id}" data-user-id="${userId}" data-subscription-id="${d.subscription_id}" style="opacity: 0.6; background: #f5f5f5;">
@@ -275,6 +276,7 @@ function renderTableRows(deliveries) {
             continue;
         }
         
+        // 正常狀態（包含撤回、暫停、送達三個按鈕）
         var deliverBtnText = isTempDelivered ? '✅ 已送達' : '🚚 送達';
         var deliverBtnDisabled = isTempDelivered ? 'disabled' : '';
         var deliverBtnStyle = isTempDelivered ? 'opacity:0.6; cursor:not-allowed; background:#a0a0a0;' : '';
@@ -321,6 +323,9 @@ function renderTableRows(deliveries) {
                 </div>
                 <div class="td action-td" style="width: 20%">
                     <div class="action-buttons-modern">
+                        <button class="action-undo" onclick="undoTempDelivery('${d.id}')" title="撤回臨時標記">
+                            <i class="fas fa-undo-alt"></i> 撤回
+                        </button>
                         <button class="action-pause" onclick="pauseDelivery('${d.id}', '${userId}', '${d.subscription_id}')" title="今日暫停">
                             <i class="fas fa-pause-circle"></i> 暫停
                         </button>
@@ -407,6 +412,7 @@ function undoTempDelivery(deliveryId) {
             deliverBtn.innerHTML = '<i class="fas fa-check-circle"></i> 🚚 送達';
             deliverBtn.disabled = false;
             deliverBtn.style.opacity = '1';
+            deliverBtn.style.background = '';
         }
     }
     
