@@ -1,6 +1,5 @@
 // ============================================
-// 每日配送模組 - 完整版（無暫停表）
-// 功能：臨時標記送達 | 批量提交
+// 每日配送模組 - 完整版
 // ============================================
 
 var todayPendingCount = 0;
@@ -16,7 +15,6 @@ async function loadDeliveriesPage() {
     try {
         var todayStr = getTodayString();
         
-        // 獲取今天的配送記錄（只查 deliveries 表）
         var { data: deliveries, error } = await supabaseClient
             .from('deliveries')
             .select(`
@@ -28,51 +26,6 @@ async function loadDeliveriesPage() {
         
         if (error) throw error;
         
-        // 如果沒有配送記錄，為所有有週期方案的用戶創建
-        if (!deliveries || deliveries.length === 0) {
-            // 獲取所有有週期方案的活躍訂閱
-            var { data: subscriptions, error: subError } = await supabaseClient
-                .from('subscriptions')
-                .select(`
-                    *,
-                    users (id, full_name, email, phone, address)
-                `)
-                .neq('plan_type', 'single')
-                .eq('status', 'active')
-                .not('users.email', 'eq', ADMIN_EMAIL);
-            
-            if (!subError && subscriptions && subscriptions.length > 0) {
-                var newDeliveries = [];
-                for (var i = 0; i < subscriptions.length; i++) {
-                    var sub = subscriptions[i];
-                    var mealNumber = Math.floor((new Date(todayStr) - new Date(sub.start_date)) / (1000 * 60 * 60 * 24)) + 1;
-                    
-                    if (mealNumber > 0 && mealNumber <= sub.total_days) {
-                        newDeliveries.push({
-                            user_id: sub.user_id,
-                            subscription_id: sub.id,
-                            delivery_date: todayStr,
-                            status: 'pending',
-                            meal_number: mealNumber
-                        });
-                    }
-                }
-                
-                if (newDeliveries.length > 0) {
-                    var { error: insertError } = await supabaseClient
-                        .from('deliveries')
-                        .insert(newDeliveries);
-                    
-                    if (!insertError) {
-                        // 重新加載
-                        loadDeliveriesPage();
-                        return;
-                    }
-                }
-            }
-        }
-        
-        // 過濾：排除管理員、只顯示週期方案
         var filtered = [];
         if (deliveries) {
             for (var i = 0; i < deliveries.length; i++) {
@@ -86,19 +39,16 @@ async function loadDeliveriesPage() {
         }
         
         currentDeliveries = filtered;
-// 今日待配送 = 所有 pending 狀態的配送（排除已送達和已暫停）
-todayPendingCount = filtered.filter(function(d) { 
-    return d.status === 'pending'; 
-}).length;
+        tempDeliveredIds = [];
+        todayPendingCount = filtered.filter(function(d) { 
+            return d.status === 'pending'; 
+        }).length;
         
         renderDeliveriesPage(filtered, todayStr);
         
     } catch (err) {
         console.error('Error:', err);
-        var container = document.getElementById('page_deliveries');
-        if (container) {
-            container.innerHTML = '<div class="table-container"><p>加載失敗: ' + err.message + '</p></div>';
-        }
+        container.innerHTML = '<div class="table-container"><p>加載失敗: ' + err.message + '</p></div>';
     }
 }
 
@@ -112,7 +62,6 @@ function renderDeliveriesPage(deliveries, todayStr) {
     
     container.innerHTML = `
         <div class="deliveries-container">
-            <!-- 統計卡片 -->
             <div class="stats-four">
                 <div class="stat-card-primary">
                     <div class="stat-icon-lg"><i class="fas fa-truck"></i></div>
@@ -140,7 +89,6 @@ function renderDeliveriesPage(deliveries, todayStr) {
                 </div>
             </div>
             
-            <!-- 搜索欄 + 今日配送完畢按鈕 -->
             <div class="search-toolbar">
                 <div class="search-wrapper">
                     <i class="fas fa-search search-icon"></i>
@@ -157,7 +105,6 @@ function renderDeliveriesPage(deliveries, todayStr) {
                 </div>
             </div>
             
-            <!-- 配送表格 -->
             <div class="delivery-table-modern">
                 <div class="table-header">
                     <div class="th" style="width: 18%"><i class="fas fa-user-circle"></i> 用戶信息</div>
@@ -206,8 +153,6 @@ function renderDeliveriesPage(deliveries, todayStr) {
     if (submitBtn) {
         submitBtn.onclick = submitAllDeliveries;
     }
-    
-    updateCompletionRate();
 }
 
 function renderTableRows(deliveries) {
@@ -329,9 +274,6 @@ function updateCompletionRate() {
 function tempMarkAsDelivered(deliveryId) {
     if (tempDeliveredIds.indexOf(deliveryId) !== -1) return;
     
-    // 檢查是否已經被臨時標記過
-    if (tempDeliveredIds.indexOf(deliveryId) !== -1) return;
-    
     tempDeliveredIds.push(deliveryId);
     
     var row = document.querySelector('.table-row[data-delivery-id="' + deliveryId + '"]');
@@ -348,10 +290,7 @@ function tempMarkAsDelivered(deliveryId) {
         if (undoBtn) undoBtn.style.opacity = '1';
     }
     
-    // 確保不會變成負數
-    if (todayPendingCount > 0) {
-        todayPendingCount--;
-    }
+    todayPendingCount--;
     var countElement = document.getElementById('todayPendingCount');
     if (countElement) countElement.innerText = todayPendingCount;
     
