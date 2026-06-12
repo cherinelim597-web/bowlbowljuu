@@ -1,5 +1,5 @@
 // ============================================
-// 每日配送模組 - 最終完整穩定版
+// 每日配送模組 - 正確版
 // ============================================
 
 var todayPendingCount = 0;
@@ -16,6 +16,7 @@ async function loadDeliveriesPage() {
     try {
         var todayStr = getTodayString();
         
+        // 獲取今天的配送記錄
         var { data: deliveries, error } = await supabaseClient
             .from('deliveries')
             .select(`
@@ -27,11 +28,13 @@ async function loadDeliveriesPage() {
         
         if (error) throw error;
         
+        // 獲取今日暫停記錄
         var { data: pausedRecords } = await supabaseClient
             .from('delivery_pauses')
             .select('*, users(id, full_name, email, phone, address), subscriptions(plan_type, total_days, meals_received, start_date, end_date, status)')
             .eq('pause_date', todayStr);
         
+        // 過濾正常配送
         var activeDeliveries = [];
         if (deliveries) {
             for (var i = 0; i < deliveries.length; i++) {
@@ -44,6 +47,48 @@ async function loadDeliveriesPage() {
             }
         }
         
+        // 如果沒有配送記錄，嘗試創建
+        if (activeDeliveries.length === 0) {
+            var { data: subscriptions } = await supabaseClient
+                .from('subscriptions')
+                .select(`
+                    *,
+                    users (id, full_name, email, phone, address)
+                `)
+                .neq('plan_type', 'single')
+                .eq('status', 'active');
+            
+            if (subscriptions && subscriptions.length > 0) {
+                var newDeliveries = [];
+                for (var i = 0; i < subscriptions.length; i++) {
+                    var sub = subscriptions[i];
+                    var mealNumber = (new Date(todayStr) - new Date(sub.start_date)) / (1000 * 60 * 60 * 24) + 1;
+                    
+                    if (mealNumber >= 1 && mealNumber <= sub.total_days) {
+                        newDeliveries.push({
+                            user_id: sub.user_id,
+                            subscription_id: sub.id,
+                            delivery_date: todayStr,
+                            status: 'pending',
+                            meal_number: mealNumber
+                        });
+                    }
+                }
+                
+                if (newDeliveries.length > 0) {
+                    var { error: insertError } = await supabaseClient
+                        .from('deliveries')
+                        .insert(newDeliveries);
+                    
+                    if (!insertError) {
+                        loadDeliveriesPage();
+                        return;
+                    }
+                }
+            }
+        }
+        
+        // 處理已暫停的用戶
         var pausedDeliveries = [];
         if (pausedRecords) {
             for (var j = 0; j < pausedRecords.length; j++) {
@@ -67,9 +112,6 @@ async function loadDeliveriesPage() {
         }
         
         var allDeliveries = [...activeDeliveries, ...pausedDeliveries];
-        allDeliveries.sort(function(a, b) {
-            return (a.meal_number || 0) - (b.meal_number || 0);
-        });
         
         currentDeliveries = allDeliveries;
         todayPendingCount = allDeliveries.filter(function(d) { 
@@ -449,23 +491,6 @@ async function pauseDelivery(deliveryId, userId, subscriptionId) {
             end_date: newEndDate.toISOString().split('T')[0],
             total_days: subscription.total_days + 1
         }).eq('id', subscriptionId);
-        
-        var { data: futureDeliveries } = await supabaseClient
-            .from('deliveries')
-            .select('id, meal_number')
-            .eq('user_id', userId)
-            .eq('subscription_id', subscriptionId)
-            .gt('meal_number', delivery.meal_number)
-            .order('meal_number', { ascending: true });
-        
-        if (futureDeliveries && futureDeliveries.length > 0) {
-            for (var i = 0; i < futureDeliveries.length; i++) {
-                await supabaseClient
-                    .from('deliveries')
-                    .update({ meal_number: delivery.meal_number + i })
-                    .eq('id', futureDeliveries[i].id);
-            }
-        }
         
         loadDeliveriesPage();
         showToast('已暫停今日配送，訂閱週期已順延', 'success');
