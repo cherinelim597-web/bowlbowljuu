@@ -1,5 +1,5 @@
 // ============================================
-// 管理員儀表板模組
+// 管理員儀表板模組 - 奶油軟萌風格
 // ============================================
 
 // ADMIN_EMAIL 已在 admin-common.js 中定義
@@ -99,6 +99,43 @@ async function loadDashboard() {
             dailyDeliveries?.filter(d => d.delivery_date === date).length || 0
         );
         
+        // 最近註冊用戶 - 風格3：圓形頭像+徽章
+        const recentUsers = allUsers?.slice(0, 5) || [];
+        const recentUsersHtml = recentUsers.map(user => {
+            const avatarLetter = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
+            const daysSince = Math.floor((new Date() - new Date(user.created_at)) / (1000 * 60 * 60 * 24));
+            let badgeText = '新用戶';
+            let badgeColor = '#6fb87f';
+            let badgeBg = '#e0f5e4';
+            if (daysSince <= 1) {
+                badgeText = '🔥 今日新用戶';
+                badgeColor = '#e87a8a';
+                badgeBg = '#ffe0e4';
+            } else if (daysSince <= 3) {
+                badgeText = '🆕 新用戶';
+                badgeColor = '#6fb87f';
+                badgeBg = '#e0f5e4';
+            } else {
+                badgeText = '👤 活躍';
+                badgeColor = '#b8956e';
+                badgeBg = '#f0ebe2';
+            }
+            return `
+                <div style="display: flex; align-items: center; gap: 14px; padding: 10px; background: white; border-radius: 60px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="width: 46px; height: 46px; background: linear-gradient(135deg, #ffe0c0, #ffd4a0); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #e09a5a;">
+                        ${escapeHtml(avatarLetter)}
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 700; color: #8b6f4c;">${escapeHtml(user.full_name || 'N/A')}</div>
+                        <div style="font-size: 11px; color: #b8956e;">${escapeHtml(user.email || '未設置')}</div>
+                    </div>
+                    <div style="font-size: 10px; background: ${badgeBg}; padding: 4px 12px; border-radius: 30px; color: ${badgeColor}; font-weight: 600;">
+                        ${badgeText}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
         container.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card">
@@ -158,15 +195,11 @@ async function loadDashboard() {
                 </div>
             </div>
             
+            <!-- 最近註冊用戶卡片 - 風格3 -->
             <div class="table-container">
-                <h3 style="margin-bottom: 16px;">🆕 最近註冊用戶</h3>
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%;">
-                        <thead>
-                            <tr><th>姓名</th><th>郵箱</th><th>電話</th><th>註冊時間</th><th>狀態</th></tr>
-                        </thead>
-                        <tbody id="recentUsersList"></tbody>
-                    </table>
+                <h3 style="margin-bottom: 16px; color: #8b6f4c;"><i class="fas fa-user-plus"></i> 最近註冊用戶</h3>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    ${recentUsersHtml}
                 </div>
             </div>
         `;
@@ -199,23 +232,6 @@ async function loadDashboard() {
             yAxis: { type: 'value', axisLabel: { color: '#8a9abb' } },
             series: [{ type: 'bar', data: deliveryCounts, itemStyle: { color: '#4a7cff', borderRadius: [4,4,0,0] } }]
         });
-        
-        // 最近用戶
-        const recentUsers = allUsers?.slice(0, 5) || [];
-        const tbody = document.getElementById('recentUsersList');
-        if (recentUsers.length > 0) {
-            tbody.innerHTML = recentUsers.map(u => `
-                <tr>
-                    <td>${escapeHtml(u.full_name || 'N/A')}</td>
-                    <td>${escapeHtml(u.email)}</td
-                    <td>${escapeHtml(u.phone || 'N/A')}</td
-                    <td>${formatDisplayDate(u.created_at)}</td
-                    <td><span class="badge badge-active">正常</span></td
-                </tr>
-            `).join('');
-        } else {
-            tbody.innerHTML = '<tr><td colspan="5">暫無用戶<\/td><\/tr>';
-        }
         
     } catch (err) {
         console.error('Dashboard error:', err);
@@ -258,27 +274,27 @@ async function showUnpaidModal() {
                             <tr style="border-bottom: 1px solid #1e2a3a;">
                                 <td style="padding: 12px 8px;">
                                     <span class="order-no-badge">${escapeHtml(sub.order_no || '無')}</span>
-                                 </td>
+                                  </td
                                 <td style="padding: 12px 8px;">
                                     <strong>${escapeHtml(sub.users?.full_name || 'N/A')}</strong><br>
                                     <small>📧 ${escapeHtml(sub.users?.email || 'N/A')}</small><br>
                                     <small>📱 ${escapeHtml(sub.users?.phone || 'N/A')}</small>
-                                 </td>
-                                <td style="padding: 12px 8px;">${planNames[sub.plan_type] || sub.plan_type}</td>
-                                <td style="padding: 12px 8px; color: #c8a15e;">RM ${sub.total_price}</td>
+                                  </td
+                                <td style="padding: 12px 8px;">${planNames[sub.plan_type] || sub.plan_type}</td
+                                <td style="padding: 12px 8px; color: #c8a15e;">RM ${sub.total_price}</td
                                 <td style="padding: 12px 8px; font-size: 12px;">
                                     ${formatDisplayDate(sub.start_date)}<br>
                                     → ${formatDisplayDate(sub.end_date)}
-                                 </td>
+                                  </td
                                 <td style="padding: 12px 8px;">
                                     <button class="btn-small" onclick="markAsPaid('${sub.id}', '${sub.user_id}')" style="background: #2ed15a;">
                                         ✓ 標記已支付
                                     </button>
-                                 </td>
-                             </tr>
+                                  </td
+                              </tr>
                         `).join('')}
                     </tbody>
-                 </table>
+                  </table>
             </div>
             <div style="margin-top: 20px;">
                 <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">關閉</button>

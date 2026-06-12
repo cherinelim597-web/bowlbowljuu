@@ -1033,3 +1033,9 @@ td {
         text-align: center;
     }
 }
+
+/* 最近註冊用戶卡片懸停效果 */
+.table-container .user-item-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
