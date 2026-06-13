@@ -1592,3 +1592,260 @@ body::before {
         position: absolute;
     }
 }
+
+/* ============================================
+   手機版佈局 - 完整版
+   ============================================ */
+
+/* 手機版頂部欄（預設隱藏，螢幕小於768px時顯示） */
+.mobile-header {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 12px 16px;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    z-index: 100;
+    border-bottom: 1px solid #ffe0c0;
+}
+
+.mobile-menu-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #e09a5a;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.mobile-logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: #8b6f4c;
+}
+
+.mobile-logo span {
+    font-size: 22px;
+}
+
+.mobile-user {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #c8a15e, #e0b87a);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.mobile-user i {
+    font-size: 22px;
+    color: white;
+}
+
+/* 手機版側邊欄（滑出選單） */
+.mobile-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100%;
+    background: white;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-sidebar.open {
+    left: 0;
+}
+
+.mobile-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 2px dashed #ffcd94;
+}
+
+.mobile-sidebar-logo {
+    font-size: 20px;
+    font-weight: 800;
+    color: #e09a5a;
+}
+
+.mobile-sidebar-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #b8956e;
+}
+
+.mobile-sidebar-nav {
+    flex: 1;
+    padding: 20px 0;
+}
+
+.mobile-nav-item {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: #b8956e;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mobile-nav-item i {
+    width: 24px;
+    font-size: 18px;
+}
+
+.mobile-nav-item.active {
+    background: linear-gradient(135deg, #ffd1b0, #ffc09f);
+    color: #e09a5a;
+    border-left: 3px solid #e09a5a;
+}
+
+/* 手機版底部導航欄 */
+.mobile-bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 8px 16px;
+    justify-content: space-around;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    z-index: 100;
+    border-top: 1px solid #ffe0c0;
+}
+
+.bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    color: #b8956e;
+    cursor: pointer;
+    border-radius: 40px;
+    transition: all 0.2s;
+}
+
+.bottom-nav-item i {
+    font-size: 20px;
+}
+
+.bottom-nav-item span {
+    font-size: 10px;
+}
+
+.bottom-nav-item.active {
+    background: #fff0e0;
+    color: #e09a5a;
+}
+
+/* 手機版遮罩層 */
+.mobile-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+    z-index: 999;
+    display: none;
+}
+
+.mobile-overlay.show {
+    display: block;
+}
+
+/* 主內容區域手機版調整 */
+@media (max-width: 768px) {
+    /* 顯示手機版元件 */
+    .mobile-header {
+        display: flex;
+    }
+    
+    .mobile-bottom-nav {
+        display: flex;
+    }
+    
+    /* 隱藏電腦版側邊欄 */
+    .sidebar {
+        display: none;
+    }
+    
+    /* 調整主內容區域 */
+    .main {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 70px 16px 70px 16px !important;
+    }
+    
+    /* 隱藏原本的頂部欄 */
+    .top-bar {
+        display: none;
+    }
+    
+    /* 統計卡片調整 */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+    
+    .stat-card {
+        padding: 14px !important;
+    }
+    
+    .stat-value {
+        font-size: 20px !important;
+    }
+    
+    .stat-label {
+        font-size: 11px !important;
+    }
+    
+    /* 圖表調整 */
+    .chart-row {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+    
+    .chart-container {
+        height: 220px !important;
+    }
+    
+    /* 表格調整 - 水平滾動 */
+    .table-container {
+        overflow-x: auto !important;
+    }
+    
+    table {
+        min-width: 600px !important;
+    }
+    
+    /* 按鈕調整 */
+    .btn-small {
+        padding: 6px 12px !important;
+        font-size: 11px !important;
+    }
+    
+    /* 彈窗調整 */
+    .modal-card {
+        width: 95% !important;
+        margin: 10px !important;
+        padding: 20px !important;
+    }
+}

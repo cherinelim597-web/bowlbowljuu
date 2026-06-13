@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>Healthy Bowl Admin | 奶油軟萌風格</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -13,8 +13,82 @@
 </head>
 <body>
 
+<!-- 手機版頂部欄 -->
+<div class="mobile-header">
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="mobile-logo">
+        🥗 Healthy Bowl
+    </div>
+    <div class="mobile-user" onclick="location.href='#'">
+        <i class="fas fa-user-circle"></i>
+    </div>
+</div>
+
+<!-- 手機版側邊欄 -->
+<div class="mobile-sidebar" id="mobileSidebar">
+    <div class="mobile-sidebar-header">
+        <div class="mobile-sidebar-logo">🥗 Healthy Bowl</div>
+        <button class="mobile-sidebar-close" onclick="toggleMobileSidebar()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="mobile-sidebar-nav">
+        <div class="mobile-nav-item active" data-page="dashboard">
+            <i class="fas fa-chart-pie"></i> 儀表板
+        </div>
+        <div class="mobile-nav-item" data-page="users">
+            <i class="fas fa-users"></i> 用戶管理
+        </div>
+        <div class="mobile-nav-item" data-page="deliveries">
+            <i class="fas fa-truck"></i> 每日配送
+        </div>
+        <div class="mobile-nav-item" data-page="invitations">
+            <i class="fas fa-ticket-alt"></i> 邀請記錄
+        </div>
+        <div class="mobile-nav-item" data-page="receipts">
+            <i class="fas fa-receipt"></i> 收據管理
+        </div>
+        <div class="mobile-nav-item" data-page="reports">
+            <i class="fas fa-chart-line"></i> 報表統計
+        </div>
+        <div class="mobile-nav-item" id="mobileLogoutBtn">
+            <i class="fas fa-sign-out-alt"></i> 登出
+        </div>
+    </div>
+</div>
+
+<!-- 手機版遮罩 -->
+<div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileSidebar()"></div>
+
+<!-- 手機版底部導航欄 -->
+<div class="mobile-bottom-nav">
+    <div class="bottom-nav-item active" data-page="dashboard">
+        <i class="fas fa-chart-pie"></i>
+        <span>首頁</span>
+    </div>
+    <div class="bottom-nav-item" data-page="users">
+        <i class="fas fa-users"></i>
+        <span>用戶</span>
+    </div>
+    <div class="bottom-nav-item" data-page="deliveries">
+        <i class="fas fa-truck"></i>
+        <span>配送</span>
+    </div>
+    <div class="bottom-nav-item" data-page="receipts">
+        <i class="fas fa-receipt"></i>
+        <span>收據</span>
+    </div>
+    <div class="bottom-nav-item" data-page="reports">
+        <i class="fas fa-chart-line"></i>
+        <span>報表</span>
+    </div>
+</div>
+
+<!-- 主應用內容 -->
 <div class="app">
-    <!-- 側邊欄 -->
+    <!-- 側邊欄（電腦版） -->
     <div class="sidebar" id="sidebar">
         <div class="logo">
             🥗 <span>Healthy</span> <span style="color: #f5a0b0;">Bowl</span>
@@ -48,7 +122,7 @@
 
     <!-- 主內容區 -->
     <div class="main">
-        <!-- 頂部欄 -->
+        <!-- 頂部欄（電腦版） -->
         <div class="top-bar">
             <div class="page-title" id="pageTitle">Dashboard</div>
             <div class="admin-info">
@@ -71,7 +145,7 @@
     </div>
 </div>
 
-<!-- 用戶編輯 Modal（保留原有結構） -->
+<!-- 用戶編輯 Modal -->
 <div id="userModal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
         <h3><i class="fas fa-user-edit"></i> Edit User</h3>
@@ -95,7 +169,7 @@
     </div>
 </div>
 
-<!-- 上傳收據 Modal（保留原有結構） -->
+<!-- 上傳收據 Modal -->
 <div id="receiptModal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
         <h3><i class="fas fa-upload"></i> Upload Receipt</h3>
@@ -125,5 +199,69 @@
 <script src="js/admin-reports.js"></script>
 <script src="js/admin-users.js"></script>
 <script src="js/admin.js"></script>
+
+<script>
+    // 手機版側邊欄控制
+    function toggleMobileSidebar() {
+        const sidebar = document.getElementById('mobileSidebar');
+        const overlay = document.getElementById('mobileOverlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('show');
+    }
+    
+    function updateMobileActiveStates(page) {
+        // 更新底部導航 active 狀態
+        document.querySelectorAll('.bottom-nav-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('data-page') === page) {
+                item.classList.add('active');
+            }
+        });
+        // 更新側邊欄 active 狀態
+        document.querySelectorAll('.mobile-nav-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('data-page') === page) {
+                item.classList.add('active');
+            }
+        });
+    }
+    
+    // 綁定手機版導航點擊事件
+    document.addEventListener('DOMContentLoaded', function() {
+        // 底部導航點擊
+        document.querySelectorAll('.bottom-nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const page = this.getAttribute('data-page');
+                if (page && typeof showPage === 'function') {
+                    showPage(page);
+                    updateMobileActiveStates(page);
+                }
+            });
+        });
+        
+        // 側邊欄導航點擊
+        document.querySelectorAll('.mobile-nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const page = this.getAttribute('data-page');
+                if (page && typeof showPage === 'function') {
+                    showPage(page);
+                    // 關閉側邊欄
+                    const sidebar = document.getElementById('mobileSidebar');
+                    const overlay = document.getElementById('mobileOverlay');
+                    sidebar.classList.remove('open');
+                    overlay.classList.remove('show');
+                    updateMobileActiveStates(page);
+                }
+            });
+        });
+        
+        // 手機版登出
+        const mobileLogout = document.getElementById('mobileLogoutBtn');
+        if (mobileLogout && typeof adminLogout === 'function') {
+            mobileLogout.addEventListener('click', adminLogout);
+        }
+    });
+</script>
+
 </body>
 </html>
