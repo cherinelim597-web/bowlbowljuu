@@ -1,5 +1,5 @@
 // ============================================
-// 用戶管理模組 - 修復查詢語法錯誤
+// 用戶管理模組 - 完整版（只優化您指定的部分）
 // ============================================
 
 // 數據緩存
@@ -117,8 +117,33 @@ function generateOrderNoByDate(dateStr) {
     return `ORD${year}${month}${day}${randomNum}`;
 }
 
+// 關閉彈窗的通用函數
+function closeModal(modalElement) {
+    if (modalElement && modalElement.remove) {
+        modalElement.remove();
+    }
+}
+
+// 處理 ESC 鍵關閉彈窗
+function setupModalCloseOnEsc(modalElement, closeCallback) {
+    const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            if (closeCallback) {
+                closeCallback(modalElement);
+            } else {
+                closeModal(modalElement);
+            }
+            document.removeEventListener('keydown', handleKeyDown);
+        }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    
+    // 返回清理函數
+    return () => document.removeEventListener('keydown', handleKeyDown);
+}
+
 // ============================================
-// 加載用戶列表（修復查詢語法）
+// 加載用戶列表
 // ============================================
 
 async function loadUsersPage() {
@@ -138,7 +163,6 @@ async function loadUsersPage() {
             return;
         }
         
-        // 獲取所有用戶（排除管理員）
         const { data: users, error: usersError } = await supabaseClient
             .from('users')
             .select('*')
@@ -154,13 +178,10 @@ async function loadUsersPage() {
         
         const userIds = users.map(u => u.id);
         
-        // ========== 修復：獲取所有已支付訂單（用於總營收）==========
-        // 使用 .not('user_id', 'is', null) 代替 .neq('user_id', null)
         const [subscriptionsResult, receiptsResult, deliveriesResult, paidSubscriptionsResult] = await Promise.all([
             supabaseClient.from('subscriptions').select('*').in('user_id', userIds),
             supabaseClient.from('receipts').select('*').in('user_id', userIds),
             supabaseClient.from('deliveries').select('*').in('user_id', userIds),
-            // 修復：獲取所有已支付訂單
             supabaseClient.from('subscriptions').select('total_price').eq('payment_status', 'paid')
         ]);
         
@@ -169,10 +190,8 @@ async function loadUsersPage() {
         const deliveries = deliveriesResult.data || [];
         const paidSubscriptions = paidSubscriptionsResult.data || [];
         
-        // 計算總營收（與 Dashboard 一致）
         const totalRevenue = paidSubscriptions.reduce((sum, s) => sum + (s.total_price || 0), 0);
         
-        // 建立索引 Map
         const userSubscriptionsMap = new Map();
         const userReceiptsMap = new Map();
         const userDeliveriesMap = new Map();
@@ -196,7 +215,6 @@ async function loadUsersPage() {
             }
         }
         
-        // 構建用戶數據
         const userData = users.map(user => {
             const userSubs = userSubscriptionsMap.get(user.id) || [];
             const activeSub = userSubs.find(s => s.status === 'active');
@@ -271,24 +289,35 @@ function renderUsersPage(pageData) {
             </div>
         </div>
         
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                <input type="text" id="searchInput" placeholder="🔍 搜索用戶名或郵箱..." class="receipt-search" style="width: 260px;">
-                <input type="text" id="searchOrderNo" placeholder="🔍 訂單號搜索..." class="receipt-search" style="width: 220px;">
-                <select id="planFilter" class="form-select" style="width: auto;">
-                    <option value="all">全部方案</option>
-                    <option value="single">單次</option>
-                    <option value="weekly">週方案</option>
-                    <option value="1month">1個月</option>
-                    <option value="2months">2個月</option>
-                    <option value="3months">3個月</option>
-                </select>
+        <!-- 優化後的搜索框區域 -->
+        <div class="user-search-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; background: white; padding: 16px 20px; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; flex: 1;">
+                <div style="position: relative; flex: 1; min-width: 200px;">
+                    <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #b8956e; font-size: 14px;"></i>
+                    <input type="text" id="searchInput" placeholder="🔍 搜索用戶名或郵箱..." style="width: 100%; padding: 12px 16px 12px 40px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 40px; font-size: 14px; outline: none; transition: all 0.2s;">
+                </div>
+                <div style="position: relative; min-width: 200px;">
+                    <i class="fas fa-hashtag" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #b8956e; font-size: 14px;"></i>
+                    <input type="text" id="searchOrderNo" placeholder="🔍 訂單號搜索..." style="width: 100%; padding: 12px 16px 12px 40px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 40px; font-size: 14px; outline: none; transition: all 0.2s;">
+                </div>
+                <div style="position: relative; min-width: 150px;">
+                    <i class="fas fa-filter" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #b8956e; font-size: 14px;"></i>
+                    <select id="planFilter" style="width: 100%; padding: 12px 16px 12px 40px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 40px; font-size: 14px; outline: none; cursor: pointer; appearance: none;">
+                        <option value="all">📋 全部方案</option>
+                        <option value="single">🥗 單次</option>
+                        <option value="weekly">📅 週方案</option>
+                        <option value="1month">🌟 1個月</option>
+                        <option value="2months">🚀 2個月</option>
+                        <option value="3months">💪 3個月</option>
+                    </select>
+                    <i class="fas fa-chevron-down" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #b8956e; font-size: 12px; pointer-events: none;"></i>
+                </div>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button class="btn-small" onclick="showAddUserModal()" style="background: #c8a15e; color: #0a1a2e;">
+                <button class="btn-small" onclick="showAddUserModal()" style="background: #c8a15e; color: #0a1a2e; border-radius: 40px; padding: 10px 20px;">
                     <i class="fas fa-user-plus"></i> 手動新增用戶
                 </button>
-                <button class="btn-small" onclick="exportUsersData()" style="background: #2d6a4f;">
+                <button class="btn-small" onclick="exportUsersData()" style="background: #2d6a4f; border-radius: 40px; padding: 10px 20px;">
                     <i class="fas fa-download"></i> 導出數據
                 </button>
             </div>
@@ -298,14 +327,14 @@ function renderUsersPage(pageData) {
             <div style="overflow-x: auto;">
                 <table style="width: 100%; min-width: 800px;">
                     <thead>
-                        <tr style="background: #0f172a; border-bottom: 1px solid #1e2a3a;">
-                            <th style="padding: 12px 16px; text-align: left;">用戶名</th>
-                            <th style="padding: 12px 16px; text-align: left;">郵箱</th>
-                            <th style="padding: 12px 16px; text-align: left;">當前方案</th>
-                            <th style="padding: 12px 16px; text-align: left;">訂閱週期</th>
-                            <th style="padding: 12px 16px; text-align: left;">支付狀態</th>
-                            <th style="padding: 12px 16px; text-align: left;">消費金額</th>
-                            <th style="padding: 12px 16px; text-align: center;">操作</th>
+                        <tr style="background: #f8f5f0; border-bottom: 1px solid #f0e0d0;">
+                            <th style="padding: 14px 16px; text-align: left; color: #8b6f4c; font-weight: 600;">用戶名</th>
+                            <th style="padding: 14px 16px; text-align: left; color: #8b6f4c; font-weight: 600;">郵箱</th>
+                            <th style="padding: 14px 16px; text-align: left; color: #8b6f4c; font-weight: 600;">當前方案</th>
+                            <th style="padding: 14px 16px; text-align: left; color: #8b6f4c; font-weight: 600;">訂閱週期</th>
+                            <th style="padding: 14px 16px; text-align: left; color: #8b6f4c; font-weight: 600;">支付狀態</th>
+                            <th style="padding: 14px 16px; text-align: left; color: #8b6f4c; font-weight: 600;">消費金額</th>
+                            <th style="padding: 14px 16px; text-align: center; color: #8b6f4c; font-weight: 600;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="usersTableBody"></tbody>
@@ -330,7 +359,7 @@ function renderUserTable(userData) {
     if (!tbody) return;
     
     if (!userData || userData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">暫無用戶</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #b8956e;">暫無用戶</td></tr>';
         return;
     }
     
@@ -356,16 +385,16 @@ function renderUserTable(userData) {
         }
         
         return `
-            <tr style="border-bottom: 1px solid #1e2a3a;">
-                <td style="padding: 12px 16px;">${escapeHtml(user.full_name || 'N/A')}</td>
-                <td style="padding: 12px 16px;">${escapeHtml(user.email || '未設置')}</td>
-                <td style="padding: 12px 16px;">${planName}<br><span style="font-size: 11px; color: #c8a15e;">${planPrice}</span></td>
-                <td style="padding: 12px 16px;">${subscriptionPeriod}</td>
-                <td style="padding: 12px 16px;">${paymentStatusDisplay}</td>
-                <td style="padding: 12px 16px;"><span style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</span></td>
-                <td style="padding: 12px 16px; text-align: center;">
-                    <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯"><i class="fas fa-edit"></i></button>
-                    <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情"><i class="fas fa-eye"></i></button>
+            <tr style="border-bottom: 1px solid #f0e0d0;">
+                <td style="padding: 14px 16px; color: #5a4a3a;">${escapeHtml(user.full_name || 'N/A')}</td>
+                <td style="padding: 14px 16px; color: #8a7a6a;">${escapeHtml(user.email || '未設置')}</td>
+                <td style="padding: 14px 16px;">${planName}<br><span style="font-size: 11px; color: #c8a15e;">${planPrice}</span></td>
+                <td style="padding: 14px 16px; font-size: 13px;">${subscriptionPeriod}</td>
+                <td style="padding: 14px 16px;">${paymentStatusDisplay}</td>
+                <td style="padding: 14px 16px;"><span style="font-weight: 600; color: #c8a15e;">RM ${user.totalPaid.toLocaleString()}</span></td>
+                <td style="padding: 14px 16px; text-align: center;">
+                    <button class="btn-icon" onclick="editUser('${user.id}')" title="編輯" style="background: transparent; border: none; color: #c8a15e; cursor: pointer; padding: 6px 10px;"><i class="fas fa-edit"></i></button>
+                    <button class="btn-icon" onclick="viewUserDetail('${user.id}')" title="查看詳情" style="background: transparent; border: none; color: #c8a15e; cursor: pointer; padding: 6px 10px;"><i class="fas fa-eye"></i></button>
                 </td>
             </tr>
         `;
@@ -405,7 +434,7 @@ function filterUsers(allUsers) {
     
     const tbody = document.getElementById('usersTableBody');
     if (tbody && filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">沒有找到符合條件的用戶</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #b8956e;">沒有找到符合條件的用戶</td></tr>';
     }
 }
 
@@ -417,42 +446,68 @@ function showAddUserModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.style.display = 'flex';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.background = 'rgba(0,0,0,0.5)';
+    modal.style.backdropFilter = 'blur(4px)';
+    modal.style.zIndex = '1000';
+    modal.style.justifyContent = 'center';
+    modal.style.alignItems = 'center';
+    
     modal.innerHTML = `
-        <div class="modal-card" style="max-width: 500px; width: 90%;">
-            <h3><i class="fas fa-user-plus"></i> 手動新增用戶</h3>
-            <div class="input-group">
-                <label>姓名 <span style="color:#ff5a5a;">*</span></label>
-                <input type="text" id="addFullName" placeholder="請輸入姓名">
+        <div class="modal-card" style="max-width: 500px; width: 90%; background: white; border-radius: 28px; padding: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #8b6f4c;"><i class="fas fa-user-plus"></i> 手動新增用戶</h3>
+                <button class="close-modal-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #b8956e;">&times;</button>
             </div>
-            <div class="input-group">
-                <label>郵箱</label>
-                <input type="email" id="addEmail" placeholder="user@example.com">
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #8b6f4c;">姓名 <span style="color:#ff5a5a;">*</span></label>
+                <input type="text" id="addFullName" placeholder="請輸入姓名" style="width: 100%; padding: 12px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 16px;">
             </div>
-            <div class="input-group">
-                <label>手機號碼</label>
-                <input type="tel" id="addPhone" placeholder="0123456789">
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #8b6f4c;">郵箱</label>
+                <input type="email" id="addEmail" placeholder="user@example.com" style="width: 100%; padding: 12px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 16px;">
             </div>
-            <div class="input-group">
-                <label>送餐地址</label>
-                <textarea id="addAddress" rows="2" placeholder="請輸入完整地址"></textarea>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #8b6f4c;">手機號碼</label>
+                <input type="tel" id="addPhone" placeholder="0123456789" style="width: 100%; padding: 12px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 16px;">
             </div>
-            <div class="input-group">
-                <label>付款方式</label>
-                <select id="addPaymentMethod">
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #8b6f4c;">送餐地址</label>
+                <textarea id="addAddress" rows="2" placeholder="請輸入完整地址" style="width: 100%; padding: 12px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 16px; resize: vertical;"></textarea>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #8b6f4c;">付款方式</label>
+                <select id="addPaymentMethod" style="width: 100%; padding: 12px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 16px;">
                     ${PAYMENT_METHODS.map(m => `<option value="${m}">${m}</option>`).join('')}
                 </select>
             </div>
-            <div class="input-group">
-                <label>備註</label>
-                <textarea id="addNotes" rows="2" placeholder="特殊需求、備註等"></textarea>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #8b6f4c;">備註</label>
+                <textarea id="addNotes" rows="2" placeholder="特殊需求、備註等" style="width: 100%; padding: 12px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 16px; resize: vertical;"></textarea>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 20px;">
-                <button class="btn-save" onclick="confirmAddUser()">新增用戶</button>
-                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
+                <button class="btn-save" onclick="confirmAddUser()" style="flex: 1; background: #c8a15e; border: none; padding: 12px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer;">新增用戶</button>
+                <button class="btn-cancel" onclick="closeModal(this.closest('.modal-overlay'))" style="flex: 1; background: #f0ebe2; border: none; padding: 12px; border-radius: 40px; color: #8b6f4c; font-weight: 600; cursor: pointer;">取消</button>
             </div>
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // 關閉按鈕事件
+    const closeBtn = modal.querySelector('.close-modal-btn');
+    if (closeBtn) closeBtn.onclick = () => closeModal(modal);
+    
+    // ESC 關閉
+    setupModalCloseOnEsc(modal);
+    
+    // 點擊背景關閉
+    modal.onclick = (e) => {
+        if (e.target === modal) closeModal(modal);
+    };
 }
 
 async function confirmAddUser() {
@@ -526,7 +581,7 @@ async function confirmAddUser() {
 }
 
 // ============================================
-// 編輯用戶
+// 編輯用戶（修復邊框重疊 + ESC關閉）
 // ============================================
 
 async function editUser(userId) {
@@ -536,36 +591,117 @@ async function editUser(userId) {
     
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.style.display = 'flex';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    `;
+    
     modal.innerHTML = `
-        <div class="modal-card" style="max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto;">
-            <h3><i class="fas fa-user-edit"></i> 編輯用戶 - ${escapeHtml(user.full_name)}</h3>
-            <div style="background: rgba(200,161,94,0.1); border-radius: 16px; padding: 15px; margin: 15px 0;">
-                <h4 style="color: #c8a15e;">基本信息</h4>
-                <div class="input-group"><label>地址</label><input type="text" id="editAddress" value="${escapeHtml(user.address || '')}"></div>
-                <div class="input-group"><label>郵箱</label><input type="email" id="editEmail" value="${escapeHtml(user.email || '')}"></div>
-                <div class="input-group"><label>密碼</label><input type="password" id="editPassword" placeholder="留空則不修改"><small>留空表示保持原密碼不變</small></div>
-                <div class="input-group"><label>手機號</label><input type="tel" id="editPhone" value="${escapeHtml(user.phone || '')}"></div>
-                <div class="input-group">
-                    <label>付款方式</label>
-                    <select id="editPaymentMethod">${PAYMENT_METHODS.map(m => `<option value="${m}" ${user.payment_method === m ? 'selected' : ''}>${m}</option>`).join('')}</select>
+        <div class="modal-card" style="max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; background: white; border-radius: 28px; padding: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #ffe0c0;">
+                <h3 style="color: #8b6f4c;"><i class="fas fa-user-edit"></i> 編輯用戶 - ${escapeHtml(user.full_name)}</h3>
+                <button class="close-modal-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #b8956e;">&times;</button>
+            </div>
+            
+            <div style="background: #fefaf5; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #c8a15e; margin-bottom: 16px; font-size: 16px;">📋 基本信息</h4>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">地址</label>
+                    <input type="text" id="editAddress" value="${escapeHtml(user.address || '')}" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">郵箱</label>
+                    <input type="email" id="editEmail" value="${escapeHtml(user.email || '')}" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">密碼</label>
+                    <input type="password" id="editPassword" placeholder="留空則不修改" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                    <small style="color: #b8956e;">留空表示保持原密碼不變</small>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">手機號</label>
+                    <input type="tel" id="editPhone" value="${escapeHtml(user.phone || '')}" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">付款方式</label>
+                    <select id="editPaymentMethod" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                        ${PAYMENT_METHODS.map(m => `<option value="${m}" ${user.payment_method === m ? 'selected' : ''}>${m}</option>`).join('')}
+                    </select>
                 </div>
             </div>
-            <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 15px; margin: 15px 0;">
-                <h4 style="color: #c8a15e;">訂閱信息</h4>
-                <div class="input-group"><label>訂單號</label><input type="text" value="${subscription?.order_no || ''}" readonly style="background: rgba(0,0,0,0.3);"></div>
-                <div class="input-group"><label>訂閱狀態</label><select id="editSubscriptionStatus">${SUBSCRIPTION_STATUS.map(s => `<option value="${s}" ${subscription?.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-                <div class="input-group"><label>支付狀態</label><select id="editPaymentStatus"><option value="paid" ${subscription?.payment_status === 'paid' ? 'selected' : ''}>✅ 已支付</option><option value="unpaid" ${subscription?.payment_status === 'unpaid' ? 'selected' : ''}>⏳ 未支付</option><option value="partial" ${subscription?.payment_status === 'partial' ? 'selected' : ''}>💰 部分支付</option></select></div>
-                <div class="input-group"><label>配套類型</label><select id="editPlanType" onchange="updatePlanPrice()">${Object.entries(PLAN_CONFIG).map(([key, config]) => `<option value="${key}" ${subscription?.plan_type === key ? 'selected' : ''} data-days="${config.days}" data-price="${config.price}">${config.name} (${config.days}天 - RM ${config.price})</option>`).join('')}</select></div>
-                <div class="input-group"><label>開始日期</label><input type="date" id="editStartDate" value="${subscription?.start_date?.split('T')[0] || ''}" onchange="updateEndDate()"></div>
-                <div class="input-group"><label>結束日期</label><input type="date" id="editEndDate" readonly style="background: rgba(0,0,0,0.3);"></div>
-                <div class="input-group"><label>已送達餐數</label><input type="number" id="editMealsReceived" value="${subscription?.meals_received || 0}" min="0"></div>
-                <div class="input-group"><label>總價格 (RM)</label><input type="number" id="editTotalPrice" value="${subscription?.total_price || ''}" step="0.01" readonly style="background: rgba(0,0,0,0.3);"></div>
+            
+            <div style="background: #fefaf5; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #c8a15e; margin-bottom: 16px; font-size: 16px;">📦 訂閱信息</h4>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">訂單號</label>
+                    <input type="text" value="${subscription?.order_no || ''}" readonly style="width: 100%; padding: 10px 14px; background: #e8e0d0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">訂閱狀態</label>
+                    <select id="editSubscriptionStatus" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                        ${SUBSCRIPTION_STATUS.map(s => `<option value="${s}" ${subscription?.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">支付狀態</label>
+                    <select id="editPaymentStatus" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                        <option value="paid" ${subscription?.payment_status === 'paid' ? 'selected' : ''}>✅ 已支付</option>
+                        <option value="unpaid" ${subscription?.payment_status === 'unpaid' ? 'selected' : ''}>⏳ 未支付</option>
+                        <option value="partial" ${subscription?.payment_status === 'partial' ? 'selected' : ''}>💰 部分支付</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">配套類型</label>
+                    <select id="editPlanType" onchange="updatePlanPrice()" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                        ${Object.entries(PLAN_CONFIG).map(([key, config]) => `<option value="${key}" ${subscription?.plan_type === key ? 'selected' : ''} data-days="${config.days}" data-price="${config.price}">${config.name} (${config.days}天 - RM ${config.price})</option>`).join('')}
+                    </select>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">開始日期</label>
+                    <input type="date" id="editStartDate" value="${subscription?.start_date?.split('T')[0] || ''}" onchange="updateEndDate()" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">結束日期</label>
+                    <input type="date" id="editEndDate" readonly style="width: 100%; padding: 10px 14px; background: #e8e0d0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">已送達餐數</label>
+                    <input type="number" id="editMealsReceived" value="${subscription?.meals_received || 0}" min="0" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c; font-size: 13px;">總價格 (RM)</label>
+                    <input type="number" id="editTotalPrice" value="${subscription?.total_price || ''}" step="0.01" readonly style="width: 100%; padding: 10px 14px; background: #e8e0d0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                </div>
             </div>
-            <div style="display: flex; gap: 12px; margin-top: 20px;"><button class="btn-save" onclick="saveUserEdit('${userId}')">保存修改</button><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button></div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="btn-save" onclick="saveUserEdit('${userId}')" style="flex: 1; background: #c8a15e; border: none; padding: 12px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer;">保存修改</button>
+                <button class="btn-cancel" onclick="closeModal(this.closest('.modal-overlay'))" style="flex: 1; background: #f0ebe2; border: none; padding: 12px; border-radius: 40px; color: #8b6f4c; font-weight: 600; cursor: pointer;">取消</button>
+            </div>
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // 關閉按鈕事件
+    const closeBtn = modal.querySelector('.close-modal-btn');
+    if (closeBtn) closeBtn.onclick = () => closeModal(modal);
+    
+    // ESC 關閉
+    setupModalCloseOnEsc(modal);
+    
+    // 點擊背景關閉
+    modal.onclick = (e) => {
+        if (e.target === modal) closeModal(modal);
+    };
     
     window.updatePlanPrice = function() {
         const planSelect = document.getElementById('editPlanType');
@@ -629,106 +765,187 @@ async function saveUserEdit(userId) {
     }
     
     showToast('用戶信息已更新！');
-    document.querySelector('.modal-overlay')?.remove();
+    closeModal(document.querySelector('.modal-overlay'));
     usersCache.data = null;
     loadUsersPage();
 }
 
 // ============================================
-// 查看用戶詳情
+// 查看用戶詳情（美化版 + ESC關閉 + 修改按鈕 + 快速打開）
 // ============================================
 
 async function viewUserDetail(userId) {
-    const { data: user } = await supabaseClient.from('users').select('*').eq('id', userId).single();
-    const { data: allSubscriptions } = await supabaseClient.from('subscriptions').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-    const { data: receipts } = await supabaseClient.from('receipts').select('*').eq('user_id', userId);
-    
-    const activeSub = allSubscriptions?.find(s => s.status === 'active');
-    const totalPaid = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
-    const unpaidAmount = allSubscriptions?.filter(s => s.payment_status === 'unpaid').reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
-    
-    let deliveredCount = 0, totalDays = 0, progressPercent = 0;
-    if (activeSub) {
-        const { data: deliveries } = await supabaseClient.from('deliveries').select('status').eq('user_id', userId).eq('subscription_id', activeSub.id);
-        deliveredCount = deliveries?.filter(d => d.status === 'delivered').length || 0;
-        totalDays = activeSub.total_days || 0;
-        progressPercent = totalDays > 0 ? (deliveredCount / totalDays) * 100 : 0;
-    }
-    
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.style.display = 'flex';
-    modal.innerHTML = `
-        <div class="modal-card" style="max-width: 1200px; width: 95%; max-height: 85vh; overflow-y: auto;">
-            <div style="background: linear-gradient(135deg, rgba(200,161,94,0.1), rgba(200,161,94,0.05)); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
-                    <div>
-                        <h2 style="color: #c8a15e; margin-bottom: 8px;"><i class="fas fa-user-circle"></i> ${escapeHtml(user?.full_name)}</h2>
-                        <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 12px;">
-                            <div><i class="fas fa-envelope"></i> ${escapeHtml(user?.email || '未設置')}</div>
-                            <div><i class="fas fa-phone"></i> ${escapeHtml(user?.phone || '未設置')}</div>
-                            <div><i class="fas fa-map-marker-alt"></i> ${escapeHtml(user?.address || '未設置')}</div>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn-save" onclick="showAddOrderModal('${userId}')" style="background: #c8a15e; color: #0a1a2e;"><i class="fas fa-plus-circle"></i> 添加訂單</button>
-                        <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">關閉</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
-                <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
-                    <div style="font-size: 12px; color: #8a9abb;">訂閱週期</div>
-                    <div style="font-size: 14px; font-weight: 600; margin-top: 5px;">${activeSub ? `${formatDate(activeSub.start_date)} - ${formatDate(activeSub.end_date)}` : '無活躍訂閱'}</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
-                    <div style="font-size: 12px; color: #8a9abb;">配送進度</div>
-                    <div style="margin-top: 5px;"><div style="width: 100px; background: #1e2a3a; border-radius: 10px; height: 6px; margin: 0 auto;"><div style="width: ${progressPercent}%; background: #c8a15e; border-radius: 10px; height: 6px;"></div></div><div style="font-size: 12px; margin-top: 4px;">${deliveredCount}/${totalDays} 餐</div></div>
-                </div>
-                <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
-                    <div style="font-size: 12px; color: #8a9abb;">總消費</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #c8a15e;">RM ${totalPaid.toLocaleString()}</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 15px; text-align: center;">
-                    <div style="font-size: 12px; color: #8a9abb;">未支付</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #ffb84d;">RM ${unpaidAmount.toLocaleString()}</div>
-                </div>
-            </div>
-            
-            <h3 style="margin-bottom: 16px; color: #eef5ff;"><i class="fas fa-history"></i> 歷史訂單</h3>
-            <div class="table-container" style="padding: 0; overflow-x: auto; max-height: 400px; overflow-y: auto;">
-                <table style="width: 100%; min-width: 800px;">
-                    <thead>
-                        <tr style="background: rgba(0,0,0,0.2);">
-                            <th style="padding: 12px;">訂單號</th>
-                            <th style="padding: 12px;">下單時間</th>
-                            <th style="padding: 12px;">方案</th>
-                            <th style="padding: 12px;">訂閱期間</th>
-                            <th style="padding: 12px;">配送進度</th>
-                            <th style="padding: 12px;">訂單金額</th>
-                            <th style="padding: 12px;">支付狀態</th>
-                            <th style="padding: 12px;">對應收據</th>
-                            <th style="padding: 12px;">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="orderHistoryBody">
-                        ${renderOrderHistory(allSubscriptions, receipts, userId)}
-                    </tbody>
-                </table>
-            </div>
-            
-            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
-                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">關閉</button>
-            </div>
+    // 立即顯示加載提示，讓用戶知道正在加載
+    const loadingModal = document.createElement('div');
+    loadingModal.className = 'modal-overlay';
+    loadingModal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    `;
+    loadingModal.innerHTML = `
+        <div style="background: white; border-radius: 28px; padding: 40px; text-align: center;">
+            <div class="loading-spinner" style="margin: 0 auto;"></div>
+            <p style="margin-top: 16px; color: #8b6f4c;">加載中...</p>
         </div>
     `;
-    document.body.appendChild(modal);
+    document.body.appendChild(loadingModal);
+    
+    try {
+        // 並行加載所有數據
+        const [userResult, subscriptionsResult, receiptsResult, deliveriesResult] = await Promise.all([
+            supabaseClient.from('users').select('*').eq('id', userId).single(),
+            supabaseClient.from('subscriptions').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+            supabaseClient.from('receipts').select('*').eq('user_id', userId),
+            supabaseClient.from('deliveries').select('status').eq('user_id', userId)
+        ]);
+        
+        const user = userResult.data;
+        const allSubscriptions = subscriptionsResult.data || [];
+        const receipts = receiptsResult.data || [];
+        const deliveries = deliveriesResult.data || [];
+        
+        const activeSub = allSubscriptions.find(s => s.status === 'active');
+        const totalPaid = receipts.reduce((sum, r) => sum + (r.amount || 0), 0);
+        const unpaidAmount = allSubscriptions.filter(s => s.payment_status === 'unpaid').reduce((sum, s) => sum + (s.total_price || 0), 0);
+        
+        let deliveredCount = 0, totalDays = 0, progressPercent = 0;
+        if (activeSub) {
+            const subDeliveries = deliveries.filter(d => d.subscription_id === activeSub.id);
+            deliveredCount = subDeliveries.filter(d => d.status === 'delivered').length || 0;
+            totalDays = activeSub.total_days || 0;
+            progressPercent = totalDays > 0 ? (deliveredCount / totalDays) * 100 : 0;
+        }
+        
+        // 移除加載彈窗
+        loadingModal.remove();
+        
+        // 創建詳情彈窗（美化版）
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        `;
+        
+        modal.innerHTML = `
+            <div class="modal-card" style="max-width: 1300px; width: 95%; max-height: 85vh; overflow-y: auto; background: white; border-radius: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+                <!-- 頭部 -->
+                <div style="background: linear-gradient(135deg, #fefaf5, #f5ede0); border-radius: 28px 28px 0 0; padding: 24px 28px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid #ffe0c0;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #c8a15e, #e0b87a); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: white;">${escapeHtml(user?.full_name?.charAt(0) || 'U')}</div>
+                            <div>
+                                <h2 style="color: #5a4a3a; margin: 0;">${escapeHtml(user?.full_name)}</h2>
+                                <p style="color: #b8956e; margin: 4px 0 0; font-size: 13px;">用戶詳情</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 24px; margin-top: 8px;">
+                            <div><i class="fas fa-envelope" style="color: #c8a15e; width: 20px;"></i> ${escapeHtml(user?.email || '未設置')}</div>
+                            <div><i class="fas fa-phone" style="color: #c8a15e; width: 20px;"></i> ${escapeHtml(user?.phone || '未設置')}</div>
+                            <div><i class="fas fa-map-marker-alt" style="color: #c8a15e; width: 20px;"></i> ${escapeHtml(user?.address || '未設置')}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn-add-order" onclick="showAddOrderModal('${userId}')" style="background: #c8a15e; border: none; padding: 10px 20px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                            <i class="fas fa-plus-circle"></i> 添加訂單
+                        </button>
+                        <button class="close-modal-btn" style="background: #f0ebe2; border: none; padding: 10px 20px; border-radius: 40px; color: #8b6f4c; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                            <i class="fas fa-times"></i> 關閉
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 統計卡片 -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 24px 28px; background: white;">
+                    <div style="background: #fefaf5; border-radius: 20px; padding: 16px; text-align: center; border: 1px solid #ffe0c0;">
+                        <div style="font-size: 12px; color: #b8956e;">訂閱週期</div>
+                        <div style="font-size: 14px; font-weight: 600; margin-top: 8px; color: #5a4a3a;">${activeSub ? `${formatDate(activeSub.start_date)} - ${formatDate(activeSub.end_date)}` : '無活躍訂閱'}</div>
+                    </div>
+                    <div style="background: #fefaf5; border-radius: 20px; padding: 16px; text-align: center; border: 1px solid #ffe0c0;">
+                        <div style="font-size: 12px; color: #b8956e;">配送進度</div>
+                        <div style="margin-top: 8px;"><div style="width: 80px; background: #e0d0c0; border-radius: 10px; height: 6px; margin: 0 auto;"><div style="width: ${progressPercent}%; background: #c8a15e; border-radius: 10px; height: 6px;"></div></div><div style="font-size: 13px; margin-top: 6px; color: #5a4a3a;">${deliveredCount}/${totalDays} 餐</div></div>
+                    </div>
+                    <div style="background: #fefaf5; border-radius: 20px; padding: 16px; text-align: center; border: 1px solid #ffe0c0;">
+                        <div style="font-size: 12px; color: #b8956e;">總消費</div>
+                        <div style="font-size: 22px; font-weight: 700; color: #c8a15e; margin-top: 4px;">RM ${totalPaid.toLocaleString()}</div>
+                    </div>
+                    <div style="background: #fefaf5; border-radius: 20px; padding: 16px; text-align: center; border: 1px solid #ffe0c0;">
+                        <div style="font-size: 12px; color: #b8956e;">未支付</div>
+                        <div style="font-size: 22px; font-weight: 700; color: #e8a878; margin-top: 4px;">RM ${unpaidAmount.toLocaleString()}</div>
+                    </div>
+                </div>
+                
+                <!-- 歷史訂單標題 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 28px 16px 28px;">
+                    <h3 style="color: #5a4a3a;"><i class="fas fa-history" style="color: #c8a15e;"></i> 歷史訂單</h3>
+                    <span style="background: #fefaf5; padding: 4px 12px; border-radius: 30px; font-size: 12px; color: #b8956e;">共 ${allSubscriptions?.length || 0} 筆訂單</span>
+                </div>
+                
+                <!-- 訂單表格 -->
+                <div style="padding: 0 28px 28px 28px; overflow-x: auto; max-height: 400px; overflow-y: auto;">
+                    <table style="width: 100%; min-width: 1000px; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #fefaf5; border-radius: 12px;">
+                                <th style="padding: 12px; text-align: left; color: #8b6f4c; font-weight: 600;">訂單號</th>
+                                <th style="padding: 12px; text-align: left; color: #8b6f4c; font-weight: 600;">下單時間</th>
+                                <th style="padding: 12px; text-align: left; color: #8b6f4c; font-weight: 600;">方案</th>
+                                <th style="padding: 12px; text-align: left; color: #8b6f4c; font-weight: 600;">訂閱期間</th>
+                                <th style="padding: 12px; text-align: left; color: #8b6f4c; font-weight: 600;">配送進度</th>
+                                <th style="padding: 12px; text-align: left; color: #8b6f4c; font-weight: 600;">訂單金額</th>
+                                <th style="padding: 12px; text-align: left; color: #8b6f4c; font-weight: 600;">支付狀態</th>
+                                <th style="padding: 12px; text-align: left; color: #8b6f4c; font-weight: 600;">對應收據</th>
+                                <th style="padding: 12px; text-align: center; color: #8b6f4c; font-weight: 600;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderHistoryBody">
+                            ${renderOrderHistory(allSubscriptions, receipts, userId)}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // 關閉按鈕事件
+        const closeBtn = modal.querySelector('.close-modal-btn');
+        if (closeBtn) closeBtn.onclick = () => closeModal(modal);
+        
+        // ESC 關閉
+        setupModalCloseOnEsc(modal);
+        
+        // 點擊背景關閉
+        modal.onclick = (e) => {
+            if (e.target === modal) closeModal(modal);
+        };
+        
+    } catch (err) {
+        console.error('View detail error:', err);
+        loadingModal.remove();
+        showToast('加載失敗: ' + err.message, 'error');
+    }
 }
 
 function renderOrderHistory(subscriptions, receipts, currentUserId) {
     if (!subscriptions || subscriptions.length === 0) {
-        return '<tr><td colspan="9" style="text-align: center; padding: 40px;">暫無訂單記錄</td><\/tr>';
+        return '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #b8956e;">暫無訂單記錄</td><\/tr>';
     }
     
     const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
@@ -739,30 +956,308 @@ function renderOrderHistory(subscriptions, receipts, currentUserId) {
         const receiptUrl = subReceipts[0]?.receipt_url;
         
         let paymentStatusHtml = '';
-        if (sub.payment_status === 'paid') paymentStatusHtml = '<span class="badge badge-active">✅ 已支付</span>';
-        else if (sub.payment_status === 'unpaid') paymentStatusHtml = '<span class="badge badge-pending">⏳ 未支付</span>';
-        else if (sub.payment_status === 'partial') paymentStatusHtml = '<span class="badge badge-warning">💰 部分支付</span>';
-        else paymentStatusHtml = '<span class="badge badge-pending">待付款</span>';
+        if (sub.payment_status === 'paid') paymentStatusHtml = '<span class="badge badge-active" style="background: #e0f5e4; color: #2d6a4f; padding: 4px 12px; border-radius: 30px; font-size: 11px;">✅ 已支付</span>';
+        else if (sub.payment_status === 'unpaid') paymentStatusHtml = '<span class="badge badge-pending" style="background: #fff0e0; color: #e8a878; padding: 4px 12px; border-radius: 30px; font-size: 11px;">⏳ 未支付</span>';
+        else if (sub.payment_status === 'partial') paymentStatusHtml = '<span class="badge badge-warning" style="background: #fff0e0; color: #e8a050; padding: 4px 12px; border-radius: 30px; font-size: 11px;">💰 部分支付</span>';
+        else paymentStatusHtml = '<span class="badge badge-pending" style="background: #f0ebe2; color: #b8956e; padding: 4px 12px; border-radius: 30px; font-size: 11px;">待付款</span>';
         
         const mealsReceived = sub.meals_received || 0;
         const totalDays = sub.total_days || 0;
         
         return `
-            <tr style="border-bottom: 1px solid #1e2a3a;">
-                <td style="padding: 12px;"><span class="order-no-badge">${sub.order_no || '無訂單號'}</span></td>
-                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.created_at)}</td>
-                <td style="padding: 12px;">${planNames[sub.plan_type] || sub.plan_type}</td>
-                <td style="padding: 12px; font-size: 12px;">${formatDate(sub.start_date)} → ${formatDate(sub.end_date)}</td>
-                <td style="padding: 12px;">${mealsReceived}/${totalDays}</td>
-                <td style="padding: 12px; color: #c8a15e;">RM ${sub.total_price}</td>
+            <tr style="border-bottom: 1px solid #f0e0d0;">
+                <td style="padding: 12px;"><span style="background: #fefaf5; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-family: monospace; color: #c8a15e;">${sub.order_no || '無訂單號'}</span></td>
+                <td style="padding: 12px; font-size: 12px; color: #8a7a6a;">${formatDate(sub.created_at)}</td>
+                <td style="padding: 12px; color: #5a4a3a;">${planNames[sub.plan_type] || sub.plan_type}</td>
+                <td style="padding: 12px; font-size: 12px; color: #8a7a6a;">${formatDate(sub.start_date)} → ${formatDate(sub.end_date)}</td>
+                <td style="padding: 12px; color: #5a4a3a;">${mealsReceived}/${totalDays}</td>
+                <td style="padding: 12px; color: #c8a15e; font-weight: 600;">RM ${sub.total_price}</td>
                 <td style="padding: 12px;">${paymentStatusHtml}</td>
                 <td style="padding: 12px;">
-                    ${hasReceipt ? `<a href="${receiptUrl}" target="_blank" class="btn-small" style="background: #c8a15e; color: #0a1a2e; padding: 4px 8px; font-size: 10px;"><i class="fas fa-receipt"></i> 查看</a>` : `<button class="btn-small" onclick="uploadReceiptForUserFromDetail('${sub.user_id}', '${sub.id}', '${sub.order_no}')" style="background: #4a7cff; padding: 4px 8px; font-size: 10px;"><i class="fas fa-upload"></i> 上傳</button>`}
+                    ${hasReceipt ? `<a href="${receiptUrl}" target="_blank" class="btn-small" style="background: #c8a15e; color: #0a1a2e; padding: 4px 12px; border-radius: 30px; font-size: 11px; text-decoration: none;"><i class="fas fa-receipt"></i> 查看</a>` : `<button class="btn-small" onclick="uploadReceiptForUserFromDetail('${sub.user_id}', '${sub.id}', '${sub.order_no}')" style="background: #4a7cff; padding: 4px 12px; border-radius: 30px; font-size: 11px; border: none; color: white; cursor: pointer;"><i class="fas fa-upload"></i> 上傳</button>`}
                 </td>
-                <td style="padding: 12px; text-align: center;"><button class="btn-icon" onclick="deleteOrder('${sub.id}', '${currentUserId}')" title="刪除訂單" style="color: #ff5a5a;"><i class="fas fa-trash-alt"></i></button></td>
+                <td style="padding: 12px; text-align: center;">
+                    <div style="display: flex; gap: 8px; justify-content: center;">
+                        <button class="btn-icon" onclick="editOrderFromDetail('${sub.id}', '${currentUserId}')" title="修改訂單" style="background: #f0ebe2; border: none; padding: 6px 10px; border-radius: 30px; cursor: pointer; color: #c8a15e;"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" onclick="deleteOrder('${sub.id}', '${currentUserId}')" title="刪除訂單" style="background: #f0ebe2; border: none; padding: 6px 10px; border-radius: 30px; cursor: pointer; color: #e8a878;"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </td>
             </tr>
         `;
     }).join('');
+}
+
+// 修改訂單（從詳情頁）
+async function editOrderFromDetail(subscriptionId, userId) {
+    // 獲取訂單詳情
+    const { data: subscription } = await supabaseClient
+        .from('subscriptions')
+        .select('*')
+        .eq('id', subscriptionId)
+        .single();
+    
+    if (!subscription) {
+        showToast('訂單不存在', 'error');
+        return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    `;
+    
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 550px; width: 90%; background: white; border-radius: 28px; padding: 28px; max-height: 85vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #8b6f4c;"><i class="fas fa-edit"></i> 修改訂單</h3>
+                <button class="close-modal-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #b8956e;">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">訂單號</label>
+                <input type="text" id="editOrderNo" value="${subscription.order_no || ''}" readonly style="width: 100%; padding: 10px 14px; background: #e8e0d0; border: 1px solid #ffe0c0; border-radius: 12px;">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">方案類型</label>
+                <select id="editOrderPlanType" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                    ${Object.entries(PLAN_CONFIG).map(([key, config]) => `<option value="${key}" ${subscription.plan_type === key ? 'selected' : ''} data-days="${config.days}" data-price="${config.price}">${config.name} (${config.days}天 - RM ${config.price})</option>`).join('')}
+                    <option value="custom" ${subscription.plan_type === 'custom' ? 'selected' : ''}>自訂金額</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">訂單金額 (RM)</label>
+                <input type="number" id="editOrderTotalPrice" value="${subscription.total_price}" step="0.01" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">支付狀態</label>
+                <select id="editOrderPaymentStatus" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                    <option value="paid" ${subscription.payment_status === 'paid' ? 'selected' : ''}>✅ 已支付</option>
+                    <option value="unpaid" ${subscription.payment_status === 'unpaid' ? 'selected' : ''}>⏳ 未支付</option>
+                    <option value="partial" ${subscription.payment_status === 'partial' ? 'selected' : ''}>💰 部分支付</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">訂閱狀態</label>
+                <select id="editOrderStatus" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                    ${SUBSCRIPTION_STATUS.map(s => `<option value="${s}" ${subscription.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="btn-save" onclick="confirmEditOrder('${subscriptionId}', '${userId}')" style="flex: 1; background: #c8a15e; border: none; padding: 12px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer;">保存修改</button>
+                <button class="btn-cancel" onclick="closeModal(this.closest('.modal-overlay'))" style="flex: 1; background: #f0ebe2; border: none; padding: 12px; border-radius: 40px; color: #8b6f4c; font-weight: 600; cursor: pointer;">取消</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // 關閉按鈕事件
+    const closeBtn = modal.querySelector('.close-modal-btn');
+    if (closeBtn) closeBtn.onclick = () => closeModal(modal);
+    
+    // ESC 關閉
+    setupModalCloseOnEsc(modal);
+    
+    // 點擊背景關閉
+    modal.onclick = (e) => {
+        if (e.target === modal) closeModal(modal);
+    };
+}
+
+async function confirmEditOrder(subscriptionId, userId) {
+    const planType = document.getElementById('editOrderPlanType').value;
+    const totalPrice = parseFloat(document.getElementById('editOrderTotalPrice').value) || 0;
+    const paymentStatus = document.getElementById('editOrderPaymentStatus').value;
+    const status = document.getElementById('editOrderStatus').value;
+    
+    if (totalPrice <= 0) {
+        showToast('請輸入有效的金額', 'error');
+        return;
+    }
+    
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = '保存中...';
+    btn.disabled = true;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('subscriptions')
+            .update({
+                plan_type: planType,
+                total_price: totalPrice,
+                payment_status: paymentStatus,
+                status: status,
+                updated_at: new Date()
+            })
+            .eq('id', subscriptionId);
+        
+        if (error) throw error;
+        
+        showToast('訂單修改成功！');
+        closeModal(document.querySelector('.modal-overlay'));
+        
+        // 刷新詳情頁
+        const detailModal = document.querySelector('.modal-overlay:not([style*="display: none"])');
+        if (detailModal) closeModal(detailModal);
+        viewUserDetail(userId);
+        usersCache.data = null;
+        loadUsersPage();
+        
+    } catch (err) {
+        console.error('Edit order error:', err);
+        showToast('修改失敗: ' + err.message, 'error');
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
+// ============================================
+// 刪除訂單
+// ============================================
+
+async function deleteOrder(subscriptionId, userId) {
+    if (!confirm('確定要刪除此訂單嗎？\n\n注意：刪除訂單會同時刪除相關的配送記錄！')) return;
+    
+    try {
+        await supabaseClient.from('deliveries').delete().eq('subscription_id', subscriptionId);
+        const { error } = await supabaseClient.from('subscriptions').delete().eq('id', subscriptionId);
+        if (error) throw error;
+        showToast('訂單已刪除！');
+        const modal = document.querySelector('.modal-overlay');
+        if (modal) closeModal(modal);
+        usersCache.data = null;
+        viewUserDetail(userId);
+        loadUsersPage();
+    } catch (err) {
+        console.error('Delete order error:', err);
+        showToast('刪除失敗: ' + err.message, 'error');
+    }
+}
+
+// ============================================
+// 上傳收據
+// ============================================
+
+async function uploadReceiptForUserFromDetail(userId, subscriptionId, orderNo) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    `;
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 450px; width: 90%; background: white; border-radius: 28px; padding: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #8b6f4c;"><i class="fas fa-upload"></i> 上傳收據</h3>
+                <button class="close-modal-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #b8956e;">&times;</button>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">訂單號</label>
+                <input type="text" value="${orderNo || '無訂單號'}" readonly style="width: 100%; padding: 10px 14px; background: #e8e0d0; border: 1px solid #ffe0c0; border-radius: 12px;">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">金額 (RM)</label>
+                <input type="number" id="receiptAmountDetail" step="0.01" placeholder="輸入金額" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">付款方式</label>
+                <select id="receiptPaymentMethodDetail" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                    <option value="credit_card">信用卡</option>
+                    <option value="bank_transfer">銀行轉帳</option>
+                    <option value="cash">貨到付款</option>
+                    <option value="touchngo">Touch n Go</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">收據圖片</label>
+                <input type="file" id="receiptFileDetail" accept="image/*,.pdf" style="width: 100%; padding: 8px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="btn-save" onclick="confirmUploadReceiptFromDetail('${userId}', '${subscriptionId}', '${orderNo}')" style="flex: 1; background: #c8a15e; border: none; padding: 12px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer;">上傳</button>
+                <button class="btn-cancel" onclick="closeModal(this.closest('.modal-overlay'))" style="flex: 1; background: #f0ebe2; border: none; padding: 12px; border-radius: 40px; color: #8b6f4c; font-weight: 600; cursor: pointer;">取消</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // 關閉按鈕事件
+    const closeBtn = modal.querySelector('.close-modal-btn');
+    if (closeBtn) closeBtn.onclick = () => closeModal(modal);
+    
+    // ESC 關閉
+    setupModalCloseOnEsc(modal);
+    
+    // 點擊背景關閉
+    modal.onclick = (e) => {
+        if (e.target === modal) closeModal(modal);
+    };
+}
+
+async function confirmUploadReceiptFromDetail(userId, subscriptionId, orderNo) {
+    const amount = parseFloat(document.getElementById('receiptAmountDetail').value) || 0;
+    const paymentMethod = document.getElementById('receiptPaymentMethodDetail').value;
+    const file = document.getElementById('receiptFileDetail').files[0];
+    
+    if (amount <= 0) { showToast('請輸入有效的金額', 'error'); return; }
+    if (!file) { showToast('請選擇收據文件', 'error'); return; }
+    
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) closeModal(modal);
+    
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `receipt_${userId}_${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabaseClient.storage.from('receipts').upload(fileName, file);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
+        
+        await supabaseClient.from('receipts').insert({ 
+            user_id: userId, 
+            subscription_id: subscriptionId, 
+            order_no: orderNo, 
+            amount: amount, 
+            receipt_url: urlData.publicUrl, 
+            payment_method: paymentMethod, 
+            payment_status: 'paid',
+            created_at: new Date() 
+        });
+        
+        await supabaseClient.from('subscriptions').update({ payment_status: 'paid' }).eq('id', subscriptionId);
+        
+        showToast('收據上傳成功！');
+        usersCache.data = null;
+        
+        // 關閉當前詳情彈窗並重新打開
+        const detailModal = document.querySelector('.modal-overlay:not([style*="display: none"])');
+        if (detailModal) closeModal(detailModal);
+        viewUserDetail(userId);
+        loadUsersPage();
+    } catch (err) {
+        console.error('Upload error:', err);
+        showToast('上傳失敗: ' + err.message, 'error');
+    }
 }
 
 // ============================================
@@ -773,76 +1268,111 @@ async function showAddOrderModal(userId) {
     const { data: user } = await supabaseClient.from('users').select('full_name').eq('id', userId).single();
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.style.display = 'flex';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    `;
     modal.innerHTML = `
-        <div class="modal-card" style="max-width: 550px; width: 90%; max-height: 85vh; overflow-y: auto;">
-            <div class="modal-header"><h3><i class="fas fa-shopping-cart"></i> 添加歷史訂單 - ${escapeHtml(user?.full_name)}</h3><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button></div>
-            <div class="modal-body">
-                <div class="form-group"><label><i class="fas fa-calendar-alt"></i> 下單日期 <span class="required">*</span></label>
-                    <input type="date" id="newOrderDate" class="form-input" value="${getTodayString()}">
-                    <small>訂單號會根據此日期生成</small>
+        <div class="modal-card" style="max-width: 550px; width: 90%; background: white; border-radius: 28px; padding: 28px; max-height: 85vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #8b6f4c;"><i class="fas fa-shopping-cart"></i> 添加歷史訂單 - ${escapeHtml(user?.full_name)}</h3>
+                <button class="close-modal-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #b8956e;">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">下單日期 <span style="color:#ff5a5a;">*</span></label>
+                <input type="date" id="newOrderDate" class="form-input" value="${getTodayString()}" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                <small style="color: #b8956e;">訂單號會根據此日期生成</small>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">訂單號</label>
+                <input type="text" id="newOrderNo" class="form-input" readonly style="width: 100%; padding: 10px 14px; background: #e8e0d0; border: 1px solid #ffe0c0; border-radius: 12px;">
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">配套類型 <span style="color:#ff5a5a;">*</span></label>
+                <select id="newPlanType" class="form-select" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                    <option value="single">單次 (1天 - RM 15.90)</option>
+                    <option value="weekly">週方案 (7天 - RM 111.30)</option>
+                    <option value="1month">1個月 (30天 - RM 447)</option>
+                    <option value="2months">2個月 (60天 - RM 834)</option>
+                    <option value="3months">3個月 (90天 - RM 1161)</option>
+                    <option value="custom">自訂金額</option>
+                </select>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div>
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">訂閱開始日期 <span style="color:#ff5a5a;">*</span></label>
+                    <input type="date" id="newStartDate" class="form-input" value="${getTodayString()}" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
                 </div>
-                <div class="form-group"><label><i class="fas fa-tag"></i> 訂單號</label>
-                    <input type="text" id="newOrderNo" class="form-input" readonly style="background: rgba(0,0,0,0.3);">
-                </div>
-                <div class="form-group"><label><i class="fas fa-box"></i> 配套類型 <span class="required">*</span></label>
-                    <select id="newPlanType" class="form-select">
-                        <option value="single">單次 (1天 - RM 15.90)</option>
-                        <option value="weekly">週方案 (7天 - RM 111.30)</option>
-                        <option value="1month">1個月 (30天 - RM 447)</option>
-                        <option value="2months">2個月 (60天 - RM 834)</option>
-                        <option value="3months">3個月 (90天 - RM 1161)</option>
-                        <option value="custom">自訂金額</option>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label><i class="fas fa-calendar-alt"></i> 訂閱開始日期 <span class="required">*</span></label>
-                        <input type="date" id="newStartDate" class="form-input" value="${getTodayString()}">
-                    </div>
-                    <div class="form-group"><label><i class="fas fa-calendar-check"></i> 訂閱結束日期</label>
-                        <input type="date" id="newEndDate" class="form-input" readonly style="background: rgba(0,0,0,0.3);">
-                    </div>
-                </div>
-                <div class="form-group"><label><i class="fas fa-dollar-sign"></i> 訂單金額 (RM) <span class="required">*</span></label>
-                    <input type="number" id="newTotalPrice" class="form-input" step="0.01" placeholder="0.00">
-                </div>
-                <div class="form-group"><label><i class="fas fa-truck"></i> 訂單完成狀態 <span class="required">*</span></label>
-                    <select id="newOrderCompleteStatus" class="form-select">
-                        <option value="completed">✅ 已完成（歷史訂單）</option>
-                        <option value="pending">🚚 待配送（進行中）</option>
-                    </select>
-                </div>
-                <div class="form-group"><label><i class="fas fa-credit-card"></i> 付款方式</label>
-                    <select id="newPaymentMethod" class="form-select">
-                        <option value="credit_card">💳 信用卡</option>
-                        <option value="bank_transfer">🏦 銀行轉帳</option>
-                        <option value="cash">💵 貨到付款</option>
-                        <option value="touchngo">📱 Touch n Go</option>
-                        <option value="pending">⏳ 待付款</option>
-                    </select>
-                </div>
-                <div class="form-group"><label><i class="fas fa-chart-line"></i> 訂閱狀態</label>
-                    <select id="newSubscriptionStatus" class="form-select">
-                        <option value="active">🟢 活躍中</option>
-                        <option value="expired">🔴 已過期</option>
-                        <option value="cancelled">⚫ 已取消</option>
-                        <option value="paused">🟡 暫停</option>
-                    </select>
-                </div>
-                <div class="form-group"><label><i class="fas fa-money-bill"></i> 支付狀態</label>
-                    <select id="newPaymentStatus" class="form-select">
-                        <option value="paid">✅ 已支付</option>
-                        <option value="unpaid">⏳ 未支付</option>
-                        <option value="partial">💰 部分支付</option>
-                    </select>
-                </div>
-                <div class="form-group"><label><i class="fas fa-sticky-note"></i> 備註</label>
-                    <textarea id="newOrderNotes" class="form-input" rows="2" placeholder="特殊備註、調整原因等"></textarea>
+                <div>
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">訂閱結束日期</label>
+                    <input type="date" id="newEndDate" class="form-input" readonly style="width: 100%; padding: 10px 14px; background: #e8e0d0; border: 1px solid #ffe0c0; border-radius: 12px;">
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button>
-                <button class="btn-submit" id="confirmAddOrderBtn">確認添加訂單</button>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">訂單金額 (RM) <span style="color:#ff5a5a;">*</span></label>
+                <input type="number" id="newTotalPrice" class="form-input" step="0.01" placeholder="0.00" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">訂單完成狀態 <span style="color:#ff5a5a;">*</span></label>
+                <select id="newOrderCompleteStatus" class="form-select" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                    <option value="completed">✅ 已完成（歷史訂單）</option>
+                    <option value="pending">🚚 待配送（進行中）</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">付款方式</label>
+                <select id="newPaymentMethod" class="form-select" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                    <option value="credit_card">💳 信用卡</option>
+                    <option value="bank_transfer">🏦 銀行轉帳</option>
+                    <option value="cash">💵 貨到付款</option>
+                    <option value="touchngo">📱 Touch n Go</option>
+                    <option value="pending">⏳ 待付款</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">訂閱狀態</label>
+                <select id="newSubscriptionStatus" class="form-select" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                    <option value="active">🟢 活躍中</option>
+                    <option value="expired">🔴 已過期</option>
+                    <option value="cancelled">⚫ 已取消</option>
+                    <option value="paused">🟡 暫停</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">支付狀態</label>
+                <select id="newPaymentStatus" class="form-select" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px;">
+                    <option value="paid">✅ 已支付</option>
+                    <option value="unpaid">⏳ 未支付</option>
+                    <option value="partial">💰 部分支付</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #8b6f4c;">備註</label>
+                <textarea id="newOrderNotes" class="form-input" rows="2" placeholder="特殊備註、調整原因等" style="width: 100%; padding: 10px 14px; background: #f8f5f0; border: 1px solid #ffe0c0; border-radius: 12px; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="btn-cancel" onclick="closeModal(this.closest('.modal-overlay'))" style="flex: 1; background: #f0ebe2; border: none; padding: 12px; border-radius: 40px; color: #8b6f4c; font-weight: 600; cursor: pointer;">取消</button>
+                <button class="btn-submit" id="confirmAddOrderBtn" style="flex: 1; background: #c8a15e; border: none; padding: 12px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer;">確認添加訂單</button>
             </div>
         </div>
     `;
@@ -896,6 +1426,18 @@ async function showAddOrderModal(userId) {
     
     updateOrderNo();
     updatePlanInfo();
+    
+    // 關閉按鈕事件
+    const closeBtn = modal.querySelector('.close-modal-btn');
+    if (closeBtn) closeBtn.onclick = () => closeModal(modal);
+    
+    // ESC 關閉
+    setupModalCloseOnEsc(modal);
+    
+    // 點擊背景關閉
+    modal.onclick = (e) => {
+        if (e.target === modal) closeModal(modal);
+    };
     
     const confirmBtn = document.getElementById('confirmAddOrderBtn');
     if (confirmBtn) confirmBtn.onclick = () => confirmAddOrder(userId);
@@ -990,8 +1532,12 @@ async function confirmAddOrder(userId) {
         }
         
         showToast(`訂單 ${orderNo} 添加成功！`);
-        document.querySelector('.modal-overlay')?.remove();
+        closeModal(document.querySelector('.modal-overlay'));
         usersCache.data = null;
+        
+        // 關閉當前詳情彈窗並重新打開
+        const detailModal = document.querySelector('.modal-overlay:not([style*="display: none"])');
+        if (detailModal) closeModal(detailModal);
         viewUserDetail(userId);
         loadUsersPage();
         
@@ -1000,90 +1546,6 @@ async function confirmAddOrder(userId) {
         showToast('添加訂單失敗: ' + err.message, 'error');
     } finally {
         if (confirmBtn) { confirmBtn.innerText = originalText; confirmBtn.disabled = false; }
-    }
-}
-
-// ============================================
-// 刪除訂單
-// ============================================
-
-async function deleteOrder(subscriptionId, userId) {
-    if (!confirm('確定要刪除此訂單嗎？\n\n注意：刪除訂單會同時刪除相關的配送記錄！')) return;
-    
-    try {
-        await supabaseClient.from('deliveries').delete().eq('subscription_id', subscriptionId);
-        const { error } = await supabaseClient.from('subscriptions').delete().eq('id', subscriptionId);
-        if (error) throw error;
-        showToast('訂單已刪除！');
-        const modal = document.querySelector('.modal-overlay');
-        if (modal) modal.remove();
-        usersCache.data = null;
-        viewUserDetail(userId);
-        loadUsersPage();
-    } catch (err) {
-        console.error('Delete order error:', err);
-        showToast('刪除失敗: ' + err.message, 'error');
-    }
-}
-
-// ============================================
-// 上傳收據
-// ============================================
-
-async function uploadReceiptForUserFromDetail(userId, subscriptionId, orderNo) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal-card" style="max-width: 450px; width: 90%;">
-            <h3>上傳收據</h3>
-            <div class="input-group"><label>訂單號</label><input type="text" value="${orderNo || '無訂單號'}" readonly style="background: rgba(0,0,0,0.3);"></div>
-            <div class="input-group"><label>金額 (RM)</label><input type="number" id="receiptAmountDetail" step="0.01" placeholder="輸入金額"></div>
-            <div class="input-group"><label>付款方式</label><select id="receiptPaymentMethodDetail"><option value="credit_card">信用卡</option><option value="bank_transfer">銀行轉帳</option><option value="cash">貨到付款</option><option value="touchngo">Touch n Go</option></select></div>
-            <div class="input-group"><label>收據圖片</label><input type="file" id="receiptFileDetail" accept="image/*,.pdf"></div>
-            <div class="modal-buttons"><button class="btn-save" onclick="confirmUploadReceiptFromDetail('${userId}', '${subscriptionId}', '${orderNo}')">上傳</button><button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">取消</button></div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-}
-
-async function confirmUploadReceiptFromDetail(userId, subscriptionId, orderNo) {
-    const amount = parseFloat(document.getElementById('receiptAmountDetail').value) || 0;
-    const paymentMethod = document.getElementById('receiptPaymentMethodDetail').value;
-    const file = document.getElementById('receiptFileDetail').files[0];
-    
-    if (amount <= 0) { showToast('請輸入有效的金額', 'error'); return; }
-    if (!file) { showToast('請選擇收據文件', 'error'); return; }
-    
-    const modal = document.querySelector('.modal-overlay');
-    if (modal) modal.remove();
-    
-    try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `receipt_${userId}_${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabaseClient.storage.from('receipts').upload(fileName, file);
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(fileName);
-        
-        await supabaseClient.from('receipts').insert({ 
-            user_id: userId, 
-            subscription_id: subscriptionId, 
-            order_no: orderNo, 
-            amount: amount, 
-            receipt_url: urlData.publicUrl, 
-            payment_method: paymentMethod, 
-            payment_status: 'paid',
-            created_at: new Date() 
-        });
-        
-        await supabaseClient.from('subscriptions').update({ payment_status: 'paid' }).eq('id', subscriptionId);
-        
-        showToast('收據上傳成功！');
-        usersCache.data = null;
-        viewUserDetail(userId);
-        loadUsersPage();
-    } catch (err) {
-        console.error('Upload error:', err);
-        showToast('上傳失敗: ' + err.message, 'error');
     }
 }
 
