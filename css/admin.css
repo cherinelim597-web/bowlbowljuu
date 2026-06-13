@@ -1544,3 +1544,51 @@ body::before {
         background-attachment: scroll; /* 手機上 fixed 可能卡頓 */
     }
 }
+
+/* ============================================
+   背景圖設定 - 手機電腦完美顯示
+   ============================================ */
+
+body {
+    background-image: url('https://otvxjshpbldqnrdnmfsn.supabase.co/storage/v1/object/public/images/background.jpg');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+    background-attachment: scroll;
+    min-height: 100vh;
+    position: relative;
+}
+
+/* 半透明遮罩層（讓文字清晰） */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(253, 246, 227, 0.88);
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* 電腦版（寬度 > 768px）使用固定背景 */
+@media (min-width: 769px) {
+    body {
+        background-attachment: fixed;
+    }
+    body::before {
+        position: fixed;
+    }
+}
+
+/* 手機版（寬度 < 768px）優化 */
+@media (max-width: 768px) {
+    body {
+        background-attachment: scroll;
+        background-size: cover;
+    }
+    body::before {
+        position: absolute;
+    }
+}
