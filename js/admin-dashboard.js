@@ -35,6 +35,31 @@ async function loadDashboard() {
             .neq('users.email', ADMIN_EMAIL);
         const totalOrdersCount = totalOrders?.length || 0;
         
+        // ========== 修改：總營收從 subscriptions 表計算已支付訂單 ==========
+        const { data: paidSubscriptions } = await supabaseClient
+            .from('subscriptions')
+            .select('total_price, users!inner(email)')
+            .eq('payment_status', 'paid')
+            .neq('users.email', ADMIN_EMAIL);
+        
+        const totalRevenue = paidSubscriptions?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
+        
+        // ========== 修改：本月營收也從 subscriptions 表計算 ==========
+        const malaysiaNow = getMalaysiaDate();
+        const thisMonth = malaysiaNow.getMonth();
+        const thisYear = malaysiaNow.getFullYear();
+        
+        const { data: monthlyPaidSubscriptions } = await supabaseClient
+            .from('subscriptions')
+            .select('total_price, created_at, users!inner(email)')
+            .eq('payment_status', 'paid')
+            .neq('users.email', ADMIN_EMAIL);
+        
+        const monthlyRevenue = monthlyPaidSubscriptions?.filter(s => {
+            const d = new Date(s.created_at);
+            return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+        }).reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
+        
         // 獲取未支付的訂閱（active 但未支付）
         const { data: unpaidSubscriptions } = await supabaseClient
             .from('subscriptions')
@@ -57,22 +82,14 @@ async function loadDashboard() {
         
         const todayPending = todayDeliveries?.length || 0;
         
-        // 總營收
+        // 總收據數（保留，用於顯示）
         const { data: receipts } = await supabaseClient
             .from('receipts')
-            .select('amount, created_at, users!inner(email)')
+            .select('id, users!inner(email)')
             .neq('users.email', ADMIN_EMAIL);
         
-        const totalRevenue = receipts?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
-        
-        // 本月營收
-        const malaysiaNow = getMalaysiaDate();
-        const thisMonth = malaysiaNow.getMonth();
-        const thisYear = malaysiaNow.getFullYear();
-        const monthlyRevenue = receipts?.filter(r => {
-            const d = new Date(r.created_at);
-            return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-        }).reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+        // 總餐數
+        const totalMeals = subscriptions?.reduce((sum, s) => sum + (s.total_days || 0), 0) || 0;
         
         // 方案統計
         const planStats = { single: 0, weekly: 0, '1month': 0, '2months': 0, '3months': 0 };
@@ -99,7 +116,7 @@ async function loadDashboard() {
             dailyDeliveries?.filter(d => d.delivery_date === date).length || 0
         );
         
-        // 最近註冊用戶 - 風格3：圓形頭像+徽章
+        // 最近註冊用戶
         const recentUsers = allUsers?.slice(0, 5) || [];
         const recentUsersHtml = recentUsers.map(user => {
             const avatarLetter = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
@@ -173,7 +190,7 @@ async function loadDashboard() {
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-utensils"></i></div>
-                    <div class="stat-value">${subscriptions?.reduce((sum, s) => sum + (s.total_days || 0), 0) || 0}</div>
+                    <div class="stat-value">${totalMeals}</div>
                     <div class="stat-label">總餐數</div>
                 </div>
                 <div class="stat-card" style="cursor: pointer;" onclick="showUnpaidModal()">
@@ -195,7 +212,6 @@ async function loadDashboard() {
                 </div>
             </div>
             
-            <!-- 最近註冊用戶卡片 - 風格3 -->
             <div class="table-container">
                 <h3 style="margin-bottom: 16px; color: #8b6f4c;"><i class="fas fa-user-plus"></i> 最近註冊用戶</h3>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
