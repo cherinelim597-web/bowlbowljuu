@@ -1,6 +1,5 @@
 // ============================================
-// 管理員儀表板 - 新增功能版
-// 本月營收目標 + 即將到期訂閱
+// 管理員儀表板 - 完整修復版（無400錯誤）
 // ============================================
 
 // 營收目標配置（存儲在 localStorage）
@@ -92,7 +91,6 @@ function showSetRevenueTargetModal() {
         if (e.target === modal) closeModal(modal);
     };
     
-    // ESC 關閉
     const handleEsc = (e) => {
         if (e.key === 'Escape') {
             closeModal(modal);
@@ -110,7 +108,7 @@ function confirmSetRevenueTarget() {
     saveRevenueTarget(year, month, target);
     closeModal(document.querySelector('.modal-overlay'));
     showToast(`營收目標已設置為 RM ${target.toLocaleString()}`, 'success');
-    loadDashboard(); // 刷新儀表板
+    loadDashboard();
 }
 
 // 顯示即將到期訂閱彈窗
@@ -119,7 +117,6 @@ async function showExpiringSubscriptionsModal() {
     sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
     const sevenDaysLaterStr = formatMalaysiaDate(sevenDaysLater);
     
-    // 顯示加載
     const loadingModal = document.createElement('div');
     loadingModal.className = 'modal-overlay';
     loadingModal.style.cssText = `
@@ -139,25 +136,32 @@ async function showExpiringSubscriptionsModal() {
     document.body.appendChild(loadingModal);
     
     try {
+        // 第一步：獲取即將到期的訂閱
         const { data: expiringSubscriptions, error } = await supabaseClient
             .from('subscriptions')
-            .select(`
-                id,
-                user_id,
-                plan_type,
-                total_days,
-                meals_received,
-                start_date,
-                end_date,
-                total_price,
-                order_no,
-                users (id, full_name, email, phone, address)
-            `)
+            .select('id, user_id, plan_type, total_days, meals_received, start_date, end_date, total_price, order_no, status, payment_status')
             .eq('status', 'active')
+            .neq('plan_type', 'single')
             .lte('end_date', sevenDaysLaterStr)
-            .gte('end_date', formatMalaysiaDate(getMalaysiaDate()))
-            .neq('users.email', ADMIN_EMAIL)
-            .order('end_date', { ascending: true });
+            .gte('end_date', formatMalaysiaDate(getMalaysiaDate()));
+        
+        if (error) throw error;
+        
+        // 第二步：獲取相關用戶信息（分開查詢，避免關聯過濾錯誤）
+        const userIds = expiringSubscriptions?.map(s => s.user_id).filter(id => id) || [];
+        let usersMap = new Map();
+        
+        if (userIds.length > 0) {
+            const { data: users } = await supabaseClient
+                .from('users')
+                .select('id, full_name, email, phone, address')
+                .in('id', userIds)
+                .neq('email', ADMIN_EMAIL);
+            
+            if (users) {
+                users.forEach(u => usersMap.set(u.id, u));
+            }
+        }
         
         loadingModal.remove();
         
@@ -208,6 +212,7 @@ async function showExpiringSubscriptionsModal() {
                                 </thead>
                                 <tbody>
                                     ${expiringSubscriptions.map(sub => {
+                                        const user = usersMap.get(sub.user_id);
                                         const endDate = new Date(sub.end_date);
                                         const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
                                         let daysLeftColor = '#e8a878';
@@ -221,13 +226,13 @@ async function showExpiringSubscriptionsModal() {
                                             <tr style="border-bottom: 1px solid #f0e0d0;">
                                                 <td style="padding: 12px;">
                                                     <div>
-                                                        <strong style="color: #5a4a3a;">${escapeHtml(sub.users?.full_name || 'N/A')}</strong><br>
+                                                        <strong style="color: #5a4a3a;">${escapeHtml(user?.full_name || 'N/A')}</strong><br>
                                                         <span style="font-size: 11px; color: #b8956e;">ID: ${sub.user_id?.substring(0, 8)}...</span>
                                                     </div>
                                                 </td>
                                                 <td style="padding: 12px;">
-                                                    <div><i class="fas fa-phone" style="color: #c8a15e; width: 20px;"></i> ${escapeHtml(sub.users?.phone || '未設置')}</div>
-                                                    <div><i class="fas fa-envelope" style="color: #c8a15e; width: 20px;"></i> ${escapeHtml(sub.users?.email || '未設置')}</div>
+                                                    <div><i class="fas fa-phone" style="color: #c8a15e; width: 20px;"></i> ${escapeHtml(user?.phone || '未設置')}</div>
+                                                    <div><i class="fas fa-envelope" style="color: #c8a15e; width: 20px;"></i> ${escapeHtml(user?.email || '未設置')}</div>
                                                 </td>
                                                 <td style="padding: 12px;">
                                                     ${planNames[sub.plan_type] || sub.plan_type}<br>
@@ -240,11 +245,11 @@ async function showExpiringSubscriptionsModal() {
                                                     <span style="background: ${daysLeftBg}; color: ${daysLeftColor}; padding: 4px 12px; border-radius: 30px; font-size: 12px; font-weight: 600;">${daysLeft} 天</span>
                                                 </td>
                                                 <td style="padding: 12px; text-align: center;">
-                                                    <button class="btn-small" onclick="sendRenewalReminder('${sub.user_id}', '${escapeHtml(sub.users?.full_name)}', ${daysLeft})" style="background: #c8a15e; color: white; border: none; padding: 6px 12px; border-radius: 30px; cursor: pointer; font-size: 11px;">
+                                                    <button class="btn-small" onclick="sendRenewalReminder('${sub.user_id}', '${escapeHtml(user?.full_name)}', ${daysLeft})" style="background: #c8a15e; color: white; border: none; padding: 6px 12px; border-radius: 30px; cursor: pointer; font-size: 11px;">
                                                         <i class="fas fa-bell"></i> 發送提醒
                                                     </button>
                                                 </td>
-                                            </tr>
+                                            </td>
                                         `;
                                     }).join('')}
                                 </tbody>
@@ -252,9 +257,6 @@ async function showExpiringSubscriptionsModal() {
                         </div>
                         <div style="margin-top: 16px; padding: 12px; background: #fefaf5; border-radius: 16px; text-align: center;">
                             <span style="font-size: 13px; color: #b8956e;">共 ${expiringSubscriptions.length} 個訂閱即將到期</span>
-                            <button class="btn-small" onclick="sendBulkRenewalReminder()" style="background: #2d6a4f; color: white; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; margin-left: 16px;">
-                                <i class="fas fa-envelope-open-text"></i> 批量發送提醒
-                            </button>
                         </div>
                         `
                     }
@@ -285,9 +287,8 @@ async function showExpiringSubscriptionsModal() {
     }
 }
 
-// 發送單個續約提醒
+// 發送續約提醒
 async function sendRenewalReminder(userId, userName, daysLeft) {
-    // 獲取用戶的郵箱
     const { data: user } = await supabaseClient
         .from('users')
         .select('email, phone')
@@ -297,21 +298,13 @@ async function sendRenewalReminder(userId, userName, daysLeft) {
     const message = `親愛的 ${userName}，您的 Healthy Bowl 訂閱將在 ${daysLeft} 天後到期。請及時續約以繼續享受我們的健康餐飲服務！`;
     
     if (confirm(`發送續約提醒給 ${userName}？\n\n${message}`)) {
-        // 這裡可以集成郵件或短信 API
         console.log(`Reminder sent to ${userName} (${user?.email}): ${message}`);
         showToast(`提醒已發送給 ${userName}`, 'success');
     }
 }
 
-// 批量發送續約提醒
-async function sendBulkRenewalReminder() {
-    if (!confirm('確定要向所有即將到期的用戶發送續約提醒嗎？')) return;
-    
-    showToast('批量提醒已發送！', 'success');
-}
-
 // ============================================
-// 修改 loadDashboard 函數
+// 主函數 loadDashboard - 無關聯表過濾
 // ============================================
 
 async function loadDashboard() {
@@ -326,90 +319,88 @@ async function loadDashboard() {
         const thisMonth = malaysiaNow.getMonth();
         const thisYear = malaysiaNow.getFullYear();
         
-        // 獲取所有用戶（排除管理員）
-        const { data: allUsers } = await supabaseClient
-            .from('users')
-            .select('*')
-            .neq('email', ADMIN_EMAIL);
+        // ========== 第一步：並行查詢所有需要的數據（無關聯表過濾）==========
+        const [
+            usersResult,
+            subscriptionsResult,
+            paidSubscriptionsResult,
+            deliveriesResult,
+            todayDeliveriesResult
+        ] = await Promise.all([
+            // 所有用戶（用於排除管理員ID）
+            supabaseClient.from('users').select('id, email, full_name, created_at'),
+            // 所有訂閱
+            supabaseClient.from('subscriptions').select('*'),
+            // 已支付訂單（用於營收）
+            supabaseClient.from('subscriptions').select('total_price, created_at, payment_status'),
+            // 所有配送（用於統計）
+            supabaseClient.from('deliveries').select('delivery_date, status, user_id'),
+            // 今日配送
+            supabaseClient.from('deliveries').select('id, user_id, status').eq('delivery_date', today)
+        ]);
         
-        const totalUsers = allUsers?.length || 0;
+        // 獲取管理員ID
+        const adminUser = usersResult.data?.find(u => u.email === ADMIN_EMAIL);
+        const adminId = adminUser?.id;
         
-        // 活躍訂閱（排除單次方案，且 status = 'active'）
-        const { data: subscriptions } = await supabaseClient
-            .from('subscriptions')
-            .select('*, users!inner(email)')
-            .eq('status', 'active')
-            .neq('plan_type', 'single')
-            .neq('users.email', ADMIN_EMAIL);
+        // 過濾掉管理員的用戶
+        const allUsers = usersResult.data?.filter(u => u.id !== adminId) || [];
+        const totalUsers = allUsers.length;
         
-        const activeSubscriptions = subscriptions?.length || 0;
+        // 過濾掉管理員的訂閱
+        const allSubscriptions = subscriptionsResult.data?.filter(s => s.user_id !== adminId) || [];
         
-        // 總訂單數（所有方案，包括單次）
-        const { data: totalOrders } = await supabaseClient
-            .from('subscriptions')
-            .select('id, users!inner(email)')
-            .neq('users.email', ADMIN_EMAIL);
-        const totalOrdersCount = totalOrders?.length || 0;
+        // 過濾掉管理員的已支付訂單
+        const paidSubscriptions = paidSubscriptionsResult.data?.filter(s => s.payment_status === 'paid' && s.user_id !== adminId) || [];
         
-        // ========== 修復：獲取所有已支付訂單（總營收）==========
-        const { data: allPaidSubscriptions } = await supabaseClient
-            .from('subscriptions')
-            .select('total_price, created_at')
-            .eq('payment_status', 'paid')
-            .neq('users.email', ADMIN_EMAIL);
+        // 過濾掉管理員的配送
+        const allDeliveries = deliveriesResult.data?.filter(d => d.user_id !== adminId) || [];
+        const todayDeliveries = todayDeliveriesResult.data?.filter(d => d.user_id !== adminId) || [];
         
-        // 計算總營收（直接用數組 reduce）
+        // ========== 計算總營收和本月營收 ==========
         let totalRevenue = 0;
         let monthlyRevenue = 0;
         
-        if (allPaidSubscriptions && allPaidSubscriptions.length > 0) {
-            for (const sub of allPaidSubscriptions) {
-                // 總營收：加總所有已支付訂單
-                totalRevenue += (sub.total_price || 0);
-                
-                // 本月營收：檢查 created_at 是否在本月
-                if (sub.created_at) {
-                    const subDate = new Date(sub.created_at);
-                    if (subDate.getMonth() === thisMonth && subDate.getFullYear() === thisYear) {
-                        monthlyRevenue += (sub.total_price || 0);
-                    }
+        for (const sub of paidSubscriptions) {
+            totalRevenue += (sub.total_price || 0);
+            
+            if (sub.created_at) {
+                const subDate = new Date(sub.created_at);
+                if (subDate.getMonth() === thisMonth && subDate.getFullYear() === thisYear) {
+                    monthlyRevenue += (sub.total_price || 0);
                 }
             }
         }
         
-        // 獲取未支付的訂閱
-        const { data: unpaidSubscriptions } = await supabaseClient
-            .from('subscriptions')
-            .select('*, users!inner(full_name, email, phone)')
-            .eq('status', 'active')
-            .eq('payment_status', 'unpaid')
-            .neq('users.email', ADMIN_EMAIL);
+        // ========== 活躍訂閱（排除單次方案）==========
+        const activeSubscriptions = allSubscriptions.filter(s => 
+            s.status === 'active' && s.plan_type !== 'single'
+        ).length;
         
-        const unpaidCount = unpaidSubscriptions?.length || 0;
-        const unpaidTotalAmount = unpaidSubscriptions?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
+        // 總訂單數
+        const totalOrdersCount = allSubscriptions.length;
         
-        // 今日配送
-        const { data: todayDeliveries } = await supabaseClient
-            .from('deliveries')
-            .select('*, users!inner(email)')
-            .eq('delivery_date', today)
-            .eq('status', 'pending')
-            .neq('users.email', ADMIN_EMAIL);
-        const todayPending = todayDeliveries?.length || 0;
+        // 未支付訂單
+        const unpaidSubscriptions = allSubscriptions.filter(s => 
+            s.status === 'active' && s.payment_status === 'unpaid'
+        );
+        const unpaidCount = unpaidSubscriptions.length;
+        const unpaidTotalAmount = unpaidSubscriptions.reduce((sum, s) => sum + (s.total_price || 0), 0);
+        
+        // 今日待配送
+        const todayPending = todayDeliveries.filter(d => d.status === 'pending').length;
         
         // 即將到期訂閱（7天內，排除單次方案）
         const sevenDaysLater = getMalaysiaDate();
         sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
         const sevenDaysLaterStr = formatMalaysiaDate(sevenDaysLater);
         
-        const { data: expiringSubs } = await supabaseClient
-            .from('subscriptions')
-            .select('id')
-            .eq('status', 'active')
-            .neq('plan_type', 'single')
-            .lte('end_date', sevenDaysLaterStr)
-            .neq('users.email', ADMIN_EMAIL);
-        const expiringCount = expiringSubs?.length || 0;
+        const expiringCount = allSubscriptions.filter(s => 
+            s.status === 'active' && 
+            s.plan_type !== 'single' && 
+            s.end_date <= sevenDaysLaterStr &&
+            s.end_date >= today
+        ).length;
         
         // 營收目標配置
         const targetConfig = loadRevenueTarget();
@@ -432,9 +423,9 @@ async function loadDashboard() {
             targetCardStyle = 'border-left: 3px solid #e0d0c0; opacity: 0.7;';
         }
         
-        // 方案統計（排除單次方案）
+        // 方案統計
         const planStats = { single: 0, weekly: 0, '1month': 0, '2months': 0, '3months': 0 };
-        subscriptions?.forEach(s => {
+        allSubscriptions.forEach(s => {
             if (planStats[s.plan_type] !== undefined) planStats[s.plan_type]++;
         });
         
@@ -446,19 +437,12 @@ async function loadDashboard() {
             last7Days.push(formatMalaysiaDate(d));
         }
         
-        const { data: dailyDeliveries } = await supabaseClient
-            .from('deliveries')
-            .select('delivery_date')
-            .in('delivery_date', last7Days)
-            .eq('status', 'delivered')
-            .neq('users.email', ADMIN_EMAIL);
-        
         const deliveryCounts = last7Days.map(date => 
-            dailyDeliveries?.filter(d => d.delivery_date === date).length || 0
+            allDeliveries.filter(d => d.delivery_date === date && d.status === 'delivered').length
         );
         
         // 最近註冊用戶
-        const recentUsers = allUsers?.slice(0, 5) || [];
+        const recentUsers = allUsers.slice(0, 5);
         const recentUsersHtml = recentUsers.map(user => {
             const avatarLetter = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
             const daysSince = Math.floor((new Date() - new Date(user.created_at)) / (1000 * 60 * 60 * 24));
@@ -526,7 +510,6 @@ async function loadDashboard() {
                     <div class="stat-label">本月營收</div>
                 </div>
                 
-                <!-- 本月營收目標卡片 -->
                 <div class="stat-card" style="cursor: pointer; ${targetCardStyle}" onclick="showSetRevenueTargetModal()">
                     <div class="stat-icon"><i class="fas fa-bullseye"></i></div>
                     <div class="stat-value">${targetConfig.target > 0 ? `RM ${targetConfig.target.toLocaleString()}` : '未設置'}</div>
@@ -542,7 +525,6 @@ async function loadDashboard() {
                     <div style="font-size: 10px; color: #b8956e; margin-top: 6px;">點擊設置目標</div>
                 </div>
                 
-                <!-- 即將到期訂閱卡片 -->
                 <div class="stat-card" style="cursor: pointer;" onclick="showExpiringSubscriptionsModal()">
                     <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
                     <div class="stat-value">${expiringCount}</div>
@@ -551,7 +533,6 @@ async function loadDashboard() {
                     <div style="font-size: 10px; color: #b8956e; margin-top: 6px;">點擊查看詳情</div>
                 </div>
                 
-                <!-- 未支付訂單卡片 -->
                 <div class="stat-card" style="cursor: pointer;" onclick="showUnpaidModal()">
                     <div class="stat-icon"><i class="fas fa-clock"></i></div>
                     <div class="stat-value">${unpaidCount}</div>
@@ -614,14 +595,13 @@ async function loadDashboard() {
     }
 }
 
-// 輔助函數：關閉彈窗
+// 輔助函數
 function closeModal(modalElement) {
     if (modalElement && modalElement.remove) {
         modalElement.remove();
     }
 }
 
-// 輔助函數：格式化日期顯示
 function formatDisplayDate(dateStr) {
     if (!dateStr) return 'N/A';
     const d = new Date(dateStr);
@@ -629,7 +609,6 @@ function formatDisplayDate(dateStr) {
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// 輔助函數：HTML跳脫
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -637,14 +616,12 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// 輔助函數：獲取馬來西亞日期
 function getMalaysiaDate() {
     const now = new Date();
     const malaysiaTime = now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' });
     return new Date(malaysiaTime);
 }
 
-// 輔助函數：格式化馬來西亞日期
 function formatMalaysiaDate(date) {
     const d = date ? new Date(date) : getMalaysiaDate();
     const year = d.getFullYear();
@@ -653,7 +630,10 @@ function formatMalaysiaDate(date) {
     return `${year}-${month}-${day}`;
 }
 
-// 輔助函數：顯示提示
+function getTodayString() {
+    return formatMalaysiaDate();
+}
+
 function showToast(message, type) {
     const toast = document.createElement('div');
     toast.className = 'toast-message';
@@ -673,7 +653,117 @@ function showToast(message, type) {
     setTimeout(() => toast.remove(), 3000);
 }
 
-// 輔助函數：獲取今天的日期字符串
-function getTodayString() {
-    return formatMalaysiaDate();
+// 未支付訂單彈窗
+async function showUnpaidModal() {
+    const { data: allSubscriptions } = await supabaseClient
+        .from('subscriptions')
+        .select('*, users(id, full_name, email, phone, address)');
+    
+    const { data: adminUser } = await supabaseClient
+        .from('users')
+        .select('id')
+        .eq('email', ADMIN_EMAIL)
+        .single();
+    
+    const adminId = adminUser?.id;
+    
+    const unpaidSubscriptions = allSubscriptions?.filter(s => 
+        s.status === 'active' && 
+        s.payment_status === 'unpaid' && 
+        s.user_id !== adminId
+    ) || [];
+    
+    const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    `;
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width: 900px; width: 90%; max-height: 80vh; overflow-y: auto; background: white; border-radius: 28px; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #8b6f4c;"><i class="fas fa-clock"></i> 未支付訂單 (共 ${unpaidSubscriptions.length} 筆)</h3>
+                <button class="close-modal-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #b8956e;">&times;</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; min-width: 600px; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #fefaf5;">
+                            <th style="padding: 10px; text-align: left;">訂單號</th>
+                            <th style="padding: 10px; text-align: left;">用戶</th>
+                            <th style="padding: 10px; text-align: left;">方案</th>
+                            <th style="padding: 10px; text-align: left;">金額</th>
+                            <th style="padding: 10px; text-align: left;">訂閱期間</th>
+                            <th style="padding: 10px; text-align: center;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${unpaidSubscriptions.map(sub => `
+                            <tr style="border-bottom: 1px solid #f0e0d0;">
+                                <td style="padding: 10px;"><span class="order-no-badge">${escapeHtml(sub.order_no || '無')}</span></td>
+                                <td style="padding: 10px;">
+                                    <strong>${escapeHtml(sub.users?.full_name || 'N/A')}</strong><br>
+                                    <small>📧 ${escapeHtml(sub.users?.email || 'N/A')}</small><br>
+                                    <small>📱 ${escapeHtml(sub.users?.phone || 'N/A')}</small>
+                                </td>
+                                <td style="padding: 10px;">${planNames[sub.plan_type] || sub.plan_type}</td>
+                                <td style="padding: 10px; color: #c8a15e;">RM ${sub.total_price}</td>
+                                <td style="padding: 10px; font-size: 12px;">
+                                    ${formatDisplayDate(sub.start_date)}<br>→ ${formatDisplayDate(sub.end_date)}
+                                </td>
+                                <td style="padding: 10px; text-align: center;">
+                                    <button class="btn-small" onclick="markAsPaid('${sub.id}', '${sub.user_id}')" style="background: #2ed15a; border: none; padding: 6px 12px; border-radius: 30px; color: white; cursor: pointer;">
+                                        ✓ 標記已支付
+                                    </button>
+                                </td>
+                             </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn-cancel" onclick="closeModal(this.closest('.modal-overlay'))" style="background: #f0ebe2; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer;">關閉</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    const closeBtn = modal.querySelector('.close-modal-btn');
+    if (closeBtn) closeBtn.onclick = () => closeModal(modal);
+    
+    modal.onclick = (e) => {
+        if (e.target === modal) closeModal(modal);
+    };
+}
+
+// 標記訂單為已支付
+async function markAsPaid(subscriptionId, userId) {
+    if (!confirm('確定將此訂單標記為已支付？')) return;
+    
+    const { error } = await supabaseClient
+        .from('subscriptions')
+        .update({ payment_status: 'paid' })
+        .eq('id', subscriptionId);
+    
+    if (error) {
+        showToast('操作失敗: ' + error.message, 'error');
+    } else {
+        showToast('已標記為已支付！');
+        document.querySelector('.modal-overlay')?.remove();
+        loadDashboard();
+        if (document.getElementById('page_users')?.classList.contains('active') && typeof loadUsersPage === 'function') {
+            loadUsersPage();
+        }
+    }
 }
