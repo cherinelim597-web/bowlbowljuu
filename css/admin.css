@@ -1849,3 +1849,224 @@ body::before {
         padding: 20px !important;
     }
 }
+
+/* ============================================
+   手機版 - 用戶列表和配送記錄縮小版
+   ============================================ */
+
+@media (max-width: 768px) {
+    /* ----- 用戶列表縮小 ----- */
+    #page_users .table-container {
+        overflow-x: auto;
+    }
+    
+    #page_users table {
+        min-width: 500px;
+        font-size: 11px;
+    }
+    
+    #page_users th,
+    #page_users td {
+        padding: 8px 10px !important;
+        font-size: 11px !important;
+    }
+    
+    #page_users .badge {
+        padding: 2px 8px !important;
+        font-size: 9px !important;
+    }
+    
+    /* 用戶列表卡片式（替代表格，更好看）*/
+    .user-mobile-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .user-mobile-item {
+        background: white;
+        border-radius: 12px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .user-mobile-avatar {
+        width: 36px;
+        height: 36px;
+        background: #ffe0c0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 700;
+        color: #e09a5a;
+        flex-shrink: 0;
+    }
+    
+    .user-mobile-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .user-mobile-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #5a4a3a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .user-mobile-email {
+        font-size: 10px;
+        color: #b8956e;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .user-mobile-status {
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 30px;
+        background: #e0f5e4;
+        color: #6fb87f;
+        flex-shrink: 0;
+    }
+    
+    .user-mobile-status.unpaid {
+        background: #fff0e0;
+        color: #e8a878;
+    }
+    
+    /* ----- 配送記錄縮小 ----- */
+    .delivery-table-modern {
+        border-radius: 16px;
+    }
+    
+    .table-header {
+        display: none !important;
+    }
+    
+    .table-row {
+        display: block !important;
+        padding: 10px 12px !important;
+        margin-bottom: 8px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .td {
+        display: block !important;
+        width: 100% !important;
+        padding: 4px 0 !important;
+    }
+    
+    /* 用戶信息行 */
+    .td:first-child {
+        display: flex !important;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+    
+    .user-info-modern {
+        flex: 1;
+    }
+    
+    .user-avatar-modern {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 14px !important;
+    }
+    
+    .user-name-modern {
+        font-size: 13px !important;
+        font-weight: 600;
+    }
+    
+    .user-id-modern {
+        font-size: 9px !important;
+    }
+    
+    /* 聯繫方式行 - 橫向排列 */
+    .td:nth-child(2) .contact-modern {
+        display: flex;
+        gap: 12px;
+        font-size: 10px;
+    }
+    
+    .td:nth-child(2) .contact-modern div {
+        font-size: 10px;
+    }
+    
+    /* 地址行 */
+    .td:nth-child(3) .address-modern {
+        font-size: 10px;
+    }
+    
+    /* 進度行 */
+    .progress-modern {
+        margin: 6px 0;
+    }
+    
+    .progress-stats-modern {
+        font-size: 10px !important;
+    }
+    
+    .progress-bar-modern {
+        height: 5px !important;
+        margin: 4px 0 !important;
+    }
+    
+    .progress-date-modern {
+        font-size: 9px !important;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .remain-badge {
+        font-size: 9px !important;
+        padding: 2px 6px !important;
+    }
+    
+    /* 操作按鈕行 */
+    .action-buttons-modern {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+    }
+    
+    .action-deliver,
+    .action-undo,
+    .action-pause {
+        padding: 5px 12px !important;
+        font-size: 10px !important;
+    }
+    
+    /* 統計卡片數字縮小 */
+    .stat-number-lg {
+        font-size: 24px !important;
+    }
+    
+    .stat-label-sm {
+        font-size: 10px !important;
+    }
+    
+    /* 搜索欄縮小 */
+    .search-input-modern {
+        padding: 8px 16px 8px 36px !important;
+        font-size: 12px !important;
+    }
+    
+    /* 按鈕縮小 */
+    .btn-modern {
+        padding: 6px 14px !important;
+        font-size: 11px !important;
+    }
+}
