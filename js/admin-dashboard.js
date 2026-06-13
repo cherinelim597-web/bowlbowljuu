@@ -334,12 +334,12 @@ async function loadDashboard() {
         
         const totalUsers = allUsers?.length || 0;
         
-        // ========== 修復1：活躍訂閱（排除單次方案，且 status = 'active'）==========
+        // 活躍訂閱（排除單次方案，且 status = 'active'）
         const { data: subscriptions } = await supabaseClient
             .from('subscriptions')
             .select('*, users!inner(email)')
             .eq('status', 'active')
-            .neq('plan_type', 'single')  // 排除單次方案
+            .neq('plan_type', 'single')
             .neq('users.email', ADMIN_EMAIL);
         
         const activeSubscriptions = subscriptions?.length || 0;
@@ -351,29 +351,31 @@ async function loadDashboard() {
             .neq('users.email', ADMIN_EMAIL);
         const totalOrdersCount = totalOrders?.length || 0;
         
-        // ========== 修復2：總營收（已支付訂單，排除管理員）==========
-        const { data: paidSubscriptions } = await supabaseClient
-            .from('subscriptions')
-            .select('total_price')
-            .eq('payment_status', 'paid')
-            .neq('users.email', ADMIN_EMAIL);
-        
-        const totalRevenue = paidSubscriptions?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
-        
-        // ========== 修復3：本月營收（已支付訂單，且 created_at 在本月）==========
-        // 獲取本月第一天的日期
-        const firstDayOfMonth = new Date(thisYear, thisMonth, 1);
-        const lastDayOfMonth = new Date(thisYear, thisMonth + 1, 0);
-        
-        const { data: monthlyPaidSubscriptions } = await supabaseClient
+        // ========== 修復：獲取所有已支付訂單（總營收）==========
+        const { data: allPaidSubscriptions } = await supabaseClient
             .from('subscriptions')
             .select('total_price, created_at')
             .eq('payment_status', 'paid')
-            .gte('created_at', firstDayOfMonth.toISOString())
-            .lte('created_at', lastDayOfMonth.toISOString())
             .neq('users.email', ADMIN_EMAIL);
         
-        const monthlyRevenue = monthlyPaidSubscriptions?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
+        // 計算總營收（直接用數組 reduce）
+        let totalRevenue = 0;
+        let monthlyRevenue = 0;
+        
+        if (allPaidSubscriptions && allPaidSubscriptions.length > 0) {
+            for (const sub of allPaidSubscriptions) {
+                // 總營收：加總所有已支付訂單
+                totalRevenue += (sub.total_price || 0);
+                
+                // 本月營收：檢查 created_at 是否在本月
+                if (sub.created_at) {
+                    const subDate = new Date(sub.created_at);
+                    if (subDate.getMonth() === thisMonth && subDate.getFullYear() === thisYear) {
+                        monthlyRevenue += (sub.total_price || 0);
+                    }
+                }
+            }
+        }
         
         // 獲取未支付的訂閱
         const { data: unpaidSubscriptions } = await supabaseClient
