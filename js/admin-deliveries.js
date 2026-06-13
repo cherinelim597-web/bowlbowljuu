@@ -501,46 +501,44 @@ function undoTempDelivery(deliveryId) {
     showToast('已撤回標記，待配送數量 +1', 'info');
 }
 
-// 暫停配送
+// 暫停配送（優化版 - 減少等待時間）
 async function pauseDelivery(deliveryId, userId, subscriptionId) {
     if (!confirm('暫停後今日配送將取消，訂閱週期順延一天，確定暫停嗎？')) return;
     
-    var btn = event.target;
-    var originalText = btn.innerHTML;
+    const btn = event.target;
+    const originalText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     btn.disabled = true;
     
     try {
-        var { data: delivery } = await supabaseClient
-            .from('deliveries')
-            .select('delivery_date, meal_number')
-            .eq('id', deliveryId)
-            .single();
+        // 並行執行查詢
+        const [deliveryResult, subscriptionResult] = await Promise.all([
+            supabaseClient.from('deliveries').select('delivery_date, meal_number').eq('id', deliveryId).single(),
+            supabaseClient.from('subscriptions').select('end_date, total_days').eq('id', subscriptionId).single()
+        ]);
+        
+        if (deliveryResult.error) throw deliveryResult.error;
+        const delivery = deliveryResult.data;
+        const subscription = subscriptionResult.data;
         
         if (!delivery) throw new Error('配送記錄不存在');
         
-        // 刪除配送記錄
-        await supabaseClient.from('deliveries').delete().eq('id', deliveryId);
-        
-        // 添加暫停記錄
-        await supabaseClient.from('delivery_pauses').insert({
-            user_id: userId,
-            delivery_id: deliveryId,
-            pause_date: getTodayString(),
-            original_meal_number: delivery.meal_number,
-            subscription_id: subscriptionId,
-            created_at: new Date()
-        });
+        // 並行執行更新（減少等待時間）
+        await Promise.all([
+            supabaseClient.from('deliveries').delete().eq('id', deliveryId),
+            supabaseClient.from('delivery_pauses').insert({
+                user_id: userId,
+                delivery_id: deliveryId,
+                pause_date: getTodayString(),
+                original_meal_number: delivery.meal_number,
+                subscription_id: subscriptionId,
+                created_at: new Date()
+            })
+        ]);
         
         // 更新訂閱週期
-        var { data: subscription } = await supabaseClient
-            .from('subscriptions')
-            .select('end_date, total_days')
-            .eq('id', subscriptionId)
-            .single();
-        
         if (subscription) {
-            var newEndDate = new Date(subscription.end_date);
+            const newEndDate = new Date(subscription.end_date);
             newEndDate.setDate(newEndDate.getDate() + 1);
             
             await supabaseClient.from('subscriptions').update({ 
@@ -549,32 +547,25 @@ async function pauseDelivery(deliveryId, userId, subscriptionId) {
             }).eq('id', subscriptionId);
         }
         
-        // 如果這個配送之前被臨時標記過，需要從臨時標記中移除
-        var tempIndex = tempDeliveredIds.indexOf(deliveryId);
-        if (tempIndex !== -1) {
-            tempDeliveredIds.splice(tempIndex, 1);
-        }
-        
-        // 更新本地數據
-        var deliveryIndex = currentDeliveries.findIndex(function(d) { return d.id === deliveryId; });
+        // 更新本地數據（不重新加載整個頁面）
+        const deliveryIndex = currentDeliveries.findIndex(d => d.id === deliveryId);
         if (deliveryIndex !== -1) {
             currentDeliveries[deliveryIndex].is_paused = true;
+            currentDeliveries[deliveryIndex].status = 'paused';
         }
         
-        // 更新暫停計數
+        const tempIndex = tempDeliveredIds.indexOf(deliveryId);
+        if (tempIndex !== -1) tempDeliveredIds.splice(tempIndex, 1);
+        
         todayPausedCount++;
-        var pausedElement = document.getElementById('todayPausedCount');
-        if (pausedElement) pausedElement.innerText = todayPausedCount;
+        document.getElementById('todayPausedCount').innerText = todayPausedCount;
         
-        // 重新計算待配送
-        recalcPendingCount();
-        
-        // 重新渲染該行
-        var row = document.querySelector('.table-row[data-delivery-id="' + deliveryId + '"]');
+        // 直接更新 UI，不重新加載整個頁面
+        const row = document.querySelector(`.table-row[data-delivery-id="${deliveryId}"]`);
         if (row) {
             row.style.opacity = '0.6';
             row.style.background = '#f5f5f5';
-            var actionCell = row.querySelector('.action-td');
+            const actionCell = row.querySelector('.action-td');
             if (actionCell) {
                 actionCell.innerHTML = `
                     <button class="action-pause-restore" onclick="restoreDelivery('${deliveryId}', '${userId}', '${subscriptionId}', ${delivery.meal_number})" 
@@ -585,6 +576,7 @@ async function pauseDelivery(deliveryId, userId, subscriptionId) {
             }
         }
         
+        recalcPendingCount();
         showToast('已暫停今日配送，訂閱週期已順延', 'success');
         
     } catch (err) {
