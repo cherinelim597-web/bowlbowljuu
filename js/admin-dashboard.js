@@ -334,62 +334,46 @@ async function loadDashboard() {
         
         const totalUsers = allUsers?.length || 0;
         
-        // 活躍訂閱
+        // ========== 修復1：活躍訂閱（排除單次方案，且 status = 'active'）==========
         const { data: subscriptions } = await supabaseClient
             .from('subscriptions')
             .select('*, users!inner(email)')
             .eq('status', 'active')
+            .neq('plan_type', 'single')  // 排除單次方案
             .neq('users.email', ADMIN_EMAIL);
         
         const activeSubscriptions = subscriptions?.length || 0;
         
-        // 總訂單數
+        // 總訂單數（所有方案，包括單次）
         const { data: totalOrders } = await supabaseClient
             .from('subscriptions')
             .select('id, users!inner(email)')
             .neq('users.email', ADMIN_EMAIL);
         const totalOrdersCount = totalOrders?.length || 0;
         
-        // 總營收（已支付訂單）
+        // ========== 修復2：總營收（已支付訂單，排除管理員）==========
         const { data: paidSubscriptions } = await supabaseClient
             .from('subscriptions')
             .select('total_price')
             .eq('payment_status', 'paid')
             .neq('users.email', ADMIN_EMAIL);
+        
         const totalRevenue = paidSubscriptions?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
         
-        // 本月營收
+        // ========== 修復3：本月營收（已支付訂單，且 created_at 在本月）==========
+        // 獲取本月第一天的日期
+        const firstDayOfMonth = new Date(thisYear, thisMonth, 1);
+        const lastDayOfMonth = new Date(thisYear, thisMonth + 1, 0);
+        
         const { data: monthlyPaidSubscriptions } = await supabaseClient
             .from('subscriptions')
             .select('total_price, created_at')
             .eq('payment_status', 'paid')
+            .gte('created_at', firstDayOfMonth.toISOString())
+            .lte('created_at', lastDayOfMonth.toISOString())
             .neq('users.email', ADMIN_EMAIL);
         
-        const monthlyRevenue = monthlyPaidSubscriptions?.filter(s => {
-            const d = new Date(s.created_at);
-            return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-        }).reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
-        
-        // ========== 新增：本月營收目標 ==========
-        const targetConfig = loadRevenueTarget();
-        let targetProgress = 0;
-        let targetDisplayText = '';
-        let targetCardStyle = '';
-        
-        if (targetConfig.year === thisYear && targetConfig.month === thisMonth && targetConfig.target > 0) {
-            targetProgress = Math.min(Math.round((monthlyRevenue / targetConfig.target) * 100), 100);
-            targetDisplayText = `${targetProgress}% (RM ${monthlyRevenue.toLocaleString()} / RM ${targetConfig.target.toLocaleString()})`;
-            if (targetProgress >= 100) {
-                targetCardStyle = 'border-left: 3px solid #2ed15a;';
-            } else if (targetProgress >= 70) {
-                targetCardStyle = 'border-left: 3px solid #c8a15e;';
-            } else {
-                targetCardStyle = 'border-left: 3px solid #e8a878;';
-            }
-        } else {
-            targetDisplayText = '點擊設置目標';
-            targetCardStyle = 'border-left: 3px solid #e0d0c0; opacity: 0.7;';
-        }
+        const monthlyRevenue = monthlyPaidSubscriptions?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
         
         // 獲取未支付的訂閱
         const { data: unpaidSubscriptions } = await supabaseClient
@@ -411,7 +395,7 @@ async function loadDashboard() {
             .neq('users.email', ADMIN_EMAIL);
         const todayPending = todayDeliveries?.length || 0;
         
-        // ========== 新增：即將到期訂閱（7天內）==========
+        // 即將到期訂閱（7天內，排除單次方案）
         const sevenDaysLater = getMalaysiaDate();
         sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
         const sevenDaysLaterStr = formatMalaysiaDate(sevenDaysLater);
@@ -420,21 +404,33 @@ async function loadDashboard() {
             .from('subscriptions')
             .select('id')
             .eq('status', 'active')
+            .neq('plan_type', 'single')
             .lte('end_date', sevenDaysLaterStr)
             .neq('users.email', ADMIN_EMAIL);
         const expiringCount = expiringSubs?.length || 0;
         
-        // 今日配送完成率（用於顯示）
-        const { data: todayAllDeliveries } = await supabaseClient
-            .from('deliveries')
-            .select('status')
-            .eq('delivery_date', today)
-            .neq('users.email', ADMIN_EMAIL);
-        const todayTotal = todayAllDeliveries?.length || 0;
-        const todayCompleted = todayAllDeliveries?.filter(d => d.status === 'delivered').length || 0;
-        const todayCompletionRate = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
+        // 營收目標配置
+        const targetConfig = loadRevenueTarget();
+        let targetProgress = 0;
+        let targetDisplayText = '';
+        let targetCardStyle = '';
         
-        // 方案統計
+        if (targetConfig.year === thisYear && targetConfig.month === (thisMonth + 1) && targetConfig.target > 0) {
+            targetProgress = Math.min(Math.round((monthlyRevenue / targetConfig.target) * 100), 100);
+            targetDisplayText = `${targetProgress}% (RM ${monthlyRevenue.toLocaleString()} / RM ${targetConfig.target.toLocaleString()})`;
+            if (targetProgress >= 100) {
+                targetCardStyle = 'border-left: 3px solid #2ed15a;';
+            } else if (targetProgress >= 70) {
+                targetCardStyle = 'border-left: 3px solid #c8a15e;';
+            } else {
+                targetCardStyle = 'border-left: 3px solid #e8a878;';
+            }
+        } else {
+            targetDisplayText = '點擊設置目標';
+            targetCardStyle = 'border-left: 3px solid #e0d0c0; opacity: 0.7;';
+        }
+        
+        // 方案統計（排除單次方案）
         const planStats = { single: 0, weekly: 0, '1month': 0, '2months': 0, '3months': 0 };
         subscriptions?.forEach(s => {
             if (planStats[s.plan_type] !== undefined) planStats[s.plan_type]++;
@@ -507,6 +503,7 @@ async function loadDashboard() {
                     <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
                     <div class="stat-value">${activeSubscriptions}</div>
                     <div class="stat-label">活躍訂閱</div>
+                    <div style="font-size: 10px; color: #b8956e;">(不含單次)</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-ticket-alt"></i></div>
@@ -527,7 +524,7 @@ async function loadDashboard() {
                     <div class="stat-label">本月營收</div>
                 </div>
                 
-                <!-- 新卡片1：本月營收目標（可點擊設置） -->
+                <!-- 本月營收目標卡片 -->
                 <div class="stat-card" style="cursor: pointer; ${targetCardStyle}" onclick="showSetRevenueTargetModal()">
                     <div class="stat-icon"><i class="fas fa-bullseye"></i></div>
                     <div class="stat-value">${targetConfig.target > 0 ? `RM ${targetConfig.target.toLocaleString()}` : '未設置'}</div>
@@ -543,7 +540,7 @@ async function loadDashboard() {
                     <div style="font-size: 10px; color: #b8956e; margin-top: 6px;">點擊設置目標</div>
                 </div>
                 
-                <!-- 新卡片2：即將到期訂閱（可點擊查看詳情） -->
+                <!-- 即將到期訂閱卡片 -->
                 <div class="stat-card" style="cursor: pointer;" onclick="showExpiringSubscriptionsModal()">
                     <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
                     <div class="stat-value">${expiringCount}</div>
@@ -552,7 +549,7 @@ async function loadDashboard() {
                     <div style="font-size: 10px; color: #b8956e; margin-top: 6px;">點擊查看詳情</div>
                 </div>
                 
-                <!-- 原有的未支付訂單卡片 -->
+                <!-- 未支付訂單卡片 -->
                 <div class="stat-card" style="cursor: pointer;" onclick="showUnpaidModal()">
                     <div class="stat-icon"><i class="fas fa-clock"></i></div>
                     <div class="stat-value">${unpaidCount}</div>
@@ -611,7 +608,7 @@ async function loadDashboard() {
         
     } catch (err) {
         console.error('Dashboard error:', err);
-        container.innerHTML = '<p>加載失敗</p>';
+        container.innerHTML = '<p>加載失敗: ' + err.message + '</p>';
     }
 }
 
