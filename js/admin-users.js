@@ -214,7 +214,14 @@ async function loadUsersPage() {
         
         const totalUsers = users.length;
         const activeSubscriptions = userData.filter(u => u.subscription).length;
-        const totalRevenue = userData.reduce((sum, u) => sum + u.totalPaid, 0);
+        // 從 subscriptions 表計算已支付訂單的總金額（與 Dashboard 一致）
+const { data: paidSubs } = await supabaseClient
+    .from('subscriptions')
+    .select('total_price')
+    .eq('payment_status', 'paid')
+    .neq('user_id', null);  // 獲取所有已支付訂單
+
+const totalRevenue = paidSubs?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
         const totalMealsDelivered = userData.reduce((sum, u) => sum + (u.deliveredCount || 0), 0);
         
         const pageData = {
