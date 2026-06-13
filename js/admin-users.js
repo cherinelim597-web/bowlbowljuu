@@ -138,7 +138,7 @@ async function loadUsersPage() {
             return;
         }
         
-        // ========== 修復：先獲取用戶，排除管理員 ==========
+        // 獲取所有用戶（排除管理員）
         const { data: users, error: usersError } = await supabaseClient
             .from('users')
             .select('*')
@@ -152,19 +152,25 @@ async function loadUsersPage() {
             return;
         }
         
-        // 獲取所有用戶ID
         const userIds = users.map(u => u.id);
         
-        // ========== 修復：使用 in 查詢，避免關聯表過濾問題 ==========
-        const [subscriptionsResult, receiptsResult, deliveriesResult] = await Promise.all([
+        // ========== 修復：獲取所有已支付訂單（用於總營收）==========
+        // 使用 .not('user_id', 'is', null) 代替 .neq('user_id', null)
+        const [subscriptionsResult, receiptsResult, deliveriesResult, paidSubscriptionsResult] = await Promise.all([
             supabaseClient.from('subscriptions').select('*').in('user_id', userIds),
             supabaseClient.from('receipts').select('*').in('user_id', userIds),
-            supabaseClient.from('deliveries').select('*').in('user_id', userIds)
+            supabaseClient.from('deliveries').select('*').in('user_id', userIds),
+            // 修復：獲取所有已支付訂單
+            supabaseClient.from('subscriptions').select('total_price').eq('payment_status', 'paid')
         ]);
         
         const subscriptions = subscriptionsResult.data || [];
         const receipts = receiptsResult.data || [];
         const deliveries = deliveriesResult.data || [];
+        const paidSubscriptions = paidSubscriptionsResult.data || [];
+        
+        // 計算總營收（與 Dashboard 一致）
+        const totalRevenue = paidSubscriptions.reduce((sum, s) => sum + (s.total_price || 0), 0);
         
         // 建立索引 Map
         const userSubscriptionsMap = new Map();
@@ -194,7 +200,7 @@ async function loadUsersPage() {
         const userData = users.map(user => {
             const userSubs = userSubscriptionsMap.get(user.id) || [];
             const activeSub = userSubs.find(s => s.status === 'active');
-            const totalPaid = userReceiptsMap.get(user.id) || 0;
+            const userTotalPaid = userReceiptsMap.get(user.id) || 0;
             const deliveredCount = userDeliveriesMap.get(user.id) || 0;
             const paidOrdersCount = userSubs.filter(s => s.payment_status === 'paid').length;
             const unpaidOrdersCount = userSubs.filter(s => s.payment_status === 'unpaid' || !s.payment_status).length;
@@ -205,7 +211,7 @@ async function loadUsersPage() {
                 subscription: activeSub,
                 allSubscriptions: userSubs,
                 deliveredCount,
-                totalPaid,
+                totalPaid: userTotalPaid,
                 paidOrdersCount,
                 unpaidOrdersCount,
                 totalOrdersCount
@@ -214,14 +220,6 @@ async function loadUsersPage() {
         
         const totalUsers = users.length;
         const activeSubscriptions = userData.filter(u => u.subscription).length;
-        // 從 subscriptions 表計算已支付訂單的總金額（與 Dashboard 一致）
-const { data: paidSubs } = await supabaseClient
-    .from('subscriptions')
-    .select('total_price')
-    .eq('payment_status', 'paid')
-    .neq('user_id', null);  // 獲取所有已支付訂單
-
-const totalRevenue = paidSubs?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
         const totalMealsDelivered = userData.reduce((sum, u) => sum + (u.deliveredCount || 0), 0);
         
         const pageData = {
