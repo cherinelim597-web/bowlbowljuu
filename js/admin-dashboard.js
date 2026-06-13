@@ -319,88 +319,93 @@ async function loadDashboard() {
         const thisMonth = malaysiaNow.getMonth();
         const thisYear = malaysiaNow.getFullYear();
         
-        // ========== 第一步：並行查詢所有需要的數據（無關聯表過濾）==========
-        const [
-            usersResult,
-            subscriptionsResult,
-            paidSubscriptionsResult,
-            deliveriesResult,
-            todayDeliveriesResult
-        ] = await Promise.all([
-            // 所有用戶（用於排除管理員ID）
-            supabaseClient.from('users').select('id, email, full_name, created_at'),
-            // 所有訂閱
-            supabaseClient.from('subscriptions').select('*'),
-            // 已支付訂單（用於營收）
-            supabaseClient.from('subscriptions').select('total_price, created_at, payment_status'),
-            // 所有配送（用於統計）
-            supabaseClient.from('deliveries').select('delivery_date, status, user_id'),
-            // 今日配送
-            supabaseClient.from('deliveries').select('id, user_id, status').eq('delivery_date', today)
-        ]);
+        // 獲取所有用戶（排除管理員）
+        const { data: allUsers } = await supabaseClient
+            .from('users')
+            .select('*')
+            .neq('email', ADMIN_EMAIL);
         
-        // 獲取管理員ID
-        const adminUser = usersResult.data?.find(u => u.email === ADMIN_EMAIL);
-        const adminId = adminUser?.id;
+        const totalUsers = allUsers?.length || 0;
         
-        // 過濾掉管理員的用戶
-        const allUsers = usersResult.data?.filter(u => u.id !== adminId) || [];
-        const totalUsers = allUsers.length;
+        // 活躍訂閱
+        const { data: subscriptions } = await supabaseClient
+            .from('subscriptions')
+            .select('*, users!inner(email)')
+            .eq('status', 'active')
+            .neq('users.email', ADMIN_EMAIL);
         
-        // 過濾掉管理員的訂閱
-        const allSubscriptions = subscriptionsResult.data?.filter(s => s.user_id !== adminId) || [];
+        const activeSubscriptions = subscriptions?.length || 0;
         
-        // 過濾掉管理員的已支付訂單
-        const paidSubscriptions = paidSubscriptionsResult.data?.filter(s => s.payment_status === 'paid' && s.user_id !== adminId) || [];
+        // 總訂單數
+        const { data: totalOrders } = await supabaseClient
+            .from('subscriptions')
+            .select('id, users!inner(email)')
+            .neq('users.email', ADMIN_EMAIL);
+        const totalOrdersCount = totalOrders?.length || 0;
         
-        // 過濾掉管理員的配送
-        const allDeliveries = deliveriesResult.data?.filter(d => d.user_id !== adminId) || [];
-        const todayDeliveries = todayDeliveriesResult.data?.filter(d => d.user_id !== adminId) || [];
+        // ========== 修復：總營收（直接查詢已支付訂單）==========
+        const { data: paidSubscriptions } = await supabaseClient
+            .from('subscriptions')
+            .select('total_price')
+            .eq('payment_status', 'paid')
+            .neq('users.email', ADMIN_EMAIL);
         
-        // ========== 計算總營收和本月營收 ==========
-        let totalRevenue = 0;
+        const totalRevenue = paidSubscriptions?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
+        console.log('總營收計算結果:', totalRevenue);  // 調試用
+        
+        // ========== 修復：本月營收 ==========
+        const { data: monthlyPaidSubscriptions } = await supabaseClient
+            .from('subscriptions')
+            .select('total_price, created_at')
+            .eq('payment_status', 'paid')
+            .neq('users.email', ADMIN_EMAIL);
+        
         let monthlyRevenue = 0;
-        
-        for (const sub of paidSubscriptions) {
-            totalRevenue += (sub.total_price || 0);
-            
-            if (sub.created_at) {
-                const subDate = new Date(sub.created_at);
-                if (subDate.getMonth() === thisMonth && subDate.getFullYear() === thisYear) {
-                    monthlyRevenue += (sub.total_price || 0);
+        if (monthlyPaidSubscriptions && monthlyPaidSubscriptions.length > 0) {
+            for (const sub of monthlyPaidSubscriptions) {
+                if (sub.created_at) {
+                    const subDate = new Date(sub.created_at);
+                    if (subDate.getMonth() === thisMonth && subDate.getFullYear() === thisYear) {
+                        monthlyRevenue += (sub.total_price || 0);
+                    }
                 }
             }
         }
+        console.log('本月營收計算結果:', monthlyRevenue);  // 調試用
         
-        // ========== 活躍訂閱（排除單次方案）==========
-        const activeSubscriptions = allSubscriptions.filter(s => 
-            s.status === 'active' && s.plan_type !== 'single'
-        ).length;
+        // 獲取未支付的訂閱
+        const { data: unpaidSubscriptions } = await supabaseClient
+            .from('subscriptions')
+            .select('*, users!inner(full_name, email, phone)')
+            .eq('status', 'active')
+            .eq('payment_status', 'unpaid')
+            .neq('users.email', ADMIN_EMAIL);
         
-        // 總訂單數
-        const totalOrdersCount = allSubscriptions.length;
+        const unpaidCount = unpaidSubscriptions?.length || 0;
+        const unpaidTotalAmount = unpaidSubscriptions?.reduce((sum, s) => sum + (s.total_price || 0), 0) || 0;
         
-        // 未支付訂單
-        const unpaidSubscriptions = allSubscriptions.filter(s => 
-            s.status === 'active' && s.payment_status === 'unpaid'
-        );
-        const unpaidCount = unpaidSubscriptions.length;
-        const unpaidTotalAmount = unpaidSubscriptions.reduce((sum, s) => sum + (s.total_price || 0), 0);
+        // 今日配送
+        const { data: todayDeliveries } = await supabaseClient
+            .from('deliveries')
+            .select('*, users!inner(email)')
+            .eq('delivery_date', today)
+            .eq('status', 'pending')
+            .neq('users.email', ADMIN_EMAIL);
         
-        // 今日待配送
-        const todayPending = todayDeliveries.filter(d => d.status === 'pending').length;
+        const todayPending = todayDeliveries?.length || 0;
         
-        // 即將到期訂閱（7天內，排除單次方案）
+        // 即將到期訂閱（7天內）
         const sevenDaysLater = getMalaysiaDate();
         sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
         const sevenDaysLaterStr = formatMalaysiaDate(sevenDaysLater);
         
-        const expiringCount = allSubscriptions.filter(s => 
-            s.status === 'active' && 
-            s.plan_type !== 'single' && 
-            s.end_date <= sevenDaysLaterStr &&
-            s.end_date >= today
-        ).length;
+        const { data: expiringSubs } = await supabaseClient
+            .from('subscriptions')
+            .select('id')
+            .eq('status', 'active')
+            .lte('end_date', sevenDaysLaterStr)
+            .neq('users.email', ADMIN_EMAIL);
+        const expiringCount = expiringSubs?.length || 0;
         
         // 營收目標配置
         const targetConfig = loadRevenueTarget();
@@ -425,7 +430,7 @@ async function loadDashboard() {
         
         // 方案統計
         const planStats = { single: 0, weekly: 0, '1month': 0, '2months': 0, '3months': 0 };
-        allSubscriptions.forEach(s => {
+        subscriptions?.forEach(s => {
             if (planStats[s.plan_type] !== undefined) planStats[s.plan_type]++;
         });
         
@@ -437,12 +442,19 @@ async function loadDashboard() {
             last7Days.push(formatMalaysiaDate(d));
         }
         
+        const { data: dailyDeliveries } = await supabaseClient
+            .from('deliveries')
+            .select('delivery_date, users!inner(email)')
+            .in('delivery_date', last7Days)
+            .eq('status', 'delivered')
+            .neq('users.email', ADMIN_EMAIL);
+        
         const deliveryCounts = last7Days.map(date => 
-            allDeliveries.filter(d => d.delivery_date === date && d.status === 'delivered').length
+            dailyDeliveries?.filter(d => d.delivery_date === date).length || 0
         );
         
         // 最近註冊用戶
-        const recentUsers = allUsers.slice(0, 5);
+        const recentUsers = allUsers?.slice(0, 5) || [];
         const recentUsersHtml = recentUsers.map(user => {
             const avatarLetter = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
             const daysSince = Math.floor((new Date() - new Date(user.created_at)) / (1000 * 60 * 60 * 24));
@@ -478,6 +490,7 @@ async function loadDashboard() {
             `;
         }).join('');
         
+        // ========== HTML 渲染：確保使用正確的變數 ==========
         container.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card">
@@ -489,7 +502,6 @@ async function loadDashboard() {
                     <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
                     <div class="stat-value">${activeSubscriptions}</div>
                     <div class="stat-label">活躍訂閱</div>
-                    <div style="font-size: 10px; color: #b8956e;">(不含單次)</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-ticket-alt"></i></div>
@@ -591,7 +603,7 @@ async function loadDashboard() {
         
     } catch (err) {
         console.error('Dashboard error:', err);
-        container.innerHTML = '<p>加載失敗: ' + err.message + '</p>';
+        container.innerHTML = '<p>加載失敗</p>';
     }
 }
 
