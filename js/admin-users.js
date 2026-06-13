@@ -1,5 +1,5 @@
 // ============================================
-// 用戶管理模組 - 完整高性能版
+// 用戶管理模組 - 修復查詢語法錯誤
 // ============================================
 
 // 數據緩存
@@ -21,10 +21,7 @@ const PLAN_CONFIG = {
     '3months': { name: '3個月', days: 90, price: 1161 }
 };
 
-// 付款方式選項
 const PAYMENT_METHODS = ['Credit Card', 'Bank Transfer', 'Cash On Delivery', 'Touch n Go', 'USDT'];
-
-// 訂閱狀態選項
 const SUBSCRIPTION_STATUS = ['active', 'expired', 'cancelled', 'paused'];
 
 // ============================================
@@ -106,8 +103,22 @@ function debounce(func, wait) {
     };
 }
 
+function getTodayString() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function generateOrderNoByDate(dateStr) {
+    const date = new Date(dateStr);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+    return `ORD${year}${month}${day}${randomNum}`;
+}
+
 // ============================================
-// 加載用戶列表
+// 加載用戶列表（修復查詢語法）
 // ============================================
 
 async function loadUsersPage() {
@@ -127,20 +138,35 @@ async function loadUsersPage() {
             return;
         }
         
-        const [usersResult, subscriptionsResult, receiptsResult, deliveriesResult] = await Promise.all([
-            supabaseClient.from('users').select('*').neq('email', ADMIN_EMAIL).order('created_at', { ascending: false }),
-            supabaseClient.from('subscriptions').select('*, users!inner(email)').neq('users.email', ADMIN_EMAIL),
-            supabaseClient.from('receipts').select('amount, user_id').neq('users.email', ADMIN_EMAIL),
-            supabaseClient.from('deliveries').select('user_id, status').neq('users.email', ADMIN_EMAIL)
+        // ========== 修復：先獲取用戶，排除管理員 ==========
+        const { data: users, error: usersError } = await supabaseClient
+            .from('users')
+            .select('*')
+            .neq('email', ADMIN_EMAIL)
+            .order('created_at', { ascending: false });
+        
+        if (usersError) throw usersError;
+        
+        if (!users || users.length === 0) {
+            container.innerHTML = '<div class="table-container"><p>暫無用戶</p></div>';
+            return;
+        }
+        
+        // 獲取所有用戶ID
+        const userIds = users.map(u => u.id);
+        
+        // ========== 修復：使用 in 查詢，避免關聯表過濾問題 ==========
+        const [subscriptionsResult, receiptsResult, deliveriesResult] = await Promise.all([
+            supabaseClient.from('subscriptions').select('*').in('user_id', userIds),
+            supabaseClient.from('receipts').select('*').in('user_id', userIds),
+            supabaseClient.from('deliveries').select('*').in('user_id', userIds)
         ]);
         
-        if (usersResult.error) throw usersResult.error;
-        
-        const users = usersResult.data || [];
         const subscriptions = subscriptionsResult.data || [];
         const receipts = receiptsResult.data || [];
         const deliveries = deliveriesResult.data || [];
         
+        // 建立索引 Map
         const userSubscriptionsMap = new Map();
         const userReceiptsMap = new Map();
         const userDeliveriesMap = new Map();
@@ -164,6 +190,7 @@ async function loadUsersPage() {
             }
         }
         
+        // 構建用戶數據
         const userData = users.map(user => {
             const userSubs = userSubscriptionsMap.get(user.id) || [];
             const activeSub = userSubs.find(s => s.status === 'active');
@@ -696,7 +723,7 @@ async function viewUserDetail(userId) {
 
 function renderOrderHistory(subscriptions, receipts, currentUserId) {
     if (!subscriptions || subscriptions.length === 0) {
-        return '<tr><td colspan="9" style="text-align: center; padding: 40px;">暫無訂單記錄</td></tr>';
+        return '<tr><td colspan="9" style="text-align: center; padding: 40px;">暫無訂單記錄</td><\/tr>';
     }
     
     const planNames = { single: '單次', weekly: '週方案', '1month': '1個月', '2months': '2個月', '3months': '3個月' };
@@ -736,20 +763,6 @@ function renderOrderHistory(subscriptions, receipts, currentUserId) {
 // ============================================
 // 添加訂單
 // ============================================
-
-function getTodayString() {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
-
-function generateOrderNoByDate(dateStr) {
-    const date = new Date(dateStr);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
-    return `ORD${year}${month}${day}${randomNum}`;
-}
 
 async function showAddOrderModal(userId) {
     const { data: user } = await supabaseClient.from('users').select('full_name').eq('id', userId).single();
@@ -1075,10 +1088,14 @@ async function confirmUploadReceiptFromDetail(userId, subscriptionId, orderNo) {
 
 async function exportUsersData() {
     try {
-        const { data: users, error } = await supabaseClient.from('users').select('*, subscriptions(order_no, plan_type, total_price, payment_status)').neq('email', ADMIN_EMAIL);
+        const { data: users, error } = await supabaseClient.from('users').select('*').neq('email', ADMIN_EMAIL);
         if (error) throw error;
-        const csv = [['姓名', '郵箱', '電話', '地址', '訂單號', '方案', '金額', '支付狀態', '註冊時間']];
-        users.forEach(u => { const sub = u.subscriptions; csv.push([u.full_name, u.email || '', u.phone || '', u.address || '', sub?.order_no || '', sub?.plan_type || '', sub?.total_price || '', sub?.payment_status || '', u.created_at]); });
+        
+        const csv = [['姓名', '郵箱', '電話', '地址', '註冊時間']];
+        users.forEach(u => {
+            csv.push([u.full_name, u.email || '', u.phone || '', u.address || '', u.created_at]);
+        });
+        
         const blob = new Blob([csv.map(row => row.join(',')).join('\n')], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1087,7 +1104,10 @@ async function exportUsersData() {
         a.click();
         URL.revokeObjectURL(url);
         showToast('導出成功');
-    } catch (err) { console.error('Export error:', err); showToast('導出失敗', 'error'); }
+    } catch (err) { 
+        console.error('Export error:', err); 
+        showToast('導出失敗', 'error'); 
+    }
 }
 
 // ============================================
