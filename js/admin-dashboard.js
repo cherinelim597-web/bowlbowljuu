@@ -1,8 +1,7 @@
 // ============================================
-// 管理員儀表板 - 最終穩定版（無400錯誤）
+// 管理員儀表板 - 最終穩定版（修復406錯誤）
 // ============================================
 
-// 營收目標配置
 let revenueTargetConfig = {
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
@@ -159,7 +158,7 @@ async function sendRenewalReminder(userId, userName, daysLeft) {
 }
 
 // ============================================
-// 主函數 - 完全不用關聯表過濾
+// 主函數
 // ============================================
 
 async function loadDashboard() {
@@ -174,16 +173,16 @@ async function loadDashboard() {
         const thisMonth = malaysiaNow.getMonth();
         const thisYear = malaysiaNow.getFullYear();
         
-        // 第一步：獲取管理員ID
+        // 獲取管理員ID（使用 maybeSingle 避免406錯誤）
         const { data: adminUser } = await supabaseClient
             .from('users')
             .select('id')
             .eq('email', ADMIN_EMAIL)
-            .single();
+            .maybeSingle();
         
         const adminId = adminUser?.id;
         
-        // 第二步：獲取所有用戶（排除管理員）
+        // 獲取所有用戶（排除管理員）
         const { data: allUsers } = await supabaseClient
             .from('users')
             .select('*')
@@ -191,12 +190,12 @@ async function loadDashboard() {
         
         const totalUsers = allUsers?.length || 0;
         
-        // 第三步：獲取所有訂閱（不加任何過濾條件）
+        // 獲取所有訂閱
         const { data: allSubscriptions } = await supabaseClient
             .from('subscriptions')
             .select('*');
         
-        // 在 JS 中過濾掉管理員的訂閱
+        // 過濾掉管理員的訂閱
         const subscriptions = (allSubscriptions || []).filter(s => s.user_id !== adminId);
         
         // 活躍訂閱（排除單次）
@@ -207,7 +206,7 @@ async function loadDashboard() {
         // 總訂單數
         const totalOrdersCount = subscriptions.length;
         
-        // 已支付訂單（用於營收）
+        // 已支付訂單
         const paidSubscriptions = subscriptions.filter(s => s.payment_status === 'paid');
         
         // 計算總營收
@@ -243,7 +242,7 @@ async function loadDashboard() {
         const todayDeliveries = (allTodayDeliveries || []).filter(d => d.user_id !== adminId);
         const todayPending = todayDeliveries.filter(d => d.status === 'pending').length;
         
-        // 即將到期訂閱（7天內）
+        // 即將到期訂閱
         const sevenDaysLater = getMalaysiaDate();
         sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
         const sevenDaysLaterStr = formatMalaysiaDate(sevenDaysLater);
@@ -255,7 +254,7 @@ async function loadDashboard() {
             s.end_date >= today
         ).length;
         
-        // 營收目標配置
+        // 營收目標
         const targetConfig = loadRevenueTarget();
         let targetProgress = 0;
         let targetDisplayText = '';
@@ -292,7 +291,7 @@ async function loadDashboard() {
         
         const { data: allDailyDeliveries } = await supabaseClient
             .from('deliveries')
-            .select('delivery_date, status')
+            .select('delivery_date, status, user_id')
             .in('delivery_date', last7Days);
         
         const dailyDeliveries = (allDailyDeliveries || []).filter(d => d.user_id !== adminId);
@@ -385,7 +384,7 @@ async function loadDashboard() {
             </div>
         `;
         
-        // 方案圖表
+        // 圖表
         const planChart = echarts.init(document.getElementById('planChart'));
         planChart.setOption({
             tooltip: { trigger: 'item', backgroundColor: '#1a2a3a' },
@@ -404,7 +403,6 @@ async function loadDashboard() {
             }]
         });
         
-        // 配送圖表
         const deliveryChart = echarts.init(document.getElementById('deliveryChart'));
         deliveryChart.setOption({
             tooltip: { trigger: 'axis', backgroundColor: '#1a2a3a' },
@@ -475,7 +473,7 @@ async function showUnpaidModal() {
         .from('users')
         .select('id')
         .eq('email', ADMIN_EMAIL)
-        .single();
+        .maybeSingle();
     
     const adminId = adminUser?.id;
     
